@@ -143,16 +143,28 @@
         icon(t.icon) + '<span>' + t.label + '</span></button>').join('') + '</nav>';
     }
 
-    const toasts = S.toasts.map(t => '<div class="toast">' + esc(t.text) + '</div>').join('');
+    const toasts = S.toasts.map(t =>
+      '<div class="toast">' + esc(t.text) +
+      (t.act ? '<button class="toast-act" data-a="' + t.act + '"' + (t.arg != null ? ' data-arg="' + esc(t.arg) + '"' : '') + '>' + esc(t.label) + '</button>' : '') +
+      '</div>').join('');
     // 子页可在 topRight 声明一个图标按钮（如 LLM 对话的侧边菜单）
     const def0 = cur ? SCREENS[cur.page] : null;
     const rightBtn = cur && def0.topRight ?
       '<button class="icbtn" data-a="' + def0.topRight.act + '"' + (def0.topRight.arg != null ? ' data-arg="' + esc(def0.topRight.arg) + '"' : '') + '>' + icon(def0.topRight.icon) + '</button>' :
       '<span class="icbtn"></span>';
+    // 首次进入某 Tab 的轻引导（一次性横幅，点"知道了"或切走即消失）
+    let onboard = '';
+    if (!cur) {
+      S.seen = S.seen || {};
+      const tip = ONBOARD_TIPS[S.tab];
+      if (tip && !S.seen[S.tab]) onboard = '<div class="onboard" data-a="onboard-ok">' + icon(tip.icon) + '<span>' + tip.text + '</span><b>知道了</b></div>';
+    }
     const html =
       '<header class="topbar">' + (showBack ? '<button class="icbtn" data-a="back">' + icon('arrow_back') + '</button>' : '<span class="icbtn"></span>') +
       '<span class="topbar-title">' + esc(title) + '</span>' + rightBtn + '</header>' +
       '<main class="content" id="content">' + content + '</main>' + bottom +
+      '<button class="to-top' + (S.x.showTop ? ' on' : '') + '" data-a="to-top">' + icon('arrow_upward') + '</button>' +
+      onboard +
       '<div class="toast-wrap">' + toasts + '</div>' + dialogHtml();
 
     // 闪烁修复：HTML 无变化（如仅定时器空转）时跳过 DOM 写入，
@@ -192,10 +204,31 @@
     const live = e.target.dataset && e.target.dataset.live;
     if (live && ACTIONS[live]) ACTIONS[live](e.target.dataset, e.target);
   });
-  // 屏幕滚动位置保存（返回时还原由具体页面处理，这里仅记录）
+  // 屏幕滚动位置保存（返回时还原由具体页面处理，这里仅记录）+ 回顶按钮显隐
   document.addEventListener('scroll', e => {
-    if (e.target && e.target.id === 'content') S._scroll = e.target.scrollTop;
+    if (e.target && e.target.id === 'content') {
+      S._scroll = e.target.scrollTop;
+      const show = e.target.scrollTop > 480;
+      if (!!show !== !!S.x.showTop) { S.x.showTop = show; render(); }
+    }
   }, true);
+
+  // 首次引导文案（各 Tab 一次）
+  const ONBOARD_TIPS = {
+    apk: { icon: 'apps', text: 'APK 页浏览汉化/重配音应用与开源收录；顶部可按分类与标签筛选' },
+    assets: { icon: 'image', text: '素材统一管理图片/视频/音频/3D 点云；长按进入多选，点按进查看器' },
+    ai: { icon: 'auto_awesome', text: 'AI 模块全部端侧运行：对话 / 生图 / 语音 / 模型管理，任务在队列中排队' },
+    mine: { icon: 'person', text: '登录 MK 通行证可多设备同步；下载任务与源偏好在「下载」中管理' }
+  };
+  action('onboard-ok', () => { S.seen = S.seen || {}; S.seen[S.tab] = true; render(); });
+  action('to-top', () => { const c = document.getElementById('content'); if (c) c.scrollTo({ top: 0, behavior: 'smooth' }); });
+
+  // 输入框聚焦时滚入视野（软键盘场景兜底，对应 Compose 侧 imePadding + 自动滚动）
+  document.addEventListener('focusin', e => {
+    if (e.target && e.target.dataset && e.target.dataset.keep) {
+      setTimeout(() => { try { e.target.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (err) { } }, 80);
+    }
+  });
 
   // 通用动作
   action('tab', ds => nav.goTab(ds.arg));

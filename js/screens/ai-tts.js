@@ -48,6 +48,8 @@
     }
     // 底部输入区：音色选择 + 推理方式 / 文本 + 合成
     const voice = (S.x.voices || []).find(v => v.name === t.voice);
+    const textLen = ((S.x.keep && S.x.keep['tts-text']) || t.text || '').length;
+    const estSec = Math.max(1, Math.round(textLen / 4.2));
     h += '<div class="composer">' +
       '<div class="composer-top">' +
       '<button class="chip model-chip" data-a="tts-voice-pick">' + icon('person') + '<span>' + esc(voice ? voice.name : '默认音色') + '</span>' + icon('expand_more') + '</button>' +
@@ -56,15 +58,19 @@
       '<div class="msg-row">' +
       '<input class="field-input" style="flex:1" data-keep="tts-text" placeholder="输入要合成的文本…" value="' + esc(t.text) + '">' +
       '<button class="btn" style="min-height:48px;padding:0 18px" data-a="tts-synth">' + icon('play_arrow') + '</button></div>' +
+      // F12：字数 / 预计时长提示
+      '<div class="muted" style="font-size:11px;margin-top:4px;text-align:right">' + textLen + ' 字 · 约 ' + estSec + ' 秒（按 4.2 字/秒估算）</div>' +
       '</div>';
     if (S.x.ttsDrawer) h += ttsDrawerHtml();
     return h + '</div>';
   }
 
-  // 侧边抽屉：合成记录 + 底部音色管理
+  // 侧边抽屉：合成记录（F10 可搜索）+ 底部音色管理
   function ttsDrawerHtml() {
     const t = T();
-    const items = t.history.map(r =>
+    const kw = ((S.x.keep && S.x.keep['tts-hist-q']) || '').trim().toLowerCase();
+    const list = kw ? t.history.filter(r => (r.text || '').toLowerCase().indexOf(kw) >= 0 || (r.label || '').toLowerCase().indexOf(kw) >= 0) : t.history;
+    const items = list.map(r =>
       '<div class="d-sess' + (t.curId === r.id ? ' on' : '') + '" data-a="tts-hist" data-arg="' + r.id + '">' +
       '<span class="li-icon">' + icon('play_arrow') + '</span>' +
       '<div class="d-body"><div class="d-title">' + esc(r.label) + '</div>' +
@@ -72,8 +78,10 @@
       '<button class="d-del" data-a="tts-hist-del" data-arg="' + r.id + '" title="删除">' + icon('close') + '</button></div>').join('');
     return '<div class="drawer-mask" data-a="tts-drawer-close"><div class="drawer" data-a="drawer-body">' +
       '<div class="d-head"><span>合成记录</span><span class="muted small">' + t.history.length + ' 条</span></div>' +
+      '<div style="padding:0 12px 10px"><div class="search-box">' + icon('search') +
+      '<input class="field-input" data-keep="tts-hist-q" placeholder="搜索文本…" value="' + esc((S.x.keep && S.x.keep['tts-hist-q']) || '') + '"></div></div>' +
       '<div style="padding:0 12px 10px">' + btn('＋ 新建合成', 'tts-new', null, 'small block ghost') + '</div>' +
-      '<div class="d-list">' + (items || '<div class="muted small center" style="padding:24px 0">暂无合成记录</div>') + '</div>' +
+      '<div class="d-list">' + (items || '<div class="muted small center" style="padding:24px 0">' + (kw ? '没有匹配的记录' : '暂无合成记录') + '</div>') + '</div>' +
       '<div class="d-foot" data-a="tts-settings">' + icon('settings') + '<span>音色管理</span></div>' +
       '</div></div>';
   }
@@ -81,12 +89,22 @@
   action('tts-drawer-close', () => { S.x.ttsDrawer = false; render(); });
   action('tts-new', () => { T().curId = null; S.x.ttsDrawer = false; render(); });
   action('tts-hist', ds => { T().curId = ds.arg; S.x.ttsDrawer = false; render(); });
-  action('tts-hist-del', ds => confirmDialog('删除记录', '将从合成记录删除。', '删除', () => {
+  // I2 轻删：合成记录删除走 toast 撤销
+  action('tts-hist-del', ds => {
     const t = T();
-    t.history = t.history.filter(x => x.id !== ds.arg);
+    const r = t.history.find(x => x.id === ds.arg);
+    if (!r) return;
+    const idx = t.history.indexOf(r);
+    t.history.splice(idx, 1);
     if (t.curId === ds.arg) t.curId = null;
+    toast('已删除合成记录', { act: 'tts-hist-undo', arg: JSON.stringify({ r, idx }), label: '撤销' });
     render();
-  }, true));
+  });
+  action('tts-hist-undo', ds => {
+    const d = JSON.parse(ds.arg);
+    T().history.splice(Math.min(d.idx, T().history.length), 0, d.r);
+    render();
+  });
   action('tts-settings', () => { S.x.ttsDrawer = false; nav.push('tts-voices'); });
 
   // 音色选择对话框（含音色管理入口 + 试听）

@@ -12,8 +12,13 @@
         sub: S.loggedIn && S.user ? '已登录：' + S.user.name : '未登录，点击登录',
         arrow: true, action: 'go-account'
       }) + '<div class="hr"></div>' + listItem({
+        icon: 'favorite', title: '我的收藏',
+        sub: (S.favs && S.favs.length ? S.favs.length + ' 个条目' : '收藏的应用与开源项目'),
+        arrow: true, action: 'go-favorites'
+      }) + '<div class="hr"></div>' + listItem({
         icon: 'verified', title: '已授权应用', arrow: true, action: 'go-account'
       }), 'tight');
+      action('go-favorites', () => nav.push('favorites'));
       // 服务
       h += sectionTitle('服务');
       h += card(listItem({
@@ -28,13 +33,21 @@
       // 下载
       h += sectionTitle('下载');
       const activeCnt = S.x.tasks.filter(t => t.status === 'downloading' || t.status === 'pending' || t.status === 'verifying').length;
+      const nodes = S.x.nodes = S.x.nodes || [
+        { name: '国内 A 节点', ms: 38 }, { name: '国内 D 节点', ms: 52 },
+        { name: '海外 B 节点', ms: 210 }, { name: '海外 C 节点', ms: 187 }
+      ];
       h += card(listItem({
         icon: 'download', title: '下载任务',
         sub: S.x.tasks.length ? S.x.tasks.length + ' 个任务' + (activeCnt ? ' · ' + activeCnt + ' 个进行中' : '') : '暂无下载任务',
         trailing: activeCnt ? '<span class="count-badge">' + activeCnt + '</span>' : undefined,
         arrow: true, action: 'go-downloads'
       }) + '<div class="hr"></div>' + radioRow('国内优先', 'AI 引擎 / 安装包 / 数据包优先国内节点', S.srcPref === 'domestic', 'mine-src', 'domestic') +
-        '<div class="hr"></div>' + radioRow('稳定优先', '海外机房优先', S.srcPref === 'stable', 'mine-src', 'stable'), 'tight');
+        '<div class="hr"></div>' + radioRow('稳定优先', '海外机房优先', S.srcPref === 'stable', 'mine-src', 'stable') +
+        '<div class="hr"></div><div class="li" style="cursor:default;flex-wrap:wrap;gap:6px 14px">' +
+        nodes.map(n => '<span class="node-row"><span class="node-dot' + (n.ms > 400 ? ' down' : n.ms > 100 ? ' slow' : '') + '"></span>' +
+          esc(n.name) + ' ' + (n.ms > 400 ? '不可达' : n.ms + 'ms') + '</span>').join('') +
+        '<span class="node-row" style="flex-basis:100%"><span class="muted small">源偏好 ' + (S.srcPref === 'domestic' ? '国内优先' : '稳定优先') + ' · 节点延迟为上次测速结果</span></span></div>', 'tight');
       // 存储
       h += sectionTitle('存储');
       h += card(listItem({

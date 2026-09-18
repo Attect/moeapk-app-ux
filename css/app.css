@@ -578,3 +578,99 @@ body {
   background: var(--surface-high); border-radius: 14px; padding: 10px 14px;
   margin-top: 10px; box-shadow: 0 -4px 16px var(--shadow);
 }
+
+/* ---------- 主题切换过渡（I8：Compose 侧对应 animateColor） ---------- */
+body, .card, .li, .topbar, .navbar, .chip, .btn, .tbtn, .field-input,
+.content, .composer, .msg-card, .drawer, .dlg, .toast, .switch, .as-cell,
+.batch-bar, .onboard, .d-sess, .empty-illust {
+  transition: background-color .22s ease, color .22s ease, border-color .22s ease, background .22s ease;
+}
+
+/* ---------- toast 动作按钮（I2 撤销） ---------- */
+.toast { display: flex; align-items: center; gap: 12px; }
+.toast-act {
+  flex: none; border: 0; background: none; cursor: pointer;
+  color: var(--primary); font-size: 13px; font-weight: 600; padding: 4px 2px;
+}
+
+/* ---------- 回顶按钮（I3） ---------- */
+.to-top {
+  position: absolute; right: 14px; bottom: 84px; z-index: 8;
+  width: 44px; height: 44px; border-radius: 50%; border: 0; cursor: pointer;
+  background: var(--surface-high); color: var(--on-surface);
+  box-shadow: 0 4px 14px var(--shadow);
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; pointer-events: none; transform: translateY(8px);
+  transition: opacity .2s, transform .2s;
+}
+.to-top.on { opacity: 1; pointer-events: auto; transform: none; }
+.to-top .ic { width: 20px; height: 20px; }
+
+/* ---------- 首次引导横幅（I1） ---------- */
+.onboard {
+  position: absolute; left: 14px; right: 14px; bottom: 78px; z-index: 9;
+  display: flex; align-items: center; gap: 10px;
+  background: var(--secondary-container); color: var(--on-secondary-container);
+  border-radius: 14px; padding: 12px 14px; cursor: pointer;
+  box-shadow: 0 6px 20px var(--shadow);
+  font-size: 13px; line-height: 18px;
+}
+.onboard .ic { width: 20px; height: 20px; flex: none; }
+.onboard span { flex: 1; }
+.onboard b { flex: none; color: var(--primary); font-weight: 600; }
+
+/* ---------- 吸顶分区标题（I3） ---------- */
+.section-title { position: sticky; top: -8px; z-index: 3; background: var(--bg); padding-top: 10px; }
+
+/* ---------- 搜索与筛选（F1） ---------- */
+.search-row { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.search-row .field-input { flex: 1; min-width: 0; padding-left: 36px; }
+.search-box { position: relative; flex: 1; min-width: 0; }
+.search-box > .ic {
+  position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+  width: 18px; height: 18px; color: var(--on-surface-variant); pointer-events: none;
+}
+
+/* ---------- 骨架屏（I4） ---------- */
+.skel {
+  border-radius: 10px; min-height: 72px; margin-top: 10px;
+  background: linear-gradient(90deg, var(--surface-container) 25%, var(--surface-high) 50%, var(--surface-container) 75%);
+  background-size: 200% 100%; animation: shimmer 1.2s infinite;
+}
+@keyframes shimmer { to { background-position: -200% 0; } }
+
+/* ---------- 素材列表视图 / 工具行（F5/F6） ---------- */
+.as-tools { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+.as-tools .chip-row { flex: 1; padding: 0; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+.as-list .as-row {
+  display: flex; align-items: center; gap: 12px; padding: 8px 16px; margin: 0 -16px;
+  cursor: pointer; min-height: 64px;
+}
+.as-list .as-row:active { background: rgba(127,127,127,.12); }
+.as-list .as-thumb {
+  width: 52px; height: 52px; border-radius: 8px; flex: none; position: relative; overflow: hidden;
+}
+.as-list .as-thumb .as-check { top: 3px; right: 3px; width: 18px; height: 18px; }
+.as-row.selected .as-thumb { outline: 3px solid var(--primary); outline-offset: -3px; }
+
+/* ---------- 消息操作行（F8） ---------- */
+.msg-actions { display: flex; gap: 2px; margin: 2px 4px 0; }
+.msg-actions button {
+  border: 0; background: none; cursor: pointer; color: var(--on-surface-variant);
+  width: 32px; height: 28px; border-radius: 8px;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.msg-actions button:active { background: rgba(127,127,127,.18); }
+.msg-actions .ic { width: 16px; height: 16px; }
+.msg-row + .msg-actions { justify-content: flex-start; }
+.msg-card.user ~ .msg-actions { justify-content: flex-end; }
+
+/* ---------- 空态 CTA（I5） ---------- */
+.empty-cta { display: flex; gap: 10px; justify-content: center; margin-top: 18px; flex-wrap: wrap; }
+
+/* ---------- 节点状态（F14） ---------- */
+.node-row { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--on-surface-variant); }
+.node-dot { width: 8px; height: 8px; border-radius: 50%; background: #2e7d32; flex: none; }
+.node-dot.slow { background: #f9a825; }
+.node-dot.down { background: var(--error); }
+

@@ -5,7 +5,7 @@
   registerScreen('diffusion', { title: '图片生成', topRight: { icon: 'menu', act: 'diff-menu' }, render: diffPage });
 
   // ---------- 图片生成（独立子页：生成历史抽屉 + 底部输入区） ----------
-  const D = () => A().diff = A().diff || { mode: 'txt', modelId: null, prompt: '1girl, anime style, masterpiece, best quality', steps: 20, denoise: 0.6, baseId: null, curId: null, history: [] };
+  const D = () => A().diff = A().diff || { mode: 'txt', modelId: null, prompt: '1girl, anime style, masterpiece, best quality', neg: 'lowres, bad anatomy, blurry', steps: 20, denoise: 0.6, baseId: null, curId: null, batch: 1, history: [] };
   const DIFF_MODELS = DB.AI.filter(m => m.kind === 'diffusion');
   const DIFF_DEF = { sampler: 'DPM++ 2M', cfg: 7, seed: -1, size: 512 };
   function diffCfgOf(id) {
@@ -38,6 +38,7 @@
           '<div style="aspect-ratio:1;border-radius:10px;background:linear-gradient(135deg,hsl(' + r.hue + ',62%,64%),hsl(' + ((r.hue + 60) % 360) + ',48%,30%));display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.85);font-size:12px">模拟出图（原型占位）</div>' +
           '<div class="li-sub" style="margin-top:8px">' + esc(r.info) + '</div>' +
           '<div class="muted" style="font-size:12px;margin-top:4px;word-break:break-all">' + esc(r.prompt) + '</div>' +
+          (r.neg ? '<div class="muted" style="font-size:11px;margin-top:2px;word-break:break-all">负向：' + esc(r.neg) + '</div>' : '') +
           '<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">' +
           btn('保存到素材', 'diff-save-asset', null, 'small') + btn('保存到相册', 'diff-save-album', null, 'small ghost') +
           (r.mode === 'txt' ? btn('作为底图', 'diff-use-base', r.id, 'small ghost') : '') + '</div>') + '</div>';
@@ -67,15 +68,25 @@
     h += '<div class="msg-row">' +
       '<input class="field-input" style="flex:1" data-keep="diff-prompt" placeholder="提示词（英文，逗号分隔）" value="' + esc(d.prompt) + '">' +
       '<button class="btn" style="min-height:48px;padding:0 18px" data-a="diff-gen">' + icon('auto_awesome') + '</button></div>';
+    // F9：负向提示词（可折叠）+ 批量张数
+    h += '<div class="msg-row" style="align-items:center">' +
+      '<button class="icbtn" data-a="diff-neg-toggle" title="负向提示词" style="width:36px;height:36px;color:' + (S.x.diffNegOpen ? 'var(--primary)' : 'var(--on-surface-variant)') + '">' + icon('remove') + '</button>' +
+      '<span class="muted" style="font-size:11px;flex:1">负向提示词' + (d.neg ? '（已设置）' : '') + '</span>' +
+      '<div class="chip-row" style="padding:0;flex:none">' + [1, 2, 4].map(n => chip('×' + n, (d.batch || 1) === n, 'diff-batch', n)).join('') + '</div></div>';
+    if (S.x.diffNegOpen) {
+      h += '<div class="msg-row"><input class="field-input" style="flex:1" data-keep="diff-neg" placeholder="负向提示词（如 lowres, bad anatomy）" value="' + esc(d.neg || '') + '"></div>';
+    }
     h += '</div>';
     if (S.x.diffDrawer) h += diffDrawerHtml();
     return h + '</div>';
   }
 
-  // 侧边抽屉：生成历史 + 底部生成设置
+  // 侧边抽屉：生成历史（F10 可搜索）+ 底部生成设置
   function diffDrawerHtml() {
     const d = D();
-    const items = d.history.map(r =>
+    const kw = ((S.x.keep && S.x.keep['diff-hist-q']) || '').trim().toLowerCase();
+    const list = kw ? d.history.filter(r => (r.prompt || '').toLowerCase().indexOf(kw) >= 0) : d.history;
+    const items = list.map(r =>
       '<div class="d-sess' + (d.curId === r.id ? ' on' : '') + '" data-a="diff-hist" data-arg="' + r.id + '">' +
       '<div class="d-thumb" style="background:linear-gradient(135deg,hsl(' + r.hue + ',62%,64%),hsl(' + ((r.hue + 60) % 360) + ',48%,30%))"></div>' +
       '<div class="d-body"><div class="d-title">' + esc(r.prompt || '（无提示词）') + '</div>' +
@@ -83,8 +94,10 @@
       '<button class="d-del" data-a="diff-hist-del" data-arg="' + r.id + '" title="删除">' + icon('close') + '</button></div>').join('');
     return '<div class="drawer-mask" data-a="diff-drawer-close"><div class="drawer" data-a="drawer-body">' +
       '<div class="d-head"><span>生成历史</span><span class="muted small">' + d.history.length + ' 张</span></div>' +
+      '<div style="padding:0 12px 10px"><div class="search-box">' + icon('search') +
+      '<input class="field-input" data-keep="diff-hist-q" placeholder="搜索提示词…" value="' + esc((S.x.keep && S.x.keep['diff-hist-q']) || '') + '"></div></div>' +
       '<div style="padding:0 12px 10px">' + btn('＋ 新建生成', 'diff-new', null, 'small block ghost') + '</div>' +
-      '<div class="d-list">' + (items || '<div class="muted small center" style="padding:24px 0">暂无生成记录</div>') + '</div>' +
+      '<div class="d-list">' + (items || '<div class="muted small center" style="padding:24px 0">' + (kw ? '没有匹配的记录' : '暂无生成记录') + '</div>') + '</div>' +
       '<div class="d-foot" data-a="diff-settings">' + icon('settings') + '<span>生成设置</span></div>' +
       '</div></div>';
   }
@@ -92,12 +105,22 @@
   action('diff-drawer-close', () => { S.x.diffDrawer = false; render(); });
   action('diff-new', () => { D().curId = null; S.x.diffDrawer = false; render(); });
   action('diff-hist', ds => { D().curId = ds.arg; S.x.diffDrawer = false; render(); });
-  action('diff-hist-del', ds => confirmDialog('删除记录', '将从生成历史删除。', '删除', () => {
+  // I2 轻删：历史记录删除走 toast 撤销
+  action('diff-hist-del', ds => {
     const d = D();
-    d.history = d.history.filter(x => x.id !== ds.arg);
+    const r = d.history.find(x => x.id === ds.arg);
+    if (!r) return;
+    const idx = d.history.indexOf(r);
+    d.history.splice(idx, 1);
     if (d.curId === ds.arg) d.curId = null;
+    toast('已删除生成记录', { act: 'diff-hist-undo', arg: JSON.stringify({ r, idx }), label: '撤销' });
     render();
-  }, true));
+  });
+  action('diff-hist-undo', ds => {
+    const dct = JSON.parse(ds.arg);
+    D().history.splice(Math.min(dct.idx, D().history.length), 0, dct.r);
+    render();
+  });
   action('diff-settings', () => { S.x.diffDrawer = false; nav.push('diff-config', D().modelId || DIFF_MODELS[0].id); });
 
   // 模型选择对话框：列表内直接下载/换用
@@ -158,12 +181,16 @@
     const lb = el.parentElement.querySelector('.li-title');
     if (lb) lb.textContent = '重绘幅度 ' + (+el.value).toFixed(2);
   });
+  action('diff-neg-toggle', () => { S.x.diffNegOpen = !S.x.diffNegOpen; render(); });
+  action('diff-batch', ds => { D().batch = +ds.arg; render(); });
   action('diff-gen', () => {
     const d = D();
     if (!d.modelId) { toast('请先选择并下载生图模型'); return; }
     if (d.mode === 'img' && !d.baseId) { toast('请先从素材库选择底图'); return; }
     d.prompt = (S.x.keep && S.x.keep['diff-prompt']) || d.prompt;
+    d.neg = (S.x.keep && S.x.keep['diff-neg']) || d.neg || '';
     const cfg = diffCfgOf(d.modelId);
+    const n = d.batch || 1;
     mock.startJob('diff-gen', d.mode === 'img' ? '图生图' : '文生图', 4200,
       d.mode === 'img' ? ['编码提示词', 'VAE 编码底图', '去噪 ' + d.steps + ' 步', '解码'] : ['编码提示词', '去噪 ' + d.steps + ' 步', '解码']);
     const t = setInterval(() => {
@@ -171,14 +198,18 @@
       if (!job) { clearInterval(t); return; } // 被取消
       if (job.done) {
         clearInterval(t);
-        const r = {
-          id: 'g' + Date.now(), hue: DIFF_HUES[d.history.length % DIFF_HUES.length],
-          mode: d.mode, prompt: d.prompt,
-          info: (d.mode === 'img' ? '图生图 · 重绘 ' + d.denoise.toFixed(2) + ' · ' : '') +
-            cfg.size + '×' + cfg.size + ' · ' + cfg.sampler + ' · CFG ' + cfg.cfg + ' · ' + d.steps + ' 步'
-        };
-        d.history.unshift(r);
-        d.curId = r.id;
+        // F9 批量：一次生成 n 张（种子递增），全部入历史并选中新第一张
+        for (let k = 0; k < n; k++) {
+          const r = {
+            id: 'g' + Date.now() + '_' + k, hue: DIFF_HUES[(d.history.length + k) % DIFF_HUES.length],
+            mode: d.mode, prompt: d.prompt, neg: d.neg,
+            info: (d.mode === 'img' ? '图生图 · 重绘 ' + d.denoise.toFixed(2) + ' · ' : '') +
+              cfg.size + '×' + cfg.size + ' · ' + cfg.sampler + ' · CFG ' + cfg.cfg + ' · ' + d.steps + ' 步' +
+              (n > 1 ? ' · 种子 ' + (cfg.seed < 0 ? '随机' : cfg.seed) + '+' + k : '')
+          };
+          d.history.unshift(r);
+          if (k === 0) d.curId = r.id;
+        }
         render();
       }
     }, 300);
@@ -189,7 +220,8 @@
     const d = D();
     const r = d.history.find(x => x.id === d.curId);
     if (!r) return;
-    S.x.assets.unshift({ id: 'as' + Date.now(), kind: 'image', hue: r.hue, label: '生图·' + (r.mode === 'img' ? '图生图' : '文生图'), date: '2026-09-18' });
+    // F10：AI 生成的素材带 from 标记，素材详情可追溯来源
+    S.x.assets.unshift({ id: 'as' + Date.now(), kind: 'image', hue: r.hue, label: '生图·' + (r.mode === 'img' ? '图生图' : '文生图'), date: '2026-09-18', from: 'ai', prompt: r.prompt });
     toast('已存入素材库，可在素材页查看');
   });
   action('diff-save-album', () => toast('已保存到相册（Pictures/MoeApk）'));

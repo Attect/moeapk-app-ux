@@ -98,14 +98,37 @@
     if (changed) render();
   }, 500);
 
-  // toast：最多堆叠 3 条，超出丢弃最旧
+  // toast：最多堆叠 3 条，超出丢弃最旧。支持可选动作按钮（如"撤销"）：
+  // toast('已删除', {act:'undo-del', arg:id, label:'撤销'})；动作处理器用 action('undo-del', ...) 注册。
   const TOAST_MAX = 3;
-  window.toast = function (text) {
-    S.toasts.push({ text, id: Date.now() + Math.random() });
+  window.toast = function (text, opt) {
+    const t = { text, id: Date.now() + Math.random() };
+    if (opt && opt.act) { t.act = opt.act; t.arg = opt.arg; t.label = opt.label || '撤销'; }
+    S.toasts.push(t);
     while (S.toasts.length > TOAST_MAX) S.toasts.shift();
     render();
     setTimeout(() => {
-      S.toasts.shift(); render();
-    }, 2600);
+      const i = S.toasts.findIndex(x => x.id === t.id);
+      if (i >= 0) { S.toasts.splice(i, 1); render(); }
+    }, opt && opt.act ? 4200 : 2600);
+  };
+
+  // ---------- 网络环境模拟（Wi-Fi / 蜂窝）----------
+  // 仅 Wi-Fi 下载策略的演示基础：下载页可切换模拟网络，蜂窝下 wifiOnly 任务自动暂停并提示。
+  S.net = 'wifi'; // wifi | cellular
+  S.wifiOnly = true;
+  window.mock.setNet = function (net) {
+    S.net = net;
+    let n = 0;
+    S.x.tasks.forEach(t => {
+      // 切到蜂窝：wifiOnly 的下载中/等待任务自动暂停；切回 Wi-Fi：这些任务自动恢复
+      if (net === 'cellular' && S.wifiOnly && (t.status === 'downloading' || t.status === 'pending')) {
+        t.status = 'paused'; t.netHold = true; n++;
+      } else if (net === 'wifi' && t.netHold) {
+        t.status = 'downloading'; t.netHold = false; n++;
+      }
+    });
+    toast(net === 'wifi' ? '已切换到 Wi-Fi（模拟）' : '已切换到蜂窝网络（模拟）' + (n ? '，' + n + ' 个仅 Wi-Fi 任务已' + (net === 'wifi' ? '恢复' : '暂停') : ''), {});
+    render();
   };
 })();

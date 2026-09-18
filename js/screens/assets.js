@@ -7,41 +7,79 @@
 
   const KIND_LABEL = { image: '图片', video: '视频', audio: '音频', pointcloud: '3D 点云' };
 
-  // ---------- 素材网格 ----------
+  // ---------- 素材网格（F5 排序/视图切换；F6 长按或"多选"进入批量，可批量删除/导入） ----------
+  const SORTS = { time: '按时间', name: '按名称' };
+  function sortedAssets() {
+    const list = assets().slice();
+    if (S.x.asSort === 'name') list.sort((x, y) => x.label.localeCompare(y.label, 'zh'));
+    else list.sort((x, y) => (y.date || '').localeCompare(x.date || '')); // time 默认
+    return list;
+  }
+  function gridCell(a, sel, batch) {
+    let inner = '';
+    if (a.kind === 'video') inner =
+      '<span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center"><span style="width:36px;height:36px;border-radius:50%;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;color:#fff">' + icon('play_arrow') + '</span></span>' +
+      '<span style="position:absolute;right:6px;bottom:4px;font-size:10px;color:#fff;background:rgba(0,0,0,.4);border-radius:4px;padding:1px 5px">' + esc(a.meta || '0:12') + '</span>';
+    else if (a.kind === 'audio') inner =
+      '<span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.9)">' + icon('play_arrow') + '</span>' +
+      '<span style="position:absolute;left:0;right:0;bottom:4px;text-align:center;font-size:10px;color:#fff;background:rgba(0,0,0,.4)">音频</span>';
+    else if (a.kind === 'pointcloud') inner =
+      '<span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.9)">' + icon('apps') + '</span>' +
+      '<span style="position:absolute;left:0;right:0;bottom:4px;text-align:center;font-size:10px;color:#fff;background:rgba(0,0,0,.4)">3D 点云</span>';
+    const check = batch && sel[a.id] ? '<span class="as-check">' + icon('check_circle') + '</span>' : '';
+    return '<div class="as-cell' + (batch && sel[a.id] ? ' selected' : '') + '" data-a="av-open" data-arg="' + a.id + '" style="background:linear-gradient(165deg,hsl(' + a.hue + ',62%,64%),hsl(' + ((a.hue + 60) % 360) + ',48%,30%))">' + inner + check + '</div>';
+  }
+  function listRow(a, sel, batch) {
+    const check = batch && sel[a.id] ? '<span class="as-check">' + icon('check_circle') + '</span>' : '';
+    const kindChip = '<span class="achip" style="font-size:10px">' + KIND_LABEL[a.kind] + '</span>';
+    return '<div class="as-row' + (batch && sel[a.id] ? ' selected' : '') + '" data-a="av-open" data-arg="' + a.id + '">' +
+      '<div class="as-thumb" style="background:linear-gradient(165deg,hsl(' + a.hue + ',62%,64%),hsl(' + ((a.hue + 60) % 360) + ',48%,30%))">' + check + '</div>' +
+      '<div class="li-body"><div class="li-title" style="font-weight:400">' + esc(a.label) + '</div>' +
+      '<div class="li-sub">' + esc(a.date || '') + ' · ' + KIND_LABEL[a.kind] + '</div></div>' + kindChip + '</div>';
+  }
   registerScreen('tab:assets', {
     title: '素材',
     render() {
       const sel = S.x.asSel = S.x.asSel || {};
       const batch = S.x.asBatch;
-      const cell = a => {
-        let inner = '';
-        if (a.kind === 'video') inner =
-          '<span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center"><span style="width:36px;height:36px;border-radius:50%;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;color:#fff">' + icon('play_arrow') + '</span></span>' +
-          '<span style="position:absolute;right:6px;bottom:4px;font-size:10px;color:#fff;background:rgba(0,0,0,.4);border-radius:4px;padding:1px 5px">' + esc(a.meta || '0:12') + '</span>';
-        else if (a.kind === 'audio') inner =
-          '<span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.9)">' + icon('play_arrow') + '</span>' +
-          '<span style="position:absolute;left:0;right:0;bottom:4px;text-align:center;font-size:10px;color:#fff;background:rgba(0,0,0,.4)">音频</span>';
-        else if (a.kind === 'pointcloud') inner =
-          '<span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.9)">' + icon('apps') + '</span>' +
-          '<span style="position:absolute;left:0;right:0;bottom:4px;text-align:center;font-size:10px;color:#fff;background:rgba(0,0,0,.4)">3D 点云</span>';
-        const check = batch && sel[a.id] ? '<span class="as-check">' + icon('check_circle') + '</span>' : '';
-        return '<div class="as-cell' + (batch && sel[a.id] ? ' selected' : '') + '" data-a="av-open" data-arg="' + a.id + '" style="background:linear-gradient(165deg,hsl(' + a.hue + ',62%,64%),hsl(' + ((a.hue + 60) % 360) + ',48%,30%))">' + inner + check + '</div>';
-      };
+      const view = S.x.asView || 'grid';
+      const list = sortedAssets();
+      const n = Object.keys(sel).filter(k => sel[k]).length;
+
+      // F5：工具行（视图切换 + 排序 + 进入多选）
+      let tools = '<div class="as-tools">' +
+        '<div class="chip-row">' +
+        chip('时间', (S.x.asSort || 'time') === 'time', 'as-sort', 'time') +
+        chip('名称', S.x.asSort === 'name', 'as-sort', 'name') + '</div>' +
+        '<button class="icbtn" data-a="as-view" title="切换视图" style="width:40px;height:40px">' + icon(view === 'grid' ? 'view_list' : 'view_module') + '</button>' +
+        (!batch ? '<button class="icbtn" data-a="as-batch-on" title="多选" style="width:40px;height:40px">' + icon('playlist_add') + '</button>' : '') +
+        '</div>';
+
+      let body = '';
+      if (view === 'grid') {
+        body = '<div class="as-grid">' +
+          '<div class="as-cell as-add" data-a="' + (batch ? 'as-batch-off' : 'as-import') + '">' + icon(batch ? 'close' : 'add') + '<span>' + (batch ? '退出多选' : '导入素材') + '</span></div>' +
+          list.map(a => gridCell(a, sel, batch)).join('') + '</div>';
+      } else {
+        body = '<div class="as-list">' + list.map(a => listRow(a, sel, batch)).join('') + '</div>';
+        if (!batch) body = '<div style="margin-top:10px">' + btn('＋ 导入素材', 'as-import', null, 'small ghost block') + '</div>' + body;
+      }
+
       let bar = '';
       if (batch) {
-        const n = Object.keys(sel).filter(k => sel[k]).length;
         bar = '<div class="batch-bar">' +
           '<span class="li-sub" style="flex:1">已选 ' + n + ' 项</span>' +
           btn('全选', 'as-sel-all', null, 'small ghost') +
+          btn('删除', 'as-del-batch', null, 'small danger' + (n ? '' : ' disabled')) +
           btn('导入 ' + n + ' 项', 'as-import-batch', null, 'small' + (n ? '' : ' disabled')) +
           btn('取消', 'as-batch-off', null, 'small ghost') + '</div>';
       }
-      return '<div class="as-grid">' +
-        '<div class="as-cell as-add" data-a="' + (batch ? 'as-batch-off' : 'as-import') + '">' + icon(batch ? 'close' : 'add') + '<span>' + (batch ? '退出多选' : '导入素材') + '</span></div>' +
-        assets().map(cell).join('') + '</div>' + bar +
-        '<div class="muted small center" style="padding:14px">图片、视频、音频与 3D 点云统一在素材管理，点按查看与处理。</div>';
+      return tools + body + bar +
+        '<div class="muted small center" style="padding:14px">图片、视频、音频与 3D 点云统一管理；长按可进入多选。</div>';
     }
   });
+  action('as-view', () => { S.x.asView = S.x.asView === 'grid' ? 'list' : 'grid'; render(); });
+  action('as-sort', ds => { S.x.asSort = ds.arg; render(); });
 
   // 模拟系统文件选择器导入（单发）
   let impSeq = 1;
@@ -80,6 +118,22 @@
     S.x.asBatch = false; S.x.asSel = {};
     render();
   });
+  // F6：批量删除（轻删 → toast 撤销，I2 分级）
+  action('as-del-batch', () => {
+    const sel = S.x.asSel || {};
+    const ids = Object.keys(sel).filter(k => sel[k]);
+    if (!ids.length) { toast('请先选择素材'); return; }
+    const removed = S.x.assets.filter(a => ids.indexOf(a.id) >= 0);
+    S.x.assets = S.x.assets.filter(a => ids.indexOf(a.id) < 0);
+    S.x.asBatch = false; S.x.asSel = {};
+    toast('已删除 ' + removed.length + ' 项', { act: 'as-undo-del', arg: JSON.stringify(removed), label: '撤销' });
+    render();
+  });
+  action('as-undo-del', ds => {
+    const restored = JSON.parse(ds.arg);
+    restored.forEach(a => { if (!assets().some(x => x.id === a.id)) S.x.assets.unshift(a); });
+    render();
+  });
   action('av-open', ds => {
     if (S.x.asBatch) {
       S.x.asSel = S.x.asSel || {};
@@ -89,6 +143,19 @@
     }
     S.x.viewId = ds.arg; nav.push('asset', ds.arg);
   });
+  // F6：长按进入多选（ pointer 按住 500ms；Compose 侧对应 combinedClickable onLongClick ）
+  let lpTimer = null, lpTarget = null;
+  document.addEventListener('pointerdown', e => {
+    const cell = e.target.closest('.as-cell[data-arg],.as-row[data-arg]');
+    if (!cell || S.x.asBatch) { lpTarget = null; return; }
+    lpTarget = cell.dataset.arg;
+    lpTimer = setTimeout(() => {
+      S.x.asBatch = true; S.x.asSel = {}; S.x.asSel[lpTarget] = true;
+      render();
+    }, 500);
+  });
+  ['pointerup', 'pointermove', 'pointercancel'].forEach(ev =>
+    document.addEventListener(ev, () => { clearTimeout(lpTimer); }, true));
 
   // ---------- 点云舞台（粒子 + 姿态感应） ----------
   function cloudStage(a) {
@@ -195,15 +262,17 @@
       if (a.kind === 'image') tools =
         tool('wallpaper', '设为壁纸', 'av-wallpaper') + tool('send', '分享', 'av-share') +
         tool('zoom_in', 'AI 放大', 'av-upscale') + tool('crop', 'AI 扩图', 'av-outpaint') +
-        tool('apps', '3D 点云', 'av-3d');
+        tool('apps', '3D 点云', 'av-3d') + tool('info', '详情', 'av-info');
       else if (a.kind === 'video') tools =
         tool('wallpaper', '设为壁纸', 'av-wallpaper') + tool('send', '分享', 'av-share') +
-        tool('delete', '删除', 'av-delete', a.id);
+        tool('delete', '删除', 'av-delete', a.id) + tool('info', '详情', 'av-info');
       else if (a.kind === 'audio') tools =
-        tool('send', '分享', 'av-share') + tool('delete', '删除', 'av-delete', a.id);
+        tool('send', '分享', 'av-share') + tool('delete', '删除', 'av-delete', a.id) +
+        tool('info', '详情', 'av-info');
       else if (a.kind === 'pointcloud') tools =
         tool('wallpaper', '设为壁纸', 'cl-apply') + tool('send', '分享', 'av-share') +
-        tool('settings', '控制面板', 'cl-panel') + tool('delete', '删除', 'av-delete', a.id);
+        tool('settings', '控制面板', 'cl-panel') + tool('delete', '删除', 'av-delete', a.id) +
+        tool('info', '详情', 'av-info');
       // 多选入口（图片/视频）：进入批量选择模式
       if (a.kind === 'image' || a.kind === 'video') tools += tool('playlist_add', '多选', 'as-batch-on-viewer');
       return '<div class="av-stage">' +
@@ -217,17 +286,58 @@
   action('av-prev', () => { const l = assets(); const i = l.indexOf(cur()); S.x.viewId = l[i - 1].id; render(); });
   action('av-next', () => { const l = assets(); const i = l.indexOf(cur()); S.x.viewId = l[i + 1].id; render(); });
   action('av-cancel', () => { if (S.x.proc) mock.resetJob(S.x.proc.key); S.x.proc = null; toast('已取消'); render(); });
-  action('av-delete', ds => confirmDialog('删除素材', '将从素材库删除。', '删除', () => {
+  // I2 轻删：素材删除走 toast 撤销（可重建内容），不再是弹窗
+  action('av-delete', ds => {
+    const a = assets().find(x => x.id === ds.arg);
+    if (!a) return;
+    const idx = assets().indexOf(a);
     S.x.assets = S.x.assets.filter(x => x.id !== ds.arg);
-    if (S.x.viewId === ds.arg) S.x.viewId = (S.x.assets[0] || {}).id;
-    nav.pop();
-  }, true));
+    if (S.x.viewId === ds.arg) S.x.viewId = (assets()[Math.min(idx, assets().length - 1)] || {}).id;
+    if (!S.x.viewId) { nav.pop(); return; }
+    toast('已删除 ' + a.label, { act: 'as-undo-del', arg: JSON.stringify([a]), label: '撤销' });
+    render();
+  });
+  // F7 素材详情面板：尺寸/大小/路径/来源等元信息
+  action('av-info', () => {
+    const a = cur();
+    if (!a) return;
+    const mockBytes = 800000 + (a.hue * 13753) % 4200000;
+    showDialog({
+      title: '素材详情',
+      body: '<div class="card tight" style="margin-top:0;padding:0">' +
+        [['文件名', a.label], ['类型', KIND_LABEL[a.kind]],
+        ['日期', a.date || '—'],
+        ['大小', fmtSize(a.bytes || mockBytes)],
+        ['分辨率', a.kind === 'image' ? (2400 + a.hue * 8) + '×' + (1800 + a.hue * 5) : (a.kind === 'video' ? '1920×1080 · ' + (a.meta || '0:12') : '—')],
+        ['路径', '/storage/emulated/0/Pictures/MoeApk/' + a.label + (a.kind === 'video' ? '.mp4' : a.kind === 'audio' ? '.m4a' : a.kind === 'pointcloud' ? '.pcache' : '.png')],
+        ['来源', a.from === 'ai' ? 'AI 生成' : a.src ? 'AI 处理产物' : '导入']
+        ].map(r => '<div class="li" style="cursor:default;min-height:44px"><div class="li-body"><div class="li-sub">' + r[0] + '</div><div class="li-title" style="font-weight:400;word-break:break-all">' + esc(r[1]) + '</div></div></div>').join('') + '</div>',
+      actions: [{ label: '关闭' }]
+    });
+  });
 
   action('av-wallpaper', () => {
     const a = cur();
     if (a.kind === 'video') openVideoDialog(a); else openSetDialog(a);
   });
   action('av-share', () => toast('已调起系统分享（模拟）'));
+
+  // I6 手势：查看器左右滑动切换（touch swipe；Compose 侧对应 pager + drag）
+  let swX = null, swY = null;
+  document.addEventListener('touchstart', e => {
+    if (!nav.current() || nav.current().page !== 'asset') return;
+    swX = e.touches[0].clientX; swY = e.touches[0].clientY;
+  }, { passive: true });
+  document.addEventListener('touchend', e => {
+    if (swX == null) return;
+    const dx = e.changedTouches[0].clientX - swX;
+    const dy = e.changedTouches[0].clientY - swY;
+    swX = swY = null;
+    if (Math.abs(dx) < 56 || Math.abs(dx) < Math.abs(dy) * 1.4) return; // 横向明显滑动才算
+    const l = assets(); const i = l.indexOf(cur());
+    if (dx < 0 && i < l.length - 1) { S.x.viewId = l[i + 1].id; render(); }
+    else if (dx > 0 && i > 0) { S.x.viewId = l[i - 1].id; render(); }
+  }, { passive: true });
 
   function runProc(title, phases, ms, onDone) {
     if (S.x.proc) { toast('已有处理任务进行中'); return; }

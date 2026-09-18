@@ -36,11 +36,20 @@
         h += '<div style="padding-top:8px">' + card(body) + '</div>';
       } else {
         h += '<div id="chat">';
-        sess.messages.forEach(msg => {
+        sess.messages.forEach((msg, mi) => {
           if (msg.role === 'sys') { h += '<div class="msg-row"><div class="msg-card sys">' + esc(msg.text) + '</div></div>'; return; }
           h += '<div class="msg-row"><div class="msg-card ' + msg.role + '">' +
             (msg.img != null ? assetThumb({ hue: msg.img }, 'msg-img') : '') +
             (msg.text ? esc(msg.text) : '') + '</div></div>';
+          // F8 消息操作：AI 最后一条 → 复制/重新生成；用户最后一条 → 编辑重发
+          const isLastAi = msg.role === 'ai' && mi === sess.messages.length - 1 && !sess.thinking;
+          const isLastUser = msg.role === 'user' && mi === sess.messages.length - 1 && !sess.thinking;
+          if (isLastAi) {
+            h += '<div class="msg-actions"><button data-a="llm-copy" data-arg="' + mi + '" title="复制">' + icon('content_copy') + '</button>' +
+              '<button data-a="llm-regen" title="重新生成">' + icon('refresh') + '</button></div>';
+          } else if (isLastUser) {
+            h += '<div class="msg-actions"><button data-a="llm-edit-last" title="编辑并重新发送">' + icon('edit') + '</button></div>';
+          }
         });
         if (sess.thinking) h += '<div class="msg-row"><div class="msg-card ai">' + esc(sess.partial || '') + '<span class="muted">▍</span></div></div>';
         h += '</div>';
@@ -175,6 +184,36 @@
       sess.partial = '';
     }
     render();
+  });
+  // F8：复制 / 重新生成 / 编辑重发
+  action('llm-copy', ds => {
+    const sess = curSess();
+    const msg = sess && sess.messages[+ds.arg];
+    if (!msg) return;
+    try { navigator.clipboard.writeText(msg.text); } catch (e) { /* file:// 或无权限时忽略 */ }
+    toast('已复制到剪贴板');
+  });
+  action('llm-regen', () => {
+    const sess = curSess();
+    if (!sess || sess.thinking) return;
+    // 移除最后一条 AI 回复（若有），保留用户提问，重新生成
+    const last = sess.messages[sess.messages.length - 1];
+    if (last && last.role === 'ai') { sess.tokens = Math.max(0, sess.tokens - last.text.length / 2); sess.messages.pop(); }
+    doReply(sess);
+  });
+  action('llm-edit-last', () => {
+    const sess = curSess();
+    if (!sess || sess.thinking) return;
+    const last = sess.messages[sess.messages.length - 1];
+    if (!last || last.role !== 'user') return;
+    // 移除末尾 user+ai 对，文本回填输入框重新编辑
+    sess.messages.pop();
+    if (sess.messages.length && sess.messages[sess.messages.length - 1].role === 'ai') sess.messages.pop();
+    S.x.keep = S.x.keep || {};
+    S.x.keep['llm-q'] = last.text || '';
+    if (sess.title !== '新对话' && sess.messages.filter(m => m.role === 'user').length === 0) sess.title = '新对话';
+    render();
+    toast('已载入上一条消息，修改后重新发送');
   });
   action('llm-del-sess', ds => confirmDialog('删除会话', '将删除该会话的全部对话记录。', '删除', () => {
     const l = L();

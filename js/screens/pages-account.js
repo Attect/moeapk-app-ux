@@ -176,8 +176,10 @@
   registerScreen('update', {
     title: '更新检测',
     render() {
-      let h = card('<div class="li-title">当前版本 0.9.5（26）</div>' +
-        '<div style="margin-top:8px">' + btn('重新检测', 'upd-check', null, 'small ghost') + '</div>');
+      let h = card('<div class="dl-row"><div style="flex:1"><div class="li-title">当前版本 0.9.5（26）</div></div>' +
+        '<div style="display:flex;gap:8px;align-items:center">' +
+        (DB.UPDATES.length > 1 ? btn('全部更新', 'upd-all', null, 'small') : '') +
+        btn('重新检测', 'upd-check', null, 'small ghost') + '</div></div>');
       if (S.x.updChecking) return h + spinner();
       if (!DB.UPDATES.length) return h + emptyHint('全部应用已是最新版本');
       h += DB.UPDATES.map(u => {
@@ -200,6 +202,7 @@
     }
   });
   action('upd-check', () => { S.x.updChecking = true; render(); setTimeout(() => { S.x.updChecking = false; render(); }, 800); });
+  action('upd-all', () => { DB.UPDATES.forEach((u, i) => { if (!mock.job('upd-dl-' + u.id)) setTimeout(() => mock.startJob('upd-dl-' + u.id, '下载中', 3000, ['源 1', '校验']), i * 400); }); render(); });
   action('upd-dl', ds => mock.startJob('upd-dl-' + ds.arg, '下载中', 3000, ['源 1', '校验']));
   action('upd-cancel', ds => { mock.resetJob('upd-dl-' + ds.arg); render(); });
   action('upd-install', ds => {

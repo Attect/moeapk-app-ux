@@ -110,13 +110,18 @@
       let h = items ? '<div class="card tight" style="padding:0">' + items + '</div>' :
         '<div class="empty-illust">' + icon('schedule') +
         '<div class="empty-title">暂无 AI 任务</div>' +
-        '<div class="empty-sub">模型下载、生成、合成等任务会在这里排队展示</div></div>';
+        '<div class="empty-sub">模型下载、生成、合成等任务会在这里排队展示</div>' +
+        // I5：空态导流
+        '<div class="empty-cta">' + btn('去生成图片', 'aq-go-diff', null, 'small') +
+        btn('去模型中心', 'aq-go-models', null, 'small ghost') + '</div></div>';
       if (anyDone) h += '<div style="margin-top:12px">' + btn('清空已完成', 'aq-clear-done', null, 'ghost block') + '</div>';
       h += '<div class="muted small center" style="padding:12px">AI 任务依次排队执行；文件下载在 我的 → 下载任务 中查看。</div>';
       return h;
     }
   });
   action('aq-cancel', ds => { mock.resetJob(ds.arg); toast('已取消'); render(); });
+  action('aq-go-diff', () => { nav.goTab('ai'); nav.push('diffusion'); });
+  action('aq-go-models', () => { nav.goTab('ai'); nav.push('models'); });
   action('aq-clear-one', ds => { mock.resetJob(ds.arg); render(); });
   action('aq-clear-done', () => {
     (S.x.aiQueue || []).filter(x => mock.queueState(x) === 'done').forEach(x => mock.resetJob(x.key));

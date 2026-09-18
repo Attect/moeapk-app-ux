@@ -24,7 +24,7 @@ MoeApk App（`../app`，当前 0.9.5/26）UX 的 1:1 Web 还原。**UX 调整先
 
 | 原型 | Compose 源 |
 |---|---|
-| `js/screens/apk.js`（tab:apk + 详情） | `ui/apk/ApkScreen.kt`、`ApkHomeScreen.kt`、`CatalogScreens.kt`、`OpenScreens.kt` |
+| `js/screens/apk.js`（tab:apk + 详情 + **favorites 收藏子页**） | `ui/apk/ApkScreen.kt`、`ApkHomeScreen.kt`、`CatalogScreens.kt`、`OpenScreens.kt`；Favorites 为新增设计 |
 | `js/screens/assets.js`（tab:assets 素材网格 + asset 查看器） | **新设计（2026-09-18）**：取代 ui/wallpaper/WallpaperCenterScreen.kt |
 | `js/screens/ai.js`（tab:ai 入口枢纽 + ai-queue 任务队列子页） | **新设计（2026-09-18）**：取代 ui/ai/AiScreen.kt 五子页结构 |
 | `js/screens/ai-llm.js`（llm / llm-config 子页） | `LlmBench.kt`（Agent 化改造后）；llm-config 为新增设计 |
@@ -38,11 +38,48 @@ MoeApk App（`../app`，当前 0.9.5/26）UX 的 1:1 Web 还原。**UX 调整先
 | `js/screens/about.js` | `ui/about/AboutScreen.kt` |
 | `js/screens/wallpaper-dialog.js`（壁纸对话框） | `WallpaperCenterScreen.kt` 的 SetWallpaperDialog / 视频壁纸对话框 |
 | `js/store.js`（导航栈/Tab） | `ui/AppRoot.kt`（MainTab/SubPage/Crossfade） |
-| `js/mock.js`（下载队列/任务进度/AI 任务队列） | `:download` DownloadManager |
-| `js/ui.js`（组件库/渲染 + registerScreen 子页自动收集） | 各 M3 组件 + 本仓 EntryCard/SectionColumn 等私有组件 |
+| `js/mock.js`（下载队列/任务进度/AI 任务队列/toast 撤销动作/网络模拟） | `:download` DownloadManager |
+| `js/ui.js`（组件库/渲染 + registerScreen 子页自动收集 + 回顶/引导/输入聚焦） | 各 M3 组件 + 本仓 EntryCard/SectionColumn 等私有组件 |
 | `css/app.css`（设计令牌） | `ui/theme/Theme.kt`（dynamic color，fallback 种子 #E8A562） |
 
-## 当前设计（2026-09-18 两轮调整）
+## 当前设计（2026-09-18 三轮调整）
+
+### 第三轮（功能/交互补全，F1–F14 + I1–I8）
+
+- **F1** 应用/游戏/开源列表带搜索框（名称/简介/标签）+ 标签筛选 chips；收藏条目置顶。
+- **F2** 首页更新卡多应用感知（"发现 N 个应用可更新：A、B 等"）；更新检测页多更新时加"全部更新"（逐个错峰启动）。
+- **F3** 下载完成 → "安装"（模拟调起系统安装器）；含 OBB 数据包的条目在详情页与任务卡给出放置说明。
+- **F4** 应用/开源详情页右上角 ♡ 收藏；「我的 → 我的收藏」集中查看（空态导流）。
+- **F5** 素材页排序（时间/名称）+ 网格/列表视图切换。
+- **F6** 素材长按（500ms）或工具键进入多选，支持批量导入/批量删除。
+- **F7** 素材查看器各类型工具栏加"详情"（尺寸/大小/路径/来源元信息面板）。
+- **F8** LLM 对话：AI 末条 → 复制 / 重新生成；用户末条 → 编辑并重新发送（回填输入框）。
+- **F9** 生图支持负向提示词（可折叠）与批量张数（×1/×2/×4，种子递增），历史记录可见负向词。
+- **F10** 生图/合成记录抽屉内可搜索；AI 存素材的条目带来源标记，详情面板显示。
+- **F11** 模型中心存储占用卡（总量/进度/清理未使用模型，撤销可用），模型列表按时间/大小排序。
+- **F12** TTS 输入区实时字数与预计时长（按 4.2 字/秒估算）。
+- **F13** 下载页"仅 Wi-Fi 下载"开关 + [debug] 模拟 Wi-Fi/蜂窝切换：蜂窝下自动暂停、回 Wi-Fi 自动恢复。
+- **F14** 「我的」下载分区显示各节点延迟与可达状态（绿<100ms / 黄 / 红不可达）。
+- **I1** 各 Tab 首次进入显示一次性轻引导横幅，点"知道了"或切走消失。
+- **I2** 删除分级：轻删（下载任务/素材/生成记录/合成记录/收藏取消）→ toast + 撤销按钮；
+  重删（模型文件）→ 保留二次确认弹窗；批量清理模型仍弹窗但完成后给撤销。
+- **I3** 长列表滚动 >480px 出现回顶 FAB；分区标题吸顶。
+- **I4** 模型搜索中转态为骨架屏（筛选器原地保留，不再整页闪白）。
+- **I5** 下载页/AI 队列空态加"去逛逛"导流按钮。
+- **I6** 素材查看器支持左右滑动切换（touch swipe）。
+- **I7** 输入框聚焦自动滚入视野（软键盘场景兜底）。
+- **I8** 明/暗主题切换带 0.22s 颜色过渡动画。
+- 新增子页 `favorites`（我的收藏），已登记进对照表。
+
+### 第二轮（布局/文案修正）
+
+1. LLM 长文本消息换行问题（msg 白空间 pre-wrap）、发送键被挤压。
+2. AI 抽屉标题文案统一为"对话历史 / 生成历史 / 合成记录"。
+3. 关于页授权协议展开箭头方向反转（expand_less）。
+4. 壁纸设置项行内展开改为独立对话框。
+5. 素材网格外边距与查看器返回键布局修正。
+
+### 第一轮（结构调整）
 
 ### 导航
 

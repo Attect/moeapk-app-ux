@@ -2,18 +2,29 @@
 (function () {
   const { jobBar } = window._aiShared;
 
-  // ---------- 模型中心（子页） ----------
+  // ---------- 模型中心（子页；F11 存储占用视角） ----------
   registerScreen('models', {
     title: '模型中心',
     render() {
       const local = S.x.localModels = S.x.localModels || [];
+      const sorted = S.x.mdlSort === 'size' ? local.slice().sort((a, b) => b.size - a.size) : local;
+      const total = local.reduce((s, m) => s + m.size, 0);
       let h = '';
+      // F11：存储占用卡（总大小 / 数量 / 清理入口）
+      h += card('<div class="dl-row"><div style="flex:1"><div class="li-title">模型存储占用</div>' +
+        '<div class="li-sub">' + (local.length ? local.length + ' 个模型 · 共 ' + fmtSize(total) : '暂无本地模型') + '</div></div>' +
+        (local.length ? textBtn('清理', 'models-clean') : '') + '</div>' +
+        (local.length ? '<div style="margin-top:8px">' + progress(Math.min(1, total / 8e9)) + '<div class="muted" style="font-size:11px;margin-top:4px">约 ' + fmtSize(total) + ' / 建议预留 8 GB 模型分区</div></div>' : ''));
       h += sectionTitle('我的模型');
-      h += card('<div style="padding:8px 12px 12px">' + textBtn('＋ 从手机导入', 'models-import') + '</div>' +
-        (local.length ? '<div class="card tight" style="padding:0;margin-top:0">' + local.map((m, i) =>
-          '<div class="li"><div class="li-body"><div class="li-title" style="font-weight:400">' + esc(m.name) + '</div>' +
-          '<div class="li-sub">' + esc(m.kind) + ' · ' + fmtSize(m.size) + ' · ' + esc(m.src) + '</div></div>' +
-          textBtn('删除', 'models-del', i, 'danger') + '</div>').join('') + '</div>' : ''));
+      h += card('<div style="padding:8px 12px 12px;display:flex;gap:8px;align-items:center">' + textBtn('＋ 从手机导入', 'models-import') +
+        '<span class="muted" style="font-size:11px;flex:1;text-align:right">排序：</span>' +
+        chip('时间', S.x.mdlSort !== 'size', 'mdl-sort', 'time') + chip('大小', S.x.mdlSort === 'size', 'mdl-sort', 'size') + '</div>' +
+        (sorted.length ? '<div class="card tight" style="padding:0;margin-top:0">' + sorted.map((m) => {
+          const idx = local.indexOf(m);
+          return '<div class="li"><div class="li-body"><div class="li-title" style="font-weight:400">' + esc(m.name) + '</div>' +
+            '<div class="li-sub">' + esc(m.kind) + ' · ' + fmtSize(m.size) + ' · ' + esc(m.src) + '</div></div>' +
+            textBtn('删除', 'models-del', idx, 'danger') + '</div>';
+        }).join('') + '</div>' : ''));
       h += sectionTitle('搜索模型');
       h += card('<div class="chip-row" style="padding-top:0">' + ['魔塔社区', 'HF 镜像', 'HuggingFace'].map(x => '<span class="achip">' + x + '</span>').join('') + '</div>' +
         '<div style="padding:0 12px 12px">' + btn('打开模型搜索', 'go-model-search', null, 'small ghost') + '</div>');
@@ -33,12 +44,40 @@
       return h;
     }
   });
+  action('mdl-sort', ds => { S.x.mdlSort = ds.arg; render(); });
   action('go-model-search', () => nav.push('model-search'));
   action('models-import', () => {
     const kinds = ['gguf', 'zip'];
     S.x.localModels.push({ id: 'imported-' + Date.now(), name: 'imported-' + (S.x.localModels.length + 1) + '.' + kinds[S.x.localModels.length % 2], kind: '对话 LLM', size: 180000000 + S.x.localModels.length * 70000000, src: '本地导入' });
     toast('已导入（模拟 OpenDocument）'); render();
   });
+  // F11 清理：删除"未使用"的本地模型（演示口径：非推荐模型来源的）
+  action('models-clean', () => {
+    const local = S.x.localModels;
+    const recIds = DB.AI.filter(m => m.type === 'model').map(m => m.id);
+    const unused = local.filter(m => m.src !== '推荐下载' || recIds.indexOf(m.id) < 0);
+    if (!unused.length) { toast('没有可清理的模型（推荐模型保留）'); return; }
+    showDialog({
+      title: '清理未使用模型',
+      body: '<div class="muted" style="font-size:14px">将删除 ' + unused.length + ' 个非推荐来源的模型，释放约 ' + fmtSize(unused.reduce((s, m) => s + m.size, 0)) + '。推荐下载的模型保留。</div>',
+      actions: [
+        { label: '取消' },
+        {
+          label: '清理', style: 'filled', run: () => {
+            S.x.localModels = local.filter(m => unused.indexOf(m) < 0);
+            toast('已清理 ' + unused.length + ' 个模型', { act: 'models-undo-clean', arg: JSON.stringify(unused), label: '撤销' });
+            render();
+          }
+        }
+      ]
+    });
+  });
+  action('models-undo-clean', ds => {
+    const restored = JSON.parse(ds.arg);
+    restored.forEach(m => { if (!S.x.localModels.some(x => x.id === m.id)) S.x.localModels.unshift(m); });
+    render();
+  });
+  // I2 分级：模型删除是重删（占空间大、不可秒重建），保留二次确认弹窗
   action('models-del', ds => confirmDialog('删除模型', '将从本机删除该模型文件。', '删除', () => {
     S.x.localModels.splice(+ds.arg, 1); render();
   }, true));
@@ -70,7 +109,9 @@
           g[1].map(x => chip(x, ms[g[2]] === x, 'ms-filter', g[2] + ':' + x)).join('') + '</div>';
       });
       if (!ms.searched) return h + emptyHint('输入关键词开始搜索');
-      if (ms.searching) return h + spinner();
+      // I4：搜索中保留筛选器原地转圈（骨架屏），不再整页闪白
+      if (ms.searching) return h + '<div class="dl-status" style="padding:10px 4px">搜索中…</div>' +
+        '<div class="skel"></div><div class="skel" style="min-height:96px"></div><div class="skel"></div>';
       const list = DB.MODEL_SEARCH_DEMO.filter(m => (ms.source === '全部' || m.source === ms.source) && (ms.task === '全部' || m.task === ms.task));
       h += '<div class="dl-status" style="padding:10px 4px">共 ' + list.length + ' 条结果</div>';
       if (!list.length) return h + emptyHint('没有找到匹配模型');
