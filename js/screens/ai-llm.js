@@ -16,11 +16,14 @@
     const sess = curSess();
     const m = sess ? LLM_MODELS.find(x => x.id === sess.modelId) : LLM_MODELS.find(x => x.id === l.modelSel);
     const cfg = cfgOf(m.id);
-    let h = '<div class="chat-page">';
+    // 横屏/平板（≥920px）：会话列表常驻左栏，对话区与输入区在右（App 侧对应双栏列表详情布局）
+    const wide = isWide();
+    let h = wide ? '<div class="chat-page two-pane"><div class="pane-side">' + drawerListHtml(l) + '</div><div class="pane-main">'
+      : '<div class="chat-page">';
     if (!sess) {
       h += '<div class="chat-empty">' + icon('smart_toy') +
         '<div style="font-size:16px;color:var(--on-surface)">新对话</div>' +
-        '<div class="muted small">底部选择模型后输入消息开始；历史对话在右上角菜单。</div></div>';
+        '<div class="muted small">底部选择模型后输入消息开始；' + (wide ? '左侧可切换历史对话。' : '历史对话在右上角菜单。') + '</div></div>';
     } else {
       const key = 'llm-' + sess.id;
       const j = mock.job(key);
@@ -73,23 +76,25 @@
         '<button class="btn stop" style="min-height:48px;padding:0 18px" data-a="llm-stop">' + icon('stop') + '</button>' :
         '<button class="btn" style="min-height:48px;padding:0 18px" data-a="llm-send">' + icon('send') + '</button>') + '</div>' +
       '</div>';
-    if (S.x.llmDrawer) h += drawerHtml(l);
-    return h + '</div>';
+    if (!wide && S.x.llmDrawer) h += drawerHtml(l);
+    return h + (wide ? '</div></div>' : '</div>');
   }
 
-  // 侧边抽屉：会话列表 + 底部设置
-  function drawerHtml(l) {
+  // 会话列表主体：抽屉（窄屏 overlay）与双栏侧栏（≥920px 常驻）共用
+  function drawerListHtml(l) {
     const items = l.sessions.map(s =>
       '<div class="d-sess' + (l.cur === s.id ? ' on' : '') + '" data-a="llm-switch" data-arg="' + s.id + '">' +
       '<div class="d-body"><div class="d-title">' + esc(s.title) + '</div>' +
       '<div class="d-sub">' + esc(s.modelName) + (s.loaded ? '' : ' · 加载中') + '</div></div>' +
       '<button class="d-del" data-a="llm-del-sess" data-arg="' + s.id + '" title="删除">' + icon('close') + '</button></div>').join('');
-    return '<div class="drawer-mask" data-a="llm-drawer-close"><div class="drawer" data-a="drawer-body">' +
-      '<div class="d-head"><span>对话</span><span class="muted small">' + l.sessions.length + ' 个</span></div>' +
+    return '<div class="d-head"><span>对话</span><span class="muted small">' + l.sessions.length + ' 个</span></div>' +
       '<div style="padding:0 12px 10px">' + btn('＋ 新建对话', 'llm-new-chat', null, 'small block ghost') + '</div>' +
       '<div class="d-list">' + (items || '<div class="muted small center" style="padding:24px 0">暂无历史对话</div>') + '</div>' +
-      '<div class="d-foot" data-a="llm-settings">' + icon('settings') + '<span>推理设置</span></div>' +
-      '</div></div>';
+      '<div class="d-foot" data-a="llm-settings">' + icon('settings') + '<span>推理设置</span></div>';
+  }
+  function drawerHtml(l) {
+    return '<div class="drawer-mask" data-a="llm-drawer-close"><div class="drawer" data-a="drawer-body">' +
+      drawerListHtml(l) + '</div></div>';
   }
 
   action('llm-menu', () => { S.x.llmDrawer = true; render(); });

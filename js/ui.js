@@ -86,7 +86,8 @@
     let body;
     if (loading) body = spinner();
     else if (emptyText) body = '<div class="muted small center">' + esc(emptyText) + '</div>';
-    else body = itemsHtml;
+    // 横屏/平板（≥920px）：节内卡片两列排布（css .two-col），窄屏保持单列
+    else body = '<div class="two-col">' + itemsHtml + '</div>';
     return '<div class="sec">' +
       '<div class="sec-head"><span class="sec-title">' + esc(title) + '</span>' +
       (moreAct ? textBtn('查看全部', moreAct.act, moreAct.arg) : '') + '</div>' + body + '</div>';
@@ -127,6 +128,7 @@
     const selPos = active && active.selectionStart != null ? active.selectionStart : null;
 
     const cur = nav.current();
+    app.className = cur ? '' : 'has-nav'; // Tab 页（有底栏）标记：横屏时底栏变左栏 rail
     let title, content, showBack, bottom = '';
     if (cur) {
       const def = SCREENS[cur.page];
@@ -235,6 +237,38 @@
   action('back', () => { if (!nav.pop()) nav.goTab(S.tab); });
   action('dialog-mask', (ds, el) => { if (el.classList.contains('dlg-mask') && !(S.dialog && S.dialog.sticky)) closeDialog(); });
   action('theme-toggle', () => { theme.toggle(); });
+
+  // ---------- 横屏 / 平板断点判定（与 css 容器查询阈值 720/920 一致） ----------
+  window.frameW = function () { const p = document.querySelector('.phone'); return p ? p.clientWidth : 0; };
+  window.isRail = () => frameW() >= 720; // NavigationRail
+  window.isWide = () => frameW() >= 920; // 双栏 master-detail
+  // 真机旋转 / 窗口尺寸变化：按新宽度重渲染（结构分支依赖宽度，如双栏）
+  let rsT = null;
+  window.addEventListener('resize', () => {
+    clearTimeout(rsT);
+    rsT = setTimeout(() => { render(); }, 180);
+  });
+
+  // ---------- 原型框横屏开关（proto-bar 调试入口，非 App 内容） ----------
+  function applyFrame() {
+    const p = document.querySelector('.phone');
+    if (p) p.classList.toggle('land', S.frame === 'land');
+    const b = document.querySelector('[data-a="frame-toggle"]');
+    if (b) b.textContent = S.frame === 'land' ? '竖屏' : '横屏';
+  }
+  try { S.frame = localStorage.getItem('proto-frame') || 'port'; } catch (e) { S.frame = 'port'; }
+  // URL 覆盖：?frame=land / ?frame=port（与 theme.js 的 ?theme= 一致，便于直达验证）
+  try {
+    const fq = new URLSearchParams(location.search).get('frame');
+    if (fq === 'land' || fq === 'port') S.frame = fq;
+  } catch (e) { }
+  applyFrame();
+  action('frame-toggle', () => {
+    S.frame = S.frame === 'land' ? 'port' : 'land';
+    try { localStorage.setItem('proto-frame', S.frame); } catch (e) { }
+    applyFrame();
+    render();
+  });
 
   // 历史回退（浏览器/安卓返回键语义）
   window.addEventListener('keydown', e => {

@@ -76,10 +76,14 @@ body {
   border-radius: 36px; overflow: hidden;
   box-shadow: 0 12px 48px rgba(0,0,0,.55), inset 0 0 0 1px rgba(255,255,255,.06);
   display: flex; flex-direction: column;
+  container-type: inline-size; /* 横屏/平板断点的查询容器（App 侧对应 WindowSizeClass） */
 }
+/* 原型横屏预览框（proto-bar 切换，真机由真实视口宽度驱动同一套断点） */
+.phone.land { width: min(1024px, 96vw); height: min(680px, 92vh); border-radius: 28px; }
 @media (max-width: 500px), (max-height: 700px) {
   body { background: var(--bg); }
   .phone { width: 100vw; height: 100dvh; border-radius: 0; box-shadow: none; }
+  .phone.land { width: 100vw; height: 100dvh; border-radius: 0; }
 }
 /* 原型工具条（非 App 内容：主题切换等调试入口） */
 .proto-bar {
@@ -673,4 +677,50 @@ body, .card, .li, .topbar, .navbar, .chip, .btn, .tbtn, .field-input,
 .node-dot { width: 8px; height: 8px; border-radius: 50%; background: #2e7d32; flex: none; }
 .node-dot.slow { background: #f9a825; }
 .node-dot.down { background: var(--error); }
+
+/* ============================================================
+ * 横屏 / 平板适配（App 侧对应 WindowSizeClass 与 NavigationSuiteScaffold）
+ * 断点与 JS 侧 isRail()/isWide() 阈值一致（720 / 920，取 .phone 容器宽）：
+ *   <720  竖屏手机：现状（NavigationBar 底栏）
+ *   ≥720  横屏手机 / 小平板：NavigationRail 左栏
+ *   ≥920  平板横屏 / 桌面全屏：双栏 master-detail + 多列网格
+ * ============================================================ */
+
+/* ---------- ≥720px：NavigationRail ---------- */
+@container (min-width: 720px) {
+  #app.has-nav .navbar {
+    position: absolute; left: 0; top: 64px; bottom: 0; width: 84px;
+    flex-direction: column; height: auto; padding: 12px 0;
+    background: var(--surface); border-right: 1px solid var(--outline-variant);
+    z-index: 6;
+  }
+  #app.has-nav .nav-item { flex: none; width: 84px; height: 62px; }
+  #app.has-nav .content { margin-left: 84px; }
+  #app.has-nav .onboard { left: 98px; }
+  /* 素材网格负边距在右移后收敛回内容区内 */
+  #app.has-nav .as-grid { margin-left: 0; }
+}
+
+/* ---------- ≥920px：双栏与多列 ---------- */
+@container (min-width: 920px) {
+  /* 素材网格按宽度自适应列数 */
+  .as-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); margin-left: 0; margin-right: 0; }
+  /* APK 应用/游戏/开源列表两列 */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; column-gap: 12px; align-items: start; }
+  /* AI 枢纽入口两列 */
+  .ai-grid { display: grid; grid-template-columns: 1fr 1fr; column-gap: 12px; }
+  /* 双栏 master-detail：历史/会话列表常驻左栏（LLM / 生图 / 合成） */
+  .chat-page.two-pane { flex-direction: row; gap: 12px; }
+  .chat-page.two-pane .pane-side {
+    width: 300px; flex: none; display: flex; flex-direction: column; min-height: 0;
+    background: var(--surface-low); border-radius: 12px; overflow: hidden;
+  }
+  .chat-page.two-pane .pane-side .d-head { padding-top: 14px; }
+  .chat-page.two-pane .pane-main { flex: 1; min-width: 0; display: flex; flex-direction: column; min-height: 0; }
+  /* 主区内容（进度/结果卡）在宽栏里限宽，避免一行拉太长 */
+  .chat-page.two-pane .pane-main > .card,
+  .chat-page.two-pane .pane-main > div[style*="padding-top:8px"] { max-width: 640px; width: 100%; margin-left: auto; margin-right: auto; }
+  .chat-page.two-pane .composer { max-width: 640px; width: 100%; margin-left: auto; margin-right: auto; }
+}
+
 

@@ -8,6 +8,7 @@ MoeApk App（`../app`，当前 0.9.5/26）UX 的 1:1 Web 还原。**UX 调整先
 - 或 `run.cmd`（python http.server 8095）后访问 <http://127.0.0.1:8095>。
 - 桌面浏览器显示手机框；开发者工具切移动视图或直接窄窗口即全屏。
 - 右上角"明/暗"切换主题（App 侧跟随系统，无手动开关；原型提供切换仅便于对比验证）。
+- 右上角"横屏"把预览框切为横屏（1024×680，localStorage 记忆），用于验证横屏/平板布局；也可用 `?frame=land / ?frame=port` 直达。
 - URL hash 与导航同步（`#apk`、`#apk/catalog-detail/moeapk-service`），可直接直达某屏，浏览器前进/后退可用。
 
 ## 工作约定
@@ -43,6 +44,23 @@ MoeApk App（`../app`，当前 0.9.5/26）UX 的 1:1 Web 还原。**UX 调整先
 | `css/app.css`（设计令牌） | `ui/theme/Theme.kt`（dynamic color，fallback 种子 #E8A562） |
 
 ## 当前设计（2026-09-18 三轮调整）
+
+### 横屏 / 平板适配（App 侧对应 WindowSizeClass + NavigationSuiteScaffold + ListDetailPaneScaffold）
+
+断点以 `.phone` 容器宽为准（CSS 容器查询 + JS `isRail()/isWide()` 同阈值，真机旋转/窗口变化自动重渲染）：
+
+| 容器宽 | 形态 | 布局 |
+|---|---|---|
+| <720 | 竖屏手机 | 现状：NavigationBar 底栏、单列、历史用 overlay 抽屉 |
+| ≥720 | 横屏手机 / 小平板 | 底栏变 **NavigationRail 左栏**（84px），内容右移；其余同竖屏 |
+| ≥920 | 平板横屏 / 桌面全屏 | Rail + **双栏 master-detail** + 多列网格 |
+
+≥920 具体规则：
+- **LLM 对话 / 图片生成 / 语音生成**：会话列表 / 生成历史 / 合成历史常驻左栏（300px，含搜索、新建、设置入口），右栏对话区与输入区；输入区限宽 640 居中。窄屏的 overlay 抽屉保留（同一 `drawerListHtml/diffHistHtml/ttsHistHtml` 主体复用）。
+- **APK 首页与应用/游戏/开源列表**：卡片两列（`.two-col`，`sectionColumn` 统一包装）。
+- **AI 枢纽**：任务队列全宽，四个入口 2×2（`.ai-grid`）。
+- **素材**：网格 `auto-fill minmax(150px,1fr)` 自适应列数；排序/视图工具行不变。
+- 未改动的页（我的/下载/关于等）：Rail 下自然右移，维持单列阅读宽度。
 
 ### 第三轮（功能/交互补全，F1–F14 + I1–I8）
 

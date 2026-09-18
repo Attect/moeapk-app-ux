@@ -19,7 +19,9 @@
     const d = D();
     const cfg = diffCfgOf(d.modelId || DIFF_MODELS[0].id);
     const model = DIFF_MODELS.find(m => m.id === d.modelId);
-    let h = '<div class="chat-page">';
+    const wide = isWide();
+    let h = wide ? '<div class="chat-page two-pane"><div class="pane-side">' + diffHistHtml() + '</div><div class="pane-main">'
+      : '<div class="chat-page">';
     // 主区域：生成进度 / 当前结果 / 空态
     const j = mock.job('diff-gen');
     if (j && !j.done) {
@@ -77,12 +79,12 @@
       h += '<div class="msg-row"><input class="field-input" style="flex:1" data-keep="diff-neg" placeholder="负向提示词（如 lowres, bad anatomy）" value="' + esc(d.neg || '') + '"></div>';
     }
     h += '</div>';
-    if (S.x.diffDrawer) h += diffDrawerHtml();
-    return h + '</div>';
+    if (!wide && S.x.diffDrawer) h += diffDrawerHtml();
+    return h + (wide ? '</div></div>' : '</div>');
   }
 
-  // 侧边抽屉：生成历史（F10 可搜索）+ 底部生成设置
-  function diffDrawerHtml() {
+  // 生成历史主体：抽屉（窄屏 overlay）与双栏侧栏（≥920px 常驻）共用；F10 支持搜索
+  function diffHistHtml() {
     const d = D();
     const kw = ((S.x.keep && S.x.keep['diff-hist-q']) || '').trim().toLowerCase();
     const list = kw ? d.history.filter(r => (r.prompt || '').toLowerCase().indexOf(kw) >= 0) : d.history;
@@ -92,14 +94,17 @@
       '<div class="d-body"><div class="d-title">' + esc(r.prompt || '（无提示词）') + '</div>' +
       '<div class="d-sub">' + esc(r.info) + '</div></div>' +
       '<button class="d-del" data-a="diff-hist-del" data-arg="' + r.id + '" title="删除">' + icon('close') + '</button></div>').join('');
-    return '<div class="drawer-mask" data-a="diff-drawer-close"><div class="drawer" data-a="drawer-body">' +
-      '<div class="d-head"><span>生成历史</span><span class="muted small">' + d.history.length + ' 张</span></div>' +
+    return '<div class="d-head"><span>生成历史</span><span class="muted small">' + d.history.length + ' 张</span></div>' +
       '<div style="padding:0 12px 10px"><div class="search-box">' + icon('search') +
       '<input class="field-input" data-keep="diff-hist-q" placeholder="搜索提示词…" value="' + esc((S.x.keep && S.x.keep['diff-hist-q']) || '') + '"></div></div>' +
       '<div style="padding:0 12px 10px">' + btn('＋ 新建生成', 'diff-new', null, 'small block ghost') + '</div>' +
       '<div class="d-list">' + (items || '<div class="muted small center" style="padding:24px 0">' + (kw ? '没有匹配的记录' : '暂无生成记录') + '</div>') + '</div>' +
-      '<div class="d-foot" data-a="diff-settings">' + icon('settings') + '<span>生成设置</span></div>' +
-      '</div></div>';
+      '<div class="d-foot" data-a="diff-settings">' + icon('settings') + '<span>生成设置</span></div>';
+  }
+  // 侧边抽屉（窄屏）：mask 包裹历史主体
+  function diffDrawerHtml() {
+    return '<div class="drawer-mask" data-a="diff-drawer-close"><div class="drawer" data-a="drawer-body">' +
+      diffHistHtml() + '</div></div>';
   }
   action('diff-menu', () => { S.x.diffDrawer = true; render(); });
   action('diff-drawer-close', () => { S.x.diffDrawer = false; render(); });

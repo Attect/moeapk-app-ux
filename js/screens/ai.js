@@ -47,6 +47,8 @@
       const cur = l && l.sessions.find(s => s.id === l.cur);
       const d = S.x.ai && S.x.ai.diff;
       const t = S.x.ai && S.x.ai.tts;
+      // 横屏/平板（≥920px）：四个入口两列排布（css .ai-grid）；窄屏单列与旧版一致
+      const entry = it => '<div class="card tight" style="padding:0;margin-top:10px">' + listItem(it) + '</div>';
       return '<div class="card tight" style="padding:0;margin-top:2px">' +
         listItem({
           icon: 'schedule', title: 'AI 任务队列',
@@ -56,22 +58,19 @@
         }) +
         (live && live.j ? '<div style="padding:0 16px 12px"><div class="dl-status">' + esc(live.title) + ' · ' + esc(live.j.phase || '进行中') + ' · ' + Math.round(live.j.p * 100) + '%</div>' + progress(live.j.p) + '</div>' : '') +
         '</div>' +
-        '<div class="card tight" style="padding:0">' +
-        listItem({ icon: 'file_open', title: '模型管理', sub: '下载 / 导入 / 搜索模型', arrow: true, action: 'go-models' }) +
-        '<div class="hr"></div>' +
-        listItem({
+        '<div class="ai-grid">' +
+        entry({ icon: 'file_open', title: '模型管理', sub: '下载 / 导入 / 搜索模型', arrow: true, action: 'go-models' }) +
+        entry({
           icon: 'smart_toy', title: 'LLM 对话',
           sub: nSess ? nSess + ' 个会话' + (cur ? ' · 当前：' + cur.modelName : '') : '多会话 AI 助手，支持图片',
           arrow: true, action: 'go-llm'
         }) +
-        '<div class="hr"></div>' +
-        listItem({
+        entry({
           icon: 'image', title: '图片生成',
           sub: d && d.history && d.history.length ? '已生成 ' + d.history.length + ' 张 · 文生图 / 图生图' : '文生图 / 图生图',
           arrow: true, action: 'go-diffusion'
         }) +
-        '<div class="hr"></div>' +
-        listItem({
+        entry({
           icon: 'play_arrow', title: '语音生成',
           sub: t && t.history && t.history.length ? '已合成 ' + t.history.length + ' 条 · ' + t.device.toUpperCase() : '语音合成 / 克隆音色',
           arrow: true, action: 'go-tts'

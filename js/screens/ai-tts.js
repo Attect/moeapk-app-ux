@@ -9,7 +9,9 @@
 
   function ttsPage() {
     const t = T();
-    let h = '<div class="chat-page">';
+    const wide = isWide();
+    let h = wide ? '<div class="chat-page two-pane"><div class="pane-side">' + ttsHistHtml() + '</div><div class="pane-main">'
+      : '<div class="chat-page">';
     // 主区域：模型下载 / 合成进度 / 当前结果 / 空态
     const j = mock.job('tts-synth');
     const mdl = mock.job('tts-dl');
@@ -61,12 +63,12 @@
       // F12：字数 / 预计时长提示
       '<div class="muted" style="font-size:11px;margin-top:4px;text-align:right">' + textLen + ' 字 · 约 ' + estSec + ' 秒（按 4.2 字/秒估算）</div>' +
       '</div>';
-    if (S.x.ttsDrawer) h += ttsDrawerHtml();
-    return h + '</div>';
+    if (!wide && S.x.ttsDrawer) h += ttsDrawerHtml();
+    return h + (wide ? '</div></div>' : '</div>');
   }
 
-  // 侧边抽屉：合成记录（F10 可搜索）+ 底部音色管理
-  function ttsDrawerHtml() {
+  // 合成记录主体：抽屉（窄屏 overlay）与双栏侧栏（≥920px 常驻）共用；F10 支持搜索
+  function ttsHistHtml() {
     const t = T();
     const kw = ((S.x.keep && S.x.keep['tts-hist-q']) || '').trim().toLowerCase();
     const list = kw ? t.history.filter(r => (r.text || '').toLowerCase().indexOf(kw) >= 0 || (r.label || '').toLowerCase().indexOf(kw) >= 0) : t.history;
@@ -76,14 +78,16 @@
       '<div class="d-body"><div class="d-title">' + esc(r.label) + '</div>' +
       '<div class="d-sub">' + esc(r.text) + ' · ' + esc(r.dur) + '</div></div>' +
       '<button class="d-del" data-a="tts-hist-del" data-arg="' + r.id + '" title="删除">' + icon('close') + '</button></div>').join('');
-    return '<div class="drawer-mask" data-a="tts-drawer-close"><div class="drawer" data-a="drawer-body">' +
-      '<div class="d-head"><span>合成记录</span><span class="muted small">' + t.history.length + ' 条</span></div>' +
+    return '<div class="d-head"><span>合成记录</span><span class="muted small">' + t.history.length + ' 条</span></div>' +
       '<div style="padding:0 12px 10px"><div class="search-box">' + icon('search') +
       '<input class="field-input" data-keep="tts-hist-q" placeholder="搜索文本…" value="' + esc((S.x.keep && S.x.keep['tts-hist-q']) || '') + '"></div></div>' +
       '<div style="padding:0 12px 10px">' + btn('＋ 新建合成', 'tts-new', null, 'small block ghost') + '</div>' +
       '<div class="d-list">' + (items || '<div class="muted small center" style="padding:24px 0">' + (kw ? '没有匹配的记录' : '暂无合成记录') + '</div>') + '</div>' +
-      '<div class="d-foot" data-a="tts-settings">' + icon('settings') + '<span>音色管理</span></div>' +
-      '</div></div>';
+      '<div class="d-foot" data-a="tts-settings">' + icon('settings') + '<span>音色管理</span></div>';
+  }
+  function ttsDrawerHtml() {
+    return '<div class="drawer-mask" data-a="tts-drawer-close"><div class="drawer" data-a="drawer-body">' +
+      ttsHistHtml() + '</div></div>';
   }
   action('tts-menu', () => { S.x.ttsDrawer = true; render(); });
   action('tts-drawer-close', () => { S.x.ttsDrawer = false; render(); });

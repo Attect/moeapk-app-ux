@@ -96,7 +96,8 @@
     }
     if (S.x.apkLoading) return h + spinner();
     if (!items.length) return h + emptyHint(kw || tag ? '没有匹配的条目' : '这里还没有内容');
-    return h + items.map(catalogCard).join('');
+    // 横屏/平板（≥920px）：条目两列排布（css .two-col）
+    return h + '<div class="two-col">' + items.map(catalogCard).join('') + '</div>';
   }
   action('apk-tag', ds => { S.x.apkTag = ds.arg; render(); });
 
@@ -109,7 +110,7 @@
     h += '<div class="search-row"><div class="search-box">' + icon('search') +
       '<input class="field-input" data-keep="apk-open-q" placeholder="搜索开源项目…" value="' + esc((S.x.keep && S.x.keep['apk-open-q']) || '') + '"></div></div>';
     if (S.x.apkLoading) return h + spinner();
-    h += items.length ? items.map(openCard).join('') : emptyHint('没有匹配的开源项目');
+    h += items.length ? '<div class="two-col">' + items.map(openCard).join('') + '</div>' : emptyHint('没有匹配的开源项目');
     h += '<div class="muted small center" style="padding:18px 24px">内容在开源平台由原作者维护，本站只同步最新版本。<br>下载直达开源平台，遇到问题请向原作者反馈。</div>';
     return h;
   }
