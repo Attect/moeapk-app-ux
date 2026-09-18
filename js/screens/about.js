@@ -21,7 +21,7 @@
       let h = '<div style="text-align:center;padding-top:28px">' +
         '<img src="assets/ic_launcher_fg.png" alt="MoeApk" style="width:72px;height:72px;border-radius:16px;background:#fff;object-fit:cover">' +
         '<div class="headline" style="font-size:22px;margin-top:10px">MoeApk</div>' +
-        '<div class="muted">版本 0.10.1（28）</div></div>';
+        '<div class="muted">版本 0.10.2（29）</div></div>';
       h += sectionTitle('开源许可');
       h += card('<div class="card tight expander" style="padding:0;margin-top:0">' + LICENSES.map((l, i) => {
         const exp = open === i;

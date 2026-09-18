@@ -5,28 +5,29 @@
 // DEMO_ITEMS：真实目录当前仅 moeapk-service 一条。为撑起首页"应用/游戏"分区的多条目体感，
 // 附带了 2 条由 _example.json 模板派生的演示项（id 带 demo- 前缀）。设 false 可查看真实单条目状态。
 window.DB = window.DB || {};
-window.DB.SNAPSHOT_DATE = '2026-09-18';
+window.DB.SNAPSHOT_DATE = '2026-09-19';
 window.DB.DEMO_ITEMS = true;
 window.DB.CATALOG = [
   {
     "id": "moeapk-service",
     "title": "MoeApk 服务 App",
-    "version": "0.10.1",
+    "version": "0.10.2",
     "summary": "MoeApk 服务 App：MK 通行证子授权、数据下载、端侧 AI 推理（LLM/扩散/TTS）、模型中心、素材中心（静态/视差/3D 点云/视频壁纸）、更新检测。",
     "tags": ["工具", "AI", "服务"],
     "category": "app",
     "published_at": "2026-09-18",
     "package": "com.moeapk",
-    "version_code": 28,
+    "version_code": 29,
     "min_sdk": 31,
     "channel": "stable",
     "parts": [
-      { "name": "moeapk-0.10.1.apk", "kind": "apk", "size": 6059599, "location": "b+node" }
+      { "name": "moeapk-0.10.2.apk", "kind": "apk", "size": 6085319, "location": "b+node" }
     ],
     "install": { "type": "apk", "package": "com.moeapk", "notes": "直接安装 APK。需 Android 12+。" },
     "changelog": [
-      { "version": "0.10.1", "version_code": 28, "notes": [
-        "优化：关于页与壁纸描述等界面文案精简"] },
+      { "version": "0.10.2", "version_code": 29, "notes": [
+        "修复：模型中心「写实图片放大」各芯片档位只下载一个却全部显示已就绪的问题",
+        "修复：同名模型文件互相覆盖、切换芯片档位需重新下载的问题——各档位模型现在分开保存、可同时保留"] },
       { "version": "0.10.0", "version_code": 27, "notes": [
         "全新界面：底部导航改为「APK / 素材 / AI / 我的」四大板块，宽屏设备自动切换为双栏布局",
         "新增：素材中心——统一管理图片、视频、音频与 3D 点云，壁纸中心能力并入，旧壁纸自动迁移",
@@ -130,6 +131,6 @@ window.DB.CATALOG = [
 ];
 // 演示更新：让"更新卡"有可点状态。真实逻辑由服务端 updates 接口驱动，这里快照一条。
 window.DB.UPDATES = [
-  { "id": "moeapk-service", "version": "0.10.1", "version_code": 28, "size": 5600000, "force": true,
+  { "id": "moeapk-service", "version": "0.10.2", "version_code": 29, "size": 6085319, "force": true,
     "notes": ["演示：修复若干问题", "演示：优化壁纸加载速度"] }
 ];

@@ -1,6 +1,6 @@
 # MoeApk App Web 原型
 
-MoeApk App（`../app`，当前 0.10.1/28）UX 的 1:1 Web 还原。**UX 调整先在这里改、验证，再同步到 Compose。**
+MoeApk App（`../app`，当前 0.10.2/29）UX 的 1:1 Web 还原。**UX 调整先在这里改、验证，再同步到 Compose。**
 
 ## 起法
 
