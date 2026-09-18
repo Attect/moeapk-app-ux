@@ -2,12 +2,13 @@
 (function () {
   const LICENSES = [
     ['LocalDream', 'CC BY-NC 4.0', '生图引擎应用（本地 Diffusion）。署名-非商业性使用。'],
-    ['Real-ESRGAN', 'MIT', 'ximoke Zhang et al. 实用的图像超分辨率模型。'],
-    ['4x_UltraSharp', '自定义', 'Kim2091 的写实向放大模型。'],
+    ['Real-ESRGAN', 'BSD-3-Clause', 'Xintao Wang 等（Tencent ARC）的图像超分辨率模型（x4plus_anime_6B）。'],
+    ['4x_UltraSharp', 'CC BY-NC-SA 4.0（非商业）', 'Kim2091 的写实向放大模型（非商业性使用、相同方式共享）。'],
     ['Audio8-AI', 'Apache-2.0', 'DualAR 多语言 TTS 与语音克隆。'],
     ['llama.cpp', 'MIT', 'Georgi Gerganov 的纯 C/C++ LLM 推理。'],
     ['ONNX Runtime', 'MIT', '微软出品的跨平台推理引擎。'],
-    ['MNN', 'Apache-2.0', '阿里巴巴开源的轻量深度学习框架。'],
+    ['MNN', 'Apache-2.0', '阿里巴巴开源的轻量深度学习框架（扩散 CPU / 点云）。'],
+    ['ML-Sharp', 'Apple AMLR（仅限研究用途）', 'Apple 的单目 3D 高斯重建模型；权重按 Apple AMLR 仅限研究用途授权，本应用分发的 .dlc（QNN 量化）与 .mnn（fp16）权重包为格式转换后的模型衍生物，Apple 未参与本应用亦未背书。'],
     ['Kotlin', 'Apache-2.0', 'JetBrains 出品的现代 JVM 语言。'],
     ['AndroidX', 'Apache-2.0', 'Android Jetpack 扩展库。'],
     ['Jetpack Compose', 'Apache-2.0', 'Android 声明式 UI 工具包。'],
