@@ -2,6 +2,7 @@
 // 来源：website/mukaapp_moeapk/site_moeapk/ai/*.json（2026-09-18 时 195 条，此处取代表子集）
 // kind: llm / diffusion / tts / tts-encoder / upscale / sharp；type: model / engine
 window.DB = window.DB || {};
+window.DB.SNAPSHOT_DATE = window.DB.SNAPSHOT_DATE || '2026-09-18';
 window.DB.AI = [
   { "type": "engine", "id": "llm-fork", "name": "LLM 引擎（llama.cpp fork）", "kind": "llm", "version": "1.0.0",
     "summary": "端侧 LLM 推理引擎（llama.cpp fork，arm64）。",

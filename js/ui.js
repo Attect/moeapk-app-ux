@@ -3,7 +3,13 @@
 (function () {
   window.SCREENS = {};
   window.ACTIONS = {};
-  window.registerScreen = (id, def) => { SCREENS[id] = def; };
+  // 子页 id 自动收集：registerScreen 时以 'tab:' 前缀区分 Tab 与子页，
+  // 替代 store.js 里手工维护的 SUB_PAGES 数组（新增子页无需再改两处）。
+  window.SUB_PAGES = [];
+  window.registerScreen = (id, def) => {
+    SCREENS[id] = def;
+    if (id.indexOf('tab:') !== 0 && SUB_PAGES.indexOf(id) < 0) SUB_PAGES.push(id);
+  };
   window.action = (name, fn) => { ACTIONS[name] = fn; };
 
   // ---------- 基础工具 ----------
@@ -138,11 +144,22 @@
     }
 
     const toasts = S.toasts.map(t => '<div class="toast">' + esc(t.text) + '</div>').join('');
-    app.innerHTML =
+    // 子页可在 topRight 声明一个图标按钮（如 LLM 对话的侧边菜单）
+    const def0 = cur ? SCREENS[cur.page] : null;
+    const rightBtn = cur && def0.topRight ?
+      '<button class="icbtn" data-a="' + def0.topRight.act + '"' + (def0.topRight.arg != null ? ' data-arg="' + esc(def0.topRight.arg) + '"' : '') + '>' + icon(def0.topRight.icon) + '</button>' :
+      '<span class="icbtn"></span>';
+    const html =
       '<header class="topbar">' + (showBack ? '<button class="icbtn" data-a="back">' + icon('arrow_back') + '</button>' : '<span class="icbtn"></span>') +
-      '<span class="topbar-title">' + esc(title) + '</span><span class="icbtn"></span></header>' +
+      '<span class="topbar-title">' + esc(title) + '</span>' + rightBtn + '</header>' +
       '<main class="content" id="content">' + content + '</main>' + bottom +
       '<div class="toast-wrap">' + toasts + '</div>' + dialogHtml();
+
+    // 闪烁修复：HTML 无变化（如仅定时器空转）时跳过 DOM 写入，
+    // 避免重建节点重播入场动画（进度条/Toast 反复闪烁的根因）。
+    if (app.__html === html) return;
+    app.__html = html;
+    app.innerHTML = html;
 
     if (keepId) {
       const el2 = app.querySelector('[data-keep="' + keepId + '"]');

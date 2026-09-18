@@ -1,4 +1,4 @@
-// 下载 Tab。对应 ui/download/DownloadScreen.kt
+// 下载页（子页，从"我的 → 下载任务"进入）。对应 ui/download/DownloadScreen.kt
 (function () {
   function statusText(t) {
     switch (t.status) {
@@ -21,19 +21,20 @@
     return card('<div class="dl-row"><div style="flex:1;min-width:0"><div class="li-title" style="font-weight:400;word-break:break-all">' + esc(t.name) + '</div>' +
       '<div class="dl-status">' + esc(statusText(t)) + '</div></div><div style="flex:none">' + actions + '</div></div>' + bar);
   }
-  registerScreen('tab:download', {
+  registerScreen('downloads', {
     title: '下载',
     render() {
       let h = '';
       if (!S.x.tasks.length) {
-        h += '<div style="padding-top:120px;text-align:center;color:var(--on-surface-variant)">' +
-          '<div style="width:64px;height:64px;margin:0 auto 12px;opacity:.7">' + icon('cloud_download') + '</div>' +
-          '<div>暂无下载任务</div></div>';
+        h += '<div class="empty-illust">' + icon('cloud_download') +
+          '<div class="empty-title">暂无下载任务</div>' +
+          '<div class="empty-sub">在应用详情、模型中心等处发起的下载会出现在这里</div></div>';
       } else {
         h += S.x.tasks.map(taskCard).join('');
       }
-      h += '<div style="margin-top:16px;text-align:center">' +
-        '<button class="tbtn" data-a="dl-test">[debug] 测试下载 moeapk.com/favicon.png（免校验）</button></div>';
+      h += '<div style="margin-top:16px;text-align:center;display:flex;gap:8px;justify-content:center;flex-wrap:wrap">' +
+        '<button class="tbtn" data-a="dl-test">[debug] 测试下载 moeapk.com/favicon.png（免校验）</button>' +
+        '<button class="tbtn" data-a="dl-fail-test">[debug] 模拟失败</button></div>';
       return h;
     }
   });
@@ -41,4 +42,11 @@
   action('dl-resume', ds => mock.resume(+ds.arg));
   action('dl-remove', ds => mock.remove(+ds.arg));
   action('dl-test', () => { mock.enqueue('favicon.png', 32680); toast('已加入下载队列：favicon.png'); });
+  action('dl-fail-test', () => {
+    const t = S.x.tasks.find(x => x.status === 'downloading' || x.status === 'pending');
+    if (!t) { toast('当前没有进行中的任务，请先添加一个下载'); return; }
+    const kinds = Object.keys(mock.FAIL_TEXT);
+    mock.fail(t.id, kinds[Math.floor(Math.random() * kinds.length)]);
+    toast('已模拟失败：' + t.name);
+  });
 })();

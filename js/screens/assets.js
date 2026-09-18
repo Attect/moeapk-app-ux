@@ -1,0 +1,265 @@
+// 素材 Tab：素材网格 + 相册式查看器（按素材类型呈现不同舞台与工具栏）
+// 素材类型：image / video / audio / pointcloud（3D 点云是图片的处理产物，作为素材存在）。
+// 点云素材查看：姿态感应（倾斜演示 + 自动摇摆）与查看/渲染性能面板，默认收起。
+(function () {
+  const assets = () => S.x.assets;
+  const cur = () => assets().find(a => a.id === S.x.viewId) || assets()[0];
+
+  const KIND_LABEL = { image: '图片', video: '视频', audio: '音频', pointcloud: '3D 点云' };
+
+  // ---------- 素材网格 ----------
+  registerScreen('tab:assets', {
+    title: '素材',
+    render() {
+      const sel = S.x.asSel = S.x.asSel || {};
+      const batch = S.x.asBatch;
+      const cell = a => {
+        let inner = '';
+        if (a.kind === 'video') inner =
+          '<span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center"><span style="width:36px;height:36px;border-radius:50%;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;color:#fff">' + icon('play_arrow') + '</span></span>' +
+          '<span style="position:absolute;right:6px;bottom:4px;font-size:10px;color:#fff;background:rgba(0,0,0,.4);border-radius:4px;padding:1px 5px">' + esc(a.meta || '0:12') + '</span>';
+        else if (a.kind === 'audio') inner =
+          '<span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.9)">' + icon('play_arrow') + '</span>' +
+          '<span style="position:absolute;left:0;right:0;bottom:4px;text-align:center;font-size:10px;color:#fff;background:rgba(0,0,0,.4)">音频</span>';
+        else if (a.kind === 'pointcloud') inner =
+          '<span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.9)">' + icon('apps') + '</span>' +
+          '<span style="position:absolute;left:0;right:0;bottom:4px;text-align:center;font-size:10px;color:#fff;background:rgba(0,0,0,.4)">3D 点云</span>';
+        const check = batch && sel[a.id] ? '<span class="as-check">' + icon('check_circle') + '</span>' : '';
+        return '<div class="as-cell' + (batch && sel[a.id] ? ' selected' : '') + '" data-a="av-open" data-arg="' + a.id + '" style="background:linear-gradient(165deg,hsl(' + a.hue + ',62%,64%),hsl(' + ((a.hue + 60) % 360) + ',48%,30%))">' + inner + check + '</div>';
+      };
+      let bar = '';
+      if (batch) {
+        const n = Object.keys(sel).filter(k => sel[k]).length;
+        bar = '<div class="batch-bar">' +
+          '<span class="li-sub" style="flex:1">已选 ' + n + ' 项</span>' +
+          btn('全选', 'as-sel-all', null, 'small ghost') +
+          btn('导入 ' + n + ' 项', 'as-import-batch', null, 'small' + (n ? '' : ' disabled')) +
+          btn('取消', 'as-batch-off', null, 'small ghost') + '</div>';
+      }
+      return '<div class="as-grid">' +
+        '<div class="as-cell as-add" data-a="' + (batch ? 'as-batch-off' : 'as-import') + '">' + icon(batch ? 'close' : 'add') + '<span>' + (batch ? '退出多选' : '导入素材') + '</span></div>' +
+        assets().map(cell).join('') + '</div>' + bar +
+        '<div class="muted small center" style="padding:14px">图片、视频、音频与 3D 点云统一在素材管理，点按查看与处理。</div>';
+    }
+  });
+
+  // 模拟系统文件选择器导入（单发）
+  let impSeq = 1;
+  function makeImport(i) {
+    const isVideo = i % 3 === 0;
+    const hues = [150, 340, 45, 210, 268, 120, 300, 30, 174];
+    return {
+      id: 'as' + Date.now() + '_' + i, kind: isVideo ? 'video' : 'image',
+      hue: hues[i % hues.length],
+      label: (isVideo ? '视频' : '图片') + '-导入' + i,
+      date: '2026-09-18',
+      meta: isVideo ? '0:0' + (5 + i % 50) : ''
+    };
+  }
+  action('as-import', () => {
+    const a = makeImport(impSeq++);
+    S.x.assets.unshift(a);
+    toast('已导入：' + a.label + '（模拟系统文件选择器）');
+    render();
+  });
+  // 批量导入（多选模拟）
+  action('as-batch-on', () => { S.x.asBatch = true; S.x.asSel = {}; render(); });
+  action('as-batch-off', () => { S.x.asBatch = false; S.x.asSel = {}; render(); });
+  action('as-batch-on-viewer', () => { S.x.asBatch = true; S.x.asSel = {}; nav.pop(); });
+  action('as-sel-all', () => {
+    const sel = S.x.asSel = {};
+    assets().forEach(a => { sel[a.id] = true; });
+    render();
+  });
+  action('as-import-batch', () => {
+    const sel = S.x.asSel || {};
+    const ids = Object.keys(sel).filter(k => sel[k]);
+    if (!ids.length) { toast('请先选择素材'); return; }
+    ids.forEach((id, i) => S.x.assets.unshift(makeImport(impSeq++)));
+    toast('已批量导入 ' + ids.length + ' 项（模拟系统文件选择器）');
+    S.x.asBatch = false; S.x.asSel = {};
+    render();
+  });
+  action('av-open', ds => {
+    if (S.x.asBatch) {
+      S.x.asSel = S.x.asSel || {};
+      S.x.asSel[ds.arg] = !S.x.asSel[ds.arg];
+      render();
+      return;
+    }
+    S.x.viewId = ds.arg; nav.push('asset', ds.arg);
+  });
+
+  // ---------- 点云舞台（粒子 + 姿态感应） ----------
+  function cloudStage(a) {
+    const cfg = a.cloudCfg = a.cloudCfg || { power: 1.0, quality: 100, zoom: 1.0, tiltX: 0, tiltY: 0, sway: true, panel: false };
+    if (!S.x.pcDots) {
+      S.x.pcDots = [];
+      let seed = 7;
+      const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+      for (let i = 0; i < 90; i++) S.x.pcDots.push({ x: 8 + rnd() * 84, y: 20 + rnd() * 60, s: 1.5 + rnd() * 4, d: 0.4 + rnd() * 0.6 });
+    }
+    const n = Math.round(90 * cfg.quality / 100);
+    const dots = S.x.pcDots.slice(0, n).map(d =>
+      '<div class="av-cloud-dot" style="left:' + d.x + '%;top:' + d.y + '%;width:' + (d.s * cfg.zoom) + 'px;height:' + (d.s * cfg.zoom) + 'px;opacity:' + (0.35 + d.d * 0.6) + '"></div>').join('');
+    const tilt = 'rotateX(' + cfg.tiltX + 'deg) rotateY(' + cfg.tiltY + 'deg)' + (cfg.sway ? '' : '');
+    let panel = '';
+    if (cfg.panel) {
+      panel = '<div class="cloud-panel">' +
+        '<div class="pc-stats" style="position:static;max-width:none;margin-bottom:6px">点数 1,179,432 · pcache v2 · 帧耗时 36ms（28fps）</div>' +
+        '<label class="slider-row"><span class="li-title">强度 ' + cfg.power.toFixed(1) + '</span><input type="range" min="0.2" max="2" step="0.1" value="' + cfg.power + '" class="slider" data-live="cl-set" data-k="power"></label>' +
+        '<label class="slider-row"><span class="li-title">点云精度（渲染性能）' + cfg.quality + '%</span><input type="range" min="30" max="100" step="1" value="' + cfg.quality + '" class="slider" data-live="cl-set" data-k="quality"></label>' +
+        '<label class="slider-row"><span class="li-title">缩放 ' + cfg.zoom.toFixed(1) + 'x</span><input type="range" min="0.6" max="2.5" step="0.1" value="' + cfg.zoom + '" class="slider" data-live="cl-set" data-k="zoom"></label>' +
+        '<label class="slider-row"><span class="li-title">姿态·俯仰（姿态感应演示）' + cfg.tiltX + '°</span><input type="range" min="-45" max="45" step="1" value="' + cfg.tiltX + '" class="slider" data-live="cl-set" data-k="tiltX"></label>' +
+        '<label class="slider-row"><span class="li-title">姿态·左右 ' + cfg.tiltY + '°</span><input type="range" min="-45" max="45" step="1" value="' + cfg.tiltY + '" class="slider" data-live="cl-set" data-k="tiltY"></label>' +
+        '<div class="li"><div class="li-body"><div class="li-title" style="font-weight:400;color:#cfd2e0">自动摇摆（模拟陀螺仪）</div></div>' + switchCtl(cfg.sway, 'cl-sway') + '</div>' +
+        '<div style="padding:6px 0 4px">' + btn('应用为壁纸', 'cl-apply', null, 'small') + '</div></div>';
+    }
+    return '<div class="av-cloud"><div class="av-cloud-inner' + (cfg.sway ? ' sway' : '') + '" style="transform:' + tilt + '">' + dots + '</div>' +
+      '<button class="cloud-toggle" data-a="cl-panel">' + icon('settings') + '</button>' + panel + '</div>';
+  }
+  action('cl-panel', () => { const a = cur(); a.cloudCfg.panel = !a.cloudCfg.panel; render(); });
+  action('cl-sway', () => { const a = cur(); a.cloudCfg.sway = !a.cloudCfg.sway; render(); });
+  action('cl-set', (ds, el) => {
+    const cfg = cur().cloudCfg; const k = ds.k;
+    cfg[k] = +el.value;
+    const lb = el.parentElement.querySelector('.li-title');
+    if (lb) {
+      const base = lb.textContent.replace(/ [\-\d.]+[°%x]?$/, '');
+      lb.textContent = base + ' ' + (k === 'quality' ? cfg[k] + '%' : (k === 'zoom' ? cfg[k].toFixed(1) + 'x' : (k === 'tiltX' || k === 'tiltY' ? cfg[k] + '°' : cfg[k].toFixed(1))));
+    }
+    if (k === 'zoom' || k === 'quality') render(); // 点数/尺寸即时变化
+    else { // 姿态滑杆即时倾斜
+      const inner = document.querySelector('.av-cloud-inner');
+      if (inner) inner.style.transform = 'rotateX(' + cfg.tiltX + 'deg) rotateY(' + cfg.tiltY + 'deg)';
+    }
+  });
+  action('cl-apply', () => toast('已调起系统动态壁纸选择器（模拟）'));
+
+  // ---------- 音频舞台 ----------
+  function audioStage(a) {
+    const s = a.audioState = a.audioState || { playing: false };
+    let bars = '';
+    for (let i = 0; i < 24; i++) {
+      const h = 12 + Math.round(44 * Math.abs(Math.sin(i * 1.7) * Math.cos(i * 0.6)));
+      bars += '<i style="height:' + (s.playing ? h : h * 0.45) + 'px"></i>';
+    }
+    return '<div class="av-audio">' +
+      '<button class="bigplay" data-a="au-play">' + icon(s.playing ? 'pause' : 'play_arrow') + '</button>' +
+      '<div class="wave">' + bars + '</div>' +
+      '<div style="color:rgba(255,255,255,.7);font-size:12px">' + esc(a.label) + ' · 00:0' + (a.meta || '5') + '</div></div>';
+  }
+  action('au-play', () => {
+    const a = cur();
+    a.audioState.playing = !a.audioState.playing;
+    render();
+    if (a.audioState.playing) setTimeout(() => { if (cur() === a) { a.audioState.playing = false; render(); } }, 5000);
+  });
+
+  // ---------- 查看器 ----------
+  registerScreen('asset', {
+    title: '素材',
+    render() {
+      const list = assets();
+      const a = cur();
+      if (!a) return emptyHint('素材不存在');
+      const idx = list.indexOf(a);
+      // 处理进度条（工具栏上方）
+      let proc = '';
+      if (S.x.proc) {
+        const j = mock.job(S.x.proc.key);
+        if (!j) { S.x.proc = null; }
+        else {
+          proc = '<div class="proc-bar">' +
+            '<div style="flex:1"><div class="li-title" style="font-weight:400;color:var(--on-surface)">' + esc(S.x.proc.title) + '</div>' +
+            '<div class="dl-status">' + esc(j.phase || '处理中') + ' · ' + Math.round(j.p * 100) + '%</div>' +
+            progress(j.p) + '</div>' +
+            textBtn('取消', 'av-cancel', null, 'danger') + '</div>';
+        }
+      }
+      // 舞台按类型
+      let stage = '';
+      if (a.kind === 'pointcloud') stage = cloudStage(a);
+      else if (a.kind === 'audio') stage = audioStage(a);
+      else stage = '<div class="av-media" style="background:linear-gradient(165deg,hsl(' + a.hue + ',62%,64%),hsl(' + ((a.hue + 60) % 360) + ',48%,30%))">' +
+        (a.kind === 'video' ? '<span style="width:56px;height:56px;border-radius:50%;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;color:#fff">' + icon('play_arrow') + '</span>' : '') + '</div>';
+      const navBtns = (a.kind === 'image' || a.kind === 'video') ?
+        ((idx > 0 ? '<button class="av-nav left" data-a="av-prev">' + icon('keyboard_arrow_right') + '</button>' : '') +
+         (idx < list.length - 1 ? '<button class="av-nav right" data-a="av-next">' + icon('keyboard_arrow_right') + '</button>' : '')) : '';
+      // 工具栏按类型
+      const tool = (ic, label, act, arg) =>
+        '<button class="tool" data-a="' + act + '"' + (arg != null ? ' data-arg="' + esc(arg) + '"' : '') + '>' +
+        '<span class="tool-ic">' + icon(ic) + '</span><span>' + esc(label) + '</span></button>';
+      let tools = '';
+      if (a.kind === 'image') tools =
+        tool('wallpaper', '设为壁纸', 'av-wallpaper') + tool('send', '分享', 'av-share') +
+        tool('zoom_in', 'AI 放大', 'av-upscale') + tool('crop', 'AI 扩图', 'av-outpaint') +
+        tool('apps', '3D 点云', 'av-3d');
+      else if (a.kind === 'video') tools =
+        tool('wallpaper', '设为壁纸', 'av-wallpaper') + tool('send', '分享', 'av-share') +
+        tool('delete', '删除', 'av-delete', a.id);
+      else if (a.kind === 'audio') tools =
+        tool('send', '分享', 'av-share') + tool('delete', '删除', 'av-delete', a.id);
+      else if (a.kind === 'pointcloud') tools =
+        tool('wallpaper', '设为壁纸', 'cl-apply') + tool('send', '分享', 'av-share') +
+        tool('settings', '控制面板', 'cl-panel') + tool('delete', '删除', 'av-delete', a.id);
+      // 多选入口（图片/视频）：进入批量选择模式
+      if (a.kind === 'image' || a.kind === 'video') tools += tool('playlist_add', '多选', 'as-batch-on-viewer');
+      return '<div class="av-stage">' +
+        '<button class="av-back" data-a="av-back">' + icon('arrow_back') + '</button>' +
+        '<div class="av-counter">' + (idx + 1) + ' / ' + list.length + (KIND_LABEL[a.kind] ? ' · ' + KIND_LABEL[a.kind] : '') + '</div>' +
+        stage + navBtns + proc +
+        '<div class="av-toolbar">' + tools + '</div></div>';
+    }
+  });
+  action('av-back', () => nav.pop());
+  action('av-prev', () => { const l = assets(); const i = l.indexOf(cur()); S.x.viewId = l[i - 1].id; render(); });
+  action('av-next', () => { const l = assets(); const i = l.indexOf(cur()); S.x.viewId = l[i + 1].id; render(); });
+  action('av-cancel', () => { if (S.x.proc) mock.resetJob(S.x.proc.key); S.x.proc = null; toast('已取消'); render(); });
+  action('av-delete', ds => confirmDialog('删除素材', '将从素材库删除。', '删除', () => {
+    S.x.assets = S.x.assets.filter(x => x.id !== ds.arg);
+    if (S.x.viewId === ds.arg) S.x.viewId = (S.x.assets[0] || {}).id;
+    nav.pop();
+  }, true));
+
+  action('av-wallpaper', () => {
+    const a = cur();
+    if (a.kind === 'video') openVideoDialog(a); else openSetDialog(a);
+  });
+  action('av-share', () => toast('已调起系统分享（模拟）'));
+
+  function runProc(title, phases, ms, onDone) {
+    if (S.x.proc) { toast('已有处理任务进行中'); return; }
+    S.x.proc = { key: 'av-proc', title };
+    mock.startJob('av-proc', title, ms, phases);
+    const t = setInterval(() => {
+      if (mock.isJobDone('av-proc')) {
+        clearInterval(t); S.x.proc = null;
+        onDone && onDone();
+        render();
+      }
+    }, 250);
+    render();
+  }
+  action('av-upscale', () => runProc('AI 放大', ['下载放大模型', '切块推理', '融合输出'], 3400,
+    () => toast('放大完成，已保存到相册（模拟）')));
+  action('av-outpaint', () => runProc('AI 扩图', ['分析构图', '生成外延内容', '融合边缘'], 4600, () => {
+    const a = cur();
+    S.x.assets.splice(assets().indexOf(a) + 1, 0, {
+      id: 'as' + Date.now(), kind: 'image', hue: (a.hue + 30) % 360,
+      label: a.label + '·扩图', date: '2026-09-18'
+    });
+    toast('扩图完成，已存为新素材');
+  }));
+  // 3D 点云处理：结果作为 pointcloud 素材保存，直接切到结果查看
+  action('av-3d', () => runProc('3D 点云处理', ['下载深度模型', '重建点云', '生成 pcache'], 5200, () => {
+    const src = cur();
+    const cloud = {
+      id: 'as' + Date.now(), kind: 'pointcloud', hue: src.hue,
+      label: src.label + '·点云', date: '2026-09-18', src: src.id
+    };
+    S.x.assets.splice(assets().indexOf(src) + 1, 0, cloud);
+    S.x.viewId = cloud.id;
+    toast('点云已生成，保存为素材');
+  }));
+})();

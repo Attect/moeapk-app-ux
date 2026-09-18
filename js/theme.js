@@ -3,7 +3,9 @@
 // 明/暗跟随系统，也可在原型内手动切换（App 无手动切换，此为原型调试便利）。
 (function () {
   const root = document.documentElement;
-  let forced = localStorage.getItem('proto-theme'); // 'light' | 'dark' | null=跟随系统
+  // file:// 或隐私模式下 localStorage 可能抛异常，做兜底
+  let forced = null;
+  try { forced = localStorage.getItem('proto-theme'); } catch (e) { /* 忽略 */ }
   const media = window.matchMedia('(prefers-color-scheme: dark)');
 
   function apply() {
@@ -14,7 +16,7 @@
     toggle() {
       const cur = root.getAttribute('data-theme') === 'dark';
       forced = cur ? 'light' : 'dark';
-      localStorage.setItem('proto-theme', forced);
+      try { localStorage.setItem('proto-theme', forced); } catch (e) { /* 忽略 */ }
       apply();
     },
     isDark() { return root.getAttribute('data-theme') === 'dark'; }

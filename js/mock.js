@@ -7,10 +7,12 @@
   S.x.voices = [           // TTS 已保存参考音色（演示）
     { name: 'momori_054', note: '桃璃台词 · 2026-09-10' }
   ];
-  S.x.wallpapers = [       // 壁纸库（渐变占位图，标注示例）
-    { id: 'wp1', hue: 26, label: '示例·晚霞', date: '2026-09-15' },
-    { id: 'wp2', hue: 200, label: '示例·海面', date: '2026-09-12' },
-    { id: 'wp3', hue: 300, label: '示例·夜樱', date: '2026-09-08' }
+  S.x.assets = [           // 素材库（图片/视频；壁纸中心拆除后统一为素材）
+    { id: 'as1', kind: 'image', hue: 26, label: '示例·晚霞', date: '2026-09-15' },
+    { id: 'as2', kind: 'image', hue: 200, label: '示例·海面', date: '2026-09-12' },
+    { id: 'as3', kind: 'video', hue: 300, label: '示例·夜樱', date: '2026-09-08', meta: '0:12' },
+    { id: 'as4', kind: 'image', hue: 150, label: '示例·林间', date: '2026-09-06' },
+    { id: 'as5', kind: 'image', hue: 45, label: '示例·街角', date: '2026-09-02' }
   ];
 
   const FAIL_TEXT = { unreachable: '网络不可达', timeout: '连接超时', expired: '下载地址已过期', throttled: '请求过于频繁', nospace: '存储空间不足', badhash: '校验失败' };
@@ -33,9 +35,11 @@
     remove(id) { S.x.tasks = S.x.tasks.filter(t => t.id !== id); render(); },
     fail(id, kind) { const t = find(id); if (t) { t.status = 'failed'; t.error = FAIL_TEXT[kind] || '下载失败'; render(); } },
 
-    // 通用进度任务（AI 测试台的"下载/加载/生成"）
+    // 通用进度任务（AI 测试台的"下载/加载/生成"）。入 AI 任务队列（ai-queue 子页展示）。
     startJob(key, label, ms, phases) {
       S.x.jobs[key] = { label, p: 0, phase: (phases && phases[0]) || '' };
+      S.x.aiQueue = S.x.aiQueue || [];
+      if (!S.x.aiQueue.some(q => q.key === key)) S.x.aiQueue.unshift({ key, title: label || key });
       const step = 200;
       const timer = setInterval(() => {
         const j = S.x.jobs[key];
@@ -47,8 +51,17 @@
       }, step);
     },
     job(key) { return S.x.jobs[key]; },
-    resetJob(key) { delete S.x.jobs[key]; },
+    resetJob(key) {
+      delete S.x.jobs[key];
+      if (S.x.aiQueue) S.x.aiQueue = S.x.aiQueue.filter(q => q.key !== key);
+    },
     isJobDone(key) { const j = S.x.jobs[key]; return !!(j && j.done); },
+    // 队列项状态：running {p,phase} / done / gone（取消或清除）
+    queueState(q) {
+      const j = S.x.jobs[q.key];
+      if (!j) return 'gone';
+      return j.done ? 'done' : 'running';
+    },
 
     // 账户演示数据
     account: {
@@ -85,9 +98,11 @@
     if (changed) render();
   }, 500);
 
-  // toast
+  // toast：最多堆叠 3 条，超出丢弃最旧
+  const TOAST_MAX = 3;
   window.toast = function (text) {
     S.toasts.push({ text, id: Date.now() + Math.random() });
+    while (S.toasts.length > TOAST_MAX) S.toasts.shift();
     render();
     setTimeout(() => {
       S.toasts.shift(); render();

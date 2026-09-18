@@ -3,12 +3,11 @@
 (function () {
   const TABS = [
     { id: 'apk', label: 'APK', icon: 'apps' },
+    { id: 'assets', label: '素材', icon: 'image' },
     { id: 'ai', label: 'AI', icon: 'auto_awesome' },
-    { id: 'download', label: '下载', icon: 'download' },
     { id: 'mine', label: '我的', icon: 'person' }
   ];
-  const SUB_PAGES = ['about', 'login', 'register', 'account', 'security', 'update',
-    'models', 'model-search', 'catalog-detail', 'open-detail', 'wallpaper', 'pointcloud-preview'];
+  // 子页清单由 ui.js 的 registerScreen 自动收集（window.SUB_PAGES），此处不再硬编码。
 
   window.S = {
     tab: 'apk',
@@ -28,7 +27,7 @@
   };
 
   window.TABS = TABS;
-  window.SUB_PAGES = SUB_PAGES;
+  // SUB_PAGES 在 ui.js 中定义（registerScreen 时自动收集），此处仅引用。
 
   function syncHash() {
     const top = S.stack[S.stack.length - 1];

@@ -27,7 +27,13 @@
       }), 'tight');
       // 下载
       h += sectionTitle('下载');
-      h += card(radioRow('国内优先', 'AI 引擎 / 安装包 / 数据包优先国内节点', S.srcPref === 'domestic', 'mine-src', 'domestic') +
+      const activeCnt = S.x.tasks.filter(t => t.status === 'downloading' || t.status === 'pending' || t.status === 'verifying').length;
+      h += card(listItem({
+        icon: 'download', title: '下载任务',
+        sub: S.x.tasks.length ? S.x.tasks.length + ' 个任务' + (activeCnt ? ' · ' + activeCnt + ' 个进行中' : '') : '暂无下载任务',
+        trailing: activeCnt ? '<span class="count-badge">' + activeCnt + '</span>' : undefined,
+        arrow: true, action: 'go-downloads'
+      }) + '<div class="hr"></div>' + radioRow('国内优先', 'AI 引擎 / 安装包 / 数据包优先国内节点', S.srcPref === 'domestic', 'mine-src', 'domestic') +
         '<div class="hr"></div>' + radioRow('稳定优先', '海外机房优先', S.srcPref === 'stable', 'mine-src', 'stable'), 'tight');
       // 存储
       h += sectionTitle('存储');
@@ -36,9 +42,6 @@
         sub: cache.count + ' 个 · ' + fmtSize(cache.bytes) + ' · 内存命中 ' + cache.mem + ' / 磁盘命中 ' + cache.disk + ' / 网络 ' + cache.net,
         trailing: textBtn('清理', 'mine-clear-cache')
       }), 'tight');
-      // 个性化
-      h += sectionTitle('个性化');
-      h += card(listItem({ icon: 'wallpaper', title: '壁纸中心', arrow: true, action: 'go-wallpaper' }), 'tight');
       // 其它
       h += sectionTitle('其它');
       h += card(listItem({ icon: 'info', title: '关于', arrow: true, action: 'go-about' }), 'tight');
@@ -54,7 +57,7 @@
   });
   action('go-account', () => nav.push(S.loggedIn ? 'account' : 'login'));
   action('go-about', () => nav.push('about'));
-  action('go-wallpaper', () => nav.push('wallpaper'));
+  action('go-downloads', () => nav.push('downloads'));
   action('mine-service', () => { S.serviceRunning = !S.serviceRunning; toast(S.serviceRunning ? '后台服务已启动（模拟）' : '后台服务已停止（模拟）'); render(); });
   action('mine-battery', () => { S.batteryWhitelisted = !S.batteryWhitelisted; toast(S.batteryWhitelisted ? '已加入电池优化白名单（模拟）' : '已移除白名单（模拟）'); render(); });
   action('mine-src', ds => { S.srcPref = ds.arg; render(); });

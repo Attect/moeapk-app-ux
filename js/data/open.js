@@ -1,6 +1,7 @@
 // 开源收录数据快照
 // 来源：website/mukaapp_moeapk/site_moeapk/open/*.json（2026-09-18 全量 4 条真实条目）
 window.DB = window.DB || {};
+window.DB.SNAPSHOT_DATE = window.DB.SNAPSHOT_DATE || '2026-09-18';
 window.DB.OPEN = [
   {
     "id": "yukihub",

@@ -46,7 +46,7 @@
   --outline: #938F99;
   --outline-variant: #49454F;
   --primary: var(--seed);
-  --on-primary: #381E72;         /* App 侧 darkColorScheme 仅覆盖 primary，onPrimary 为 baseline 深紫 */
+  --on-primary: #FFF3E6;        /* 种子色 #E8A562 上保证对比度（App 侧 dark 同样应覆盖 onPrimary） */
   --primary-container: #4F378B;
   --on-primary-container: #EADDFF;
   --secondary-container: #4A4458;
@@ -93,7 +93,7 @@ body {
 }
 
 /* ---------- 顶栏（CenterAlignedTopAppBar） ---------- */
-#app { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
+#app { display: flex; flex-direction: column; height: 100%; overflow: hidden; position: relative; }
 .topbar {
   height: 64px; flex: none;
   display: flex; align-items: center; padding: 0 8px;
@@ -194,6 +194,7 @@ body {
 }
 .btn:active { opacity: .8; }
 .btn.block { display: flex; width: 100%; }
+.btn.flex { flex: 1; }
 .btn.ghost { background: transparent; color: var(--primary); border: 1px solid var(--outline); }
 .btn.danger { background: var(--error-container); color: var(--on-error-container); }
 .btn.small { min-height: 36px; padding: 8px 16px; font-size: 13px; }
@@ -330,6 +331,156 @@ body {
 }
 .wp-preview { height: min(280px, 30vh); aspect-ratio: 9/16; margin: 10px auto; border-radius: 16px; }
 
+/* ---------- 素材中心 ---------- */
+.as-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; margin: 10px -16px 0; }
+.as-cell { position: relative; aspect-ratio: 1; overflow: hidden; cursor: pointer; }
+.as-add {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  background: var(--surface-container); color: var(--on-surface-variant);
+  border: 1px dashed var(--outline); font-size: 12px;
+}
+
+/* ---------- 素材查看器（相册式） ---------- */
+.av-stage {
+  position: absolute; inset: 64px 0 0; z-index: 5;
+  background: #0b0a0f; overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+}
+.av-media {
+  width: min(86%, 340px); aspect-ratio: 9/16; border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 8px 32px rgba(0,0,0,.5);
+}
+.av-counter {
+  position: absolute; top: 12px; left: 0; right: 0; text-align: center;
+  color: rgba(255,255,255,.75); font-size: 12px;
+}
+.av-nav {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  width: 44px; height: 44px; border-radius: 50%; border: 0; cursor: pointer;
+  background: rgba(255,255,255,.14); color: rgba(255,255,255,.9);
+  display: flex; align-items: center; justify-content: center;
+}
+.av-nav.left { left: 10px; }
+.av-nav.left .ic { transform: rotate(180deg); }
+.av-nav.right { right: 10px; }
+.proc-bar {
+  position: absolute; left: 12px; right: 12px; bottom: 92px; z-index: 7;
+  display: flex; align-items: center; gap: 10px;
+  background: var(--surface-high); border-radius: 14px; padding: 12px 14px;
+  box-shadow: 0 6px 20px var(--shadow);
+}
+.av-toolbar {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 6;
+  display: flex; justify-content: space-around;
+  background: rgba(16,14,22,.92); backdrop-filter: blur(8px);
+  padding: 10px 6px 18px;
+}
+.tool {
+  border: 0; background: none; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  color: rgba(255,255,255,.85); font-size: 11px; min-width: 56px;
+}
+.tool:active { opacity: .6; }
+.tool-ic { width: 40px; height: 30px; display: flex; align-items: center; justify-content: center; }
+.tool-ic .ic { width: 22px; height: 22px; }
+
+/* ---------- 素材查看器：点云 / 音频 ---------- */
+.av-cloud {
+  position: absolute; inset: 0; overflow: hidden;
+  background: radial-gradient(120% 90% at 50% 20%, #2b2140 0%, #120e1c 60%, #060409 100%);
+}
+.av-cloud-inner {
+  position: absolute; inset: 0; transform-style: preserve-3d; perspective: 600px;
+}
+.av-cloud-inner.sway { animation: cloudSway 7s ease-in-out infinite alternate; }
+@keyframes cloudSway {
+  from { transform: rotateX(-4deg) rotateY(-6deg); }
+  to { transform: rotateX(4deg) rotateY(6deg); }
+}
+.av-cloud-dot { position: absolute; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #ffd9a8, #b46a3c 70%, transparent 75%); }
+.cloud-panel {
+  position: absolute; left: 10px; right: 10px; bottom: 86px; z-index: 7;
+  background: rgba(10,8,16,.82); border-radius: 14px; padding: 8px 12px 10px; color: #cfd2e0;
+  max-height: 46vh; overflow-y: auto;
+}
+.cloud-toggle {
+  position: absolute; right: 12px; top: 36px; z-index: 7;
+  width: 40px; height: 40px; border-radius: 50%; border: 0; cursor: pointer;
+  background: rgba(255,255,255,.14); color: rgba(255,255,255,.9);
+  display: flex; align-items: center; justify-content: center;
+}
+.av-audio {
+  display: flex; flex-direction: column; align-items: center; gap: 18px;
+}
+.wave { display: flex; align-items: center; gap: 3px; height: 64px; }
+.wave i { width: 4px; border-radius: 2px; background: rgba(255,255,255,.75); display: block; }
+.av-audio .bigplay {
+  width: 64px; height: 64px; border-radius: 50%; border: 0; cursor: pointer;
+  background: rgba(255,255,255,.16); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* ---------- LLM 对话页：对话区 + 底部输入区 + 侧边菜单 ---------- */
+.chat-page { height: 100%; display: flex; flex-direction: column; }
+#chat { flex: 1; overflow-y: auto; min-height: 0; padding-top: 8px; }
+.chat-empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 40px 28px; color: var(--on-surface-variant); text-align: center; }
+.chat-empty .ic { width: 42px; height: 42px; opacity: .45; }
+.composer { flex: none; padding: 10px 0 4px; border-top: 1px solid var(--outline-variant); }
+.composer-top { display: flex; align-items: center; gap: 10px; }
+.model-chip { display: inline-flex; align-items: center; gap: 4px; max-width: 62%; overflow: hidden; }
+.model-chip > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.model-chip .ic { width: 15px; height: 15px; flex: none; opacity: .8; }
+.composer .ctx { flex: 1; display: flex; align-items: center; gap: 6px; min-width: 0; }
+.composer .ctx > span { font-size: 11px; color: var(--on-surface-variant); white-space: nowrap; }
+.composer .ctx .pbar { flex: 1; }
+.composer .msg-row { margin-top: 10px; }
+
+/* 侧边抽屉：会话列表 + 底部设置 */
+.drawer-mask { position: absolute; inset: 0; z-index: 40; background: rgba(0,0,0,.45); display: flex; }
+.drawer { width: 80%; max-width: 300px; height: 100%; background: var(--surface); display: flex; flex-direction: column; box-shadow: 4px 0 18px rgba(0,0,0,.35); }
+.d-head { display: flex; justify-content: space-between; align-items: center; padding: 18px 16px 10px; font-weight: 600; }
+.d-list { flex: 1; overflow-y: auto; padding: 0 8px; }
+.d-sess { display: flex; align-items: center; gap: 4px; padding: 10px; border-radius: 10px; cursor: pointer; }
+.d-sess.on { background: var(--secondary-container); }
+.d-body { flex: 1; min-width: 0; }
+.d-title { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.d-sub { font-size: 11px; color: var(--on-surface-variant); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.d-del { flex: none; border: 0; background: none; color: var(--on-surface-variant); cursor: pointer; display: inline-flex; padding: 4px; border-radius: 50%; }
+.d-del .ic { width: 15px; height: 15px; }
+.d-thumb { width: 38px; height: 38px; border-radius: 8px; flex: none; }
+.d-foot { flex: none; display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-top: 1px solid var(--outline-variant); cursor: pointer; font-size: 14px; color: var(--on-surface); }
+
+/* ---------- LLM 会话 ---------- */
+.sess-row { display: flex; gap: 6px; overflow-x: auto; padding: 8px 0 2px; scrollbar-width: none; align-items: center; }
+.sess-row::-webkit-scrollbar { display: none; }
+.sess {
+  flex: none; display: inline-flex; align-items: center; gap: 4px;
+  border: 1px solid var(--outline-variant); border-radius: 8px;
+  background: transparent; color: var(--on-surface-variant);
+  font-size: 12px; padding: 5px 8px; cursor: pointer; max-width: 140px;
+}
+.sess.on { background: var(--secondary-container); color: var(--on-secondary-container); border-color: transparent; font-weight: 500; }
+.sess .t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sess .x { display: inline-flex; opacity: .7; }
+.ctx-bar { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.ctx-bar span { flex: none; font-size: 11px; color: var(--on-surface-variant); }
+.ctx-bar .pbar { flex: 1; }
+.pbar-fill.hot { background: var(--error); }
+.msg-img { width: 120px; aspect-ratio: 1; border-radius: 10px; margin-top: 6px; }
+.attach-chip {
+  display: inline-flex; align-items: center; gap: 6px; margin-top: 6px;
+  background: var(--surface-high); border-radius: 8px; padding: 4px 8px; font-size: 12px;
+  border: 0; cursor: pointer; color: var(--on-surface-variant);
+}
+.attach-chip .th { width: 28px; height: 28px; border-radius: 6px; flex: none; }
+.attach-chip > span { display: inline-flex; }
+
+/* ---------- 素材挑选对话框网格 ---------- */
+.pick-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding: 6px 0; }
+.pick-cell { aspect-ratio: 1; border-radius: 8px; cursor: pointer; border: 2px solid transparent; }
+.pick-cell.on { border-color: var(--primary); }
+
 /* ---------- 点云预览占位 ---------- */
 .pc-stage {
   position: absolute; inset: 64px 0 0; z-index: 5;
@@ -362,3 +513,63 @@ body {
 .msg-card.ai { background: var(--surface-high); color: var(--on-surface); }
 .msg-card.sys { background: transparent; color: var(--on-surface-variant); font-size: 12px; padding: 2px 6px; margin: 0 auto; }
 .stat-grid { display: flex; gap: 16px; flex-wrap: wrap; font-size: 12px; color: var(--on-surface-variant); margin-top: 6px; }
+
+/* ---------- 空态插画（ enlarged icon + 说明 ） ---------- */
+.empty-illust { text-align: center; color: var(--on-surface-variant); padding: 72px 28px 32px; }
+.empty-illust .ic { width: 72px; height: 72px; opacity: .38; margin-bottom: 14px; }
+.empty-illust .empty-title { font-size: 15px; color: var(--on-surface); margin-bottom: 4px; }
+.empty-illust .empty-sub { font-size: 12px; }
+
+/* ---------- 角标（计数 / 进行中） ---------- */
+.count-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px;
+  background: var(--primary); color: var(--on-primary);
+  font-size: 11px; font-weight: 600; line-height: 1;
+}
+.count-badge.dot { min-width: 10px; width: 10px; height: 10px; padding: 0; border-radius: 50%; }
+
+/* ---------- 素材查看器返回键 ---------- */
+.av-back {
+  position: absolute; left: 10px; top: 8px; z-index: 8;
+  width: 40px; height: 40px; border-radius: 50%; border: 0; cursor: pointer;
+  background: rgba(255,255,255,.14); color: rgba(255,255,255,.92);
+  display: flex; align-items: center; justify-content: center;
+}
+.av-back:active { opacity: .6; }
+
+/* ---------- 生图进度预览（模糊→清晰） ---------- */
+.diff-preview {
+  position: relative; aspect-ratio: 1; border-radius: 10px; overflow: hidden;
+  background: linear-gradient(135deg, hsl(26,62%,64%), hsl(86,48%,30%));
+}
+.diff-preview .diff-img {
+  position: absolute; inset: 0;
+  background: linear-gradient(135deg, hsl(340,62%,64%), hsl(40,48%,30%));
+  filter: blur(14px) saturate(.7); transform: scale(1.06);
+  transition: filter .3s, transform .3s;
+}
+.diff-preview .diff-pct {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  color: rgba(255,255,255,.92); font-size: 20px; font-weight: 600;
+  text-shadow: 0 1px 6px rgba(0,0,0,.5);
+}
+
+/* ---------- LLM 停止生成按钮 ---------- */
+.btn.stop { background: var(--error-container); color: var(--on-error-container); }
+
+/* ---------- 批量导入选择格 ---------- */
+.as-cell .as-check {
+  position: absolute; top: 6px; right: 6px; z-index: 2;
+  width: 22px; height: 22px; border-radius: 50%;
+  background: rgba(255,255,255,.85); color: var(--primary);
+  display: flex; align-items: center; justify-content: center;
+}
+.as-cell .as-check .ic { width: 16px; height: 16px; }
+.as-cell.selected { outline: 3px solid var(--primary); outline-offset: -3px; }
+.batch-bar {
+  position: sticky; bottom: 0; z-index: 5;
+  display: flex; align-items: center; gap: 10px;
+  background: var(--surface-high); border-radius: 14px; padding: 10px 14px;
+  margin-top: 10px; box-shadow: 0 -4px 16px var(--shadow);
+}

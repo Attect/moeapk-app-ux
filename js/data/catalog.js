@@ -5,6 +5,7 @@
 // DEMO_ITEMS：真实目录当前仅 moeapk-service 一条。为撑起首页"应用/游戏"分区的多条目体感，
 // 附带了 2 条由 _example.json 模板派生的演示项（id 带 demo- 前缀）。设 false 可查看真实单条目状态。
 window.DB = window.DB || {};
+window.DB.SNAPSHOT_DATE = '2026-09-18';
 window.DB.DEMO_ITEMS = true;
 window.DB.CATALOG = [
   {
