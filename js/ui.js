@@ -151,7 +151,8 @@
       '</div>').join('');
     // 子页可在 topRight 声明一个图标按钮（如 LLM 对话的侧边菜单）
     const def0 = cur ? SCREENS[cur.page] : null;
-    const rightBtn = cur && def0.topRight ?
+    const full = !!(cur && def0.full); // 沉浸式全屏子页（如素材查看器）：无顶栏，自带悬浮返回
+    const rightBtn = cur && !full && def0.topRight ?
       '<button class="icbtn" data-a="' + def0.topRight.act + '"' + (def0.topRight.arg != null ? ' data-arg="' + esc(def0.topRight.arg) + '"' : '') + '>' + icon(def0.topRight.icon) + '</button>' :
       '<span class="icbtn"></span>';
     // 首次进入某 Tab 的轻引导（一次性横幅，点"知道了"或切走即消失）
@@ -161,10 +162,13 @@
       const tip = ONBOARD_TIPS[S.tab];
       if (tip && !S.seen[S.tab]) onboard = '<div class="onboard" data-a="onboard-ok">' + icon(tip.icon) + '<span>' + tip.text + '</span><b>知道了</b></div>';
     }
-    const html =
+    const topbar = full ? '' :
       '<header class="topbar">' + (showBack ? '<button class="icbtn" data-a="back">' + icon('arrow_back') + '</button>' : '<span class="icbtn"></span>') +
-      '<span class="topbar-title">' + esc(title) + '</span>' + rightBtn + '</header>' +
-      '<main class="content" id="content">' + content + '</main>' + bottom +
+      '<span class="topbar-title">' + esc(title) + '</span>' + rightBtn + '</header>';
+    document.body.classList.toggle('has-full', full); // 全屏页隐藏 proto-bar 调试条（避免与查看器顶部信息重叠）
+    const html =
+      topbar +
+      '<main class="content' + (full ? ' full' : '') + '" id="content">' + content + '</main>' + bottom +
       '<button class="to-top' + (S.x.showTop ? ' on' : '') + '" data-a="to-top">' + icon('arrow_upward') + '</button>' +
       onboard +
       '<div class="toast-wrap">' + toasts + '</div>' + dialogHtml();

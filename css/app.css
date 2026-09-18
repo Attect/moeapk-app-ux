@@ -97,6 +97,8 @@ body {
   border: 0; background: none; color: #ccc;
   border-radius: 999px; padding: 3px 8px; cursor: pointer; font-size: 11px;
 }
+/* 沉浸式全屏子页（素材查看器）：隐藏调试条，退到普通页自动恢复 */
+body.has-full .proto-bar { opacity: 0; pointer-events: none; transition: opacity .2s; }
 
 /* ---------- 顶栏（CenterAlignedTopAppBar） ---------- */
 #app { display: flex; flex-direction: column; height: 100%; overflow: hidden; position: relative; }
@@ -347,9 +349,9 @@ body {
   border: 1px dashed var(--outline); font-size: 12px;
 }
 
-/* ---------- 素材查看器（相册式） ---------- */
+/* ---------- 素材查看器（相册式，沉浸式全屏：无顶栏，见 ui.js full 选项） ---------- */
 .av-stage {
-  position: absolute; inset: 64px 0 0; z-index: 5;
+  position: absolute; inset: 0; z-index: 5;
   background: #0b0a0f; overflow: hidden;
   display: flex; align-items: center; justify-content: center;
 }

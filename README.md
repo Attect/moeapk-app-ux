@@ -45,6 +45,10 @@ MoeApk App（`../app`，当前 0.9.5/26）UX 的 1:1 Web 还原。**UX 调整先
 
 ## 当前设计（2026-09-18 三轮调整）
 
+### 素材查看器（沉浸式全屏）
+
+素材查看器（asset 子页）为**无顶栏全屏界面**：`registerScreen` 的 `full: true` 选项不渲染 TopAppBar（Compose 侧对应全屏 Dialog / immersive viewer），返回用左上角悬浮键（Esc / 安卓返回键同样生效），顶部悬浮序号，底部按类型变化的工具栏；全屏时 proto-bar 调试条自动隐藏。
+
 ### 横屏 / 平板适配（App 侧对应 WindowSizeClass + NavigationSuiteScaffold + ListDetailPaneScaffold）
 
 断点以 `.phone` 容器宽为准（CSS 容器查询 + JS `isRail()/isWide()` 同阈值，真机旋转/窗口变化自动重渲染）：

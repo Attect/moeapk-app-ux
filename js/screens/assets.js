@@ -226,7 +226,7 @@
   // ---------- 查看器 ----------
   registerScreen('asset', {
     title: '素材',
-    hideBack: true, // 查看器自带悬浮返回键，顶栏不再重复
+    full: true, // 沉浸式全屏：无顶栏（顶栏由悬浮返回键 + 工具栏承担），Compose 侧对应全屏 Dialog/immersive viewer
     render() {
       const list = assets();
       const a = cur();
