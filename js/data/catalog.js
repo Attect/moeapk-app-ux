@@ -11,20 +11,22 @@ window.DB.CATALOG = [
   {
     "id": "moeapk-service",
     "title": "MoeApk 服务 App",
-    "version": "0.10.0",
+    "version": "0.10.1",
     "summary": "MoeApk 服务 App：MK 通行证子授权、数据下载、端侧 AI 推理（LLM/扩散/TTS）、模型中心、素材中心（静态/视差/3D 点云/视频壁纸）、更新检测。",
     "tags": ["工具", "AI", "服务"],
     "category": "app",
     "published_at": "2026-09-18",
     "package": "com.moeapk",
-    "version_code": 27,
+    "version_code": 28,
     "min_sdk": 31,
     "channel": "stable",
     "parts": [
-      { "name": "moeapk-0.10.0.apk", "kind": "apk", "size": 6063371, "location": "b+node" }
+      { "name": "moeapk-0.10.1.apk", "kind": "apk", "size": 6059599, "location": "b+node" }
     ],
     "install": { "type": "apk", "package": "com.moeapk", "notes": "直接安装 APK。需 Android 12+。" },
     "changelog": [
+      { "version": "0.10.1", "version_code": 28, "notes": [
+        "优化：关于页与壁纸描述等界面文案精简"] },
       { "version": "0.10.0", "version_code": 27, "notes": [
         "全新界面：底部导航改为「APK / 素材 / AI / 我的」四大板块，宽屏设备自动切换为双栏布局",
         "新增：素材中心——统一管理图片、视频、音频与 3D 点云，壁纸中心能力并入，旧壁纸自动迁移",
@@ -32,8 +34,7 @@ window.DB.CATALOG = [
         "新增：收藏——应用与开源条目一键收藏，登录 MK 通行证后跨设备同步",
         "新增：生图支持图生图、负向提示词与批量出图；对话支持图片附件（需多模态模型）",
         "优化：明暗主题切换带平滑过渡动画；长列表新增回顶按钮、分区标题吸顶、空态引导",
-        "优化：应用与开源列表支持搜索与标签筛选；下载新增「仅 Wi-Fi」开关",
-        "合规：关于页补充 ML-Sharp（Apple AMLR，仅限研究用途）等开源许可声明"] },
+        "优化：应用与开源列表支持搜索与标签筛选；下载新增「仅 Wi-Fi」开关"] },
       { "version": "0.9.5", "version_code": 26, "notes": [
         "新增：3D 点云壁纸在没有专用 NPU 的机型上也能用（自动选择 GPU 或 CPU 方式重建，旗舰机型不变）",
         "优化：非旗舰机型的点云重建速度（GPU 方式比 CPU 方式快约 1.6 倍）",

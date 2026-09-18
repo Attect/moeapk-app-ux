@@ -8,7 +8,6 @@
     ['llama.cpp', 'MIT', 'Georgi Gerganov 的纯 C/C++ LLM 推理。'],
     ['ONNX Runtime', 'MIT', '微软出品的跨平台推理引擎。'],
     ['MNN', 'Apache-2.0', '阿里巴巴开源的轻量深度学习框架（扩散 CPU / 点云）。'],
-    ['ML-Sharp', 'Apple AMLR（仅限研究用途）', 'Apple 的单目 3D 高斯重建模型；权重按 Apple AMLR 仅限研究用途授权，本应用分发的 .dlc（QNN 量化）与 .mnn（fp16）权重包为格式转换后的模型衍生物，Apple 未参与本应用亦未背书。'],
     ['Kotlin', 'Apache-2.0', 'JetBrains 出品的现代 JVM 语言。'],
     ['AndroidX', 'Apache-2.0', 'Android Jetpack 扩展库。'],
     ['Jetpack Compose', 'Apache-2.0', 'Android 声明式 UI 工具包。'],
@@ -22,7 +21,7 @@
       let h = '<div style="text-align:center;padding-top:28px">' +
         '<img src="assets/ic_launcher_fg.png" alt="MoeApk" style="width:72px;height:72px;border-radius:16px;background:#fff;object-fit:cover">' +
         '<div class="headline" style="font-size:22px;margin-top:10px">MoeApk</div>' +
-        '<div class="muted">版本 0.10.0（27）</div></div>';
+        '<div class="muted">版本 0.10.1（28）</div></div>';
       h += sectionTitle('开源许可');
       h += card('<div class="card tight expander" style="padding:0;margin-top:0">' + LICENSES.map((l, i) => {
         const exp = open === i;

@@ -34,7 +34,7 @@ window.DB.AI = [
   { "type": "model", "id": "upscale-real-qnn", "name": "图片放大·写实（4x_UltraSharpV2_Lite，QNN）", "kind": "upscale", "version": "1.0.0",
     "summary": "写实照片 4 倍放大，仅 QNN NPU 可用。", "engine": "qnn",
     "parts": [ { "name": "upscaler_qnn.zip", "size": 62914560 } ] },
-  { "type": "engine", "id": "sharp-mnn", "name": "ML-Sharp 点云重建 MNN 引擎", "kind": "sharp", "version": "1.0.0",
+  { "type": "engine", "id": "sharp-mnn", "name": "3D 点云重建 MNN 引擎", "kind": "sharp", "version": "1.0.0",
     "summary": "把照片重建为可环视的三维点云场景（MNN/Vulkan，通用机型）。",
     "parts": [ { "name": "sharp-mnn-arm64-v8a.zip", "size": 890000000 } ] }
 ];

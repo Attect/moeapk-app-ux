@@ -176,7 +176,7 @@
   registerScreen('update', {
     title: '更新检测',
     render() {
-      let h = card('<div class="dl-row"><div style="flex:1"><div class="li-title">当前版本 0.10.0（27）</div></div>' +
+      let h = card('<div class="dl-row"><div style="flex:1"><div class="li-title">当前版本 0.10.1（28）</div></div>' +
         '<div style="display:flex;gap:8px;align-items:center">' +
         (DB.UPDATES.length > 1 ? btn('全部更新', 'upd-all', null, 'small') : '') +
         btn('重新检测', 'upd-check', null, 'small ghost') + '</div></div>');
