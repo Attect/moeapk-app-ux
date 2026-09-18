@@ -4,8 +4,11 @@
 (function () {
   const root = document.documentElement;
   // file:// 或隐私模式下 localStorage 可能抛异常，做兜底
+  // 也支持 ?theme=dark / ?theme=light 单次覆盖（截图/调试便利，不写 localStorage）
   let forced = null;
   try { forced = localStorage.getItem('proto-theme'); } catch (e) { /* 忽略 */ }
+  const qsTheme = (location.search.match(/[?&]theme=(dark|light)/) || [])[1];
+  if (qsTheme) forced = qsTheme;
   const media = window.matchMedia('(prefers-color-scheme: dark)');
 
   function apply() {

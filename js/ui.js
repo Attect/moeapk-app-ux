@@ -132,7 +132,7 @@
       const def = SCREENS[cur.page];
       title = typeof def.title === 'function' ? def.title(cur.arg) : def.title;
       content = def.render(cur.arg);
-      showBack = true;
+      showBack = !def.hideBack;
     } else {
       const def = SCREENS['tab:' + S.tab];
       title = typeof def.title === 'function' ? def.title() : def.title;

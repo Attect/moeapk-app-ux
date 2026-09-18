@@ -39,8 +39,7 @@
     let h = '';
     if (DB.UPDATES.length && !S.x.updateCardDismissed) {
       const names = DB.UPDATES.map(u => { const c = DB.CATALOG.find(i => i.id === u.id); return c ? c.title : u.id; });
-      h += card('<div class="dl-row" data-a="go-update" style="cursor:pointer"><div style="flex:1"><div class="li-title">发现新版本：' + esc(names.slice(0, 2).join('、')) + (DB.UPDATES.length > 2 ? ' 等 ' + DB.UPDATES.length + ' 个应用' : '') + '</div>' +
-        '<div class="li-sub">点击查看</div></div>' +
+      h += card('<div class="dl-row" data-a="go-update" style="cursor:pointer"><div style="flex:1;min-width:0"><div class="li-title" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">发现新版本：' + esc(names.slice(0, 2).join('、')) + (DB.UPDATES.length > 2 ? ' 等 ' + DB.UPDATES.length + ' 个应用' : '') + '</div></div>' +
         textBtn('查看', 'go-update') + textBtn('忽略', 'dismiss-update') + '</div>', 'update-card');
     }
     const loading = S.x.apkLoading;

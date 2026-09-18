@@ -159,6 +159,7 @@
   // ---------- 查看器 ----------
   registerScreen('asset', {
     title: '素材',
+    hideBack: true, // 查看器自带悬浮返回键，顶栏不再重复
     render() {
       const list = assets();
       const a = cur();

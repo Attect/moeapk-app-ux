@@ -51,7 +51,7 @@
     h += '<div class="composer">' +
       '<div class="composer-top">' +
       '<button class="chip model-chip" data-a="tts-voice-pick">' + icon('person') + '<span>' + esc(voice ? voice.name : '默认音色') + '</span>' + icon('expand_more') + '</button>' +
-      '<div class="chip-row" style="padding:0;flex:1;justify-content:flex-end">' +
+      '<div class="chip-row" style="padding:0;flex:1;justify-content:flex-end;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none">' +
       chip('CPU', t.device === 'cpu', 'tts-device', 'cpu') + chip('NPU', t.device === 'qnn', 'tts-device', 'qnn') + '</div></div>' +
       '<div class="msg-row">' +
       '<input class="field-input" style="flex:1" data-keep="tts-text" placeholder="输入要合成的文本…" value="' + esc(t.text) + '">' +

@@ -26,7 +26,7 @@
       h += card('<div class="card tight expander" style="padding:0;margin-top:0">' + LICENSES.map((l, i) => {
         const exp = open === i;
         return '<div class="li" data-a="lic-toggle" data-arg="' + i + '"><div class="li-body"><div class="li-title" style="font-weight:400">' + esc(l[0]) + '</div>' +
-          '<div class="li-sub">' + esc(l[1]) + '</div></div><span class="li-arrow">' + icon(exp ? 'expand_less' : 'expand_more') + '</span></div>' +
+          '<div class="li-sub">' + esc(l[1]) + '</div></div><span class="li-arrow">' + icon(exp ? 'expand_less' : 'keyboard_arrow_right') + '</span></div>' +
           (exp ? '<div class="license-text">' + esc(l[2]) + '\n\n（原型中许可证正文省略，详见 App 内 assets。）</div>' : '') +
           (i < LICENSES.length - 1 ? '<div class="hr"></div>' : '');
       }).join('') + '</div>');
