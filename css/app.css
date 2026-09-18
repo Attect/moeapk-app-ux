@@ -100,6 +100,31 @@ body {
 /* 沉浸式全屏子页（素材查看器）：隐藏调试条，退到普通页自动恢复 */
 body.has-full .proto-bar { opacity: 0; pointer-events: none; transition: opacity .2s; }
 
+/* ---------- 模拟软键盘（第四轮：验证"输入区贴键盘、零多余间隙"定案） ---------- */
+.kbdemo {
+  flex: none;
+  background: var(--surface-container);
+  border-top: 1px solid var(--outline-variant);
+  padding: 4px 6px 8px;
+}
+.kb-tag { text-align: center; font-size: 10px; color: var(--outline); padding: 2px 0 4px; }
+.kb-row { display: flex; gap: 4px; justify-content: center; margin-bottom: 4px; }
+.kb-key {
+  flex: none; min-width: 30px; height: 38px; padding: 0 6px;
+  border: 0; border-radius: 6px; cursor: pointer;
+  background: var(--surface-highest); color: var(--on-surface);
+  font-size: 14px; box-shadow: 0 1px 0 rgba(0,0,0,.15);
+}
+.kb-key.wide { min-width: 52px; }
+.kb-key.space { flex: 1; max-width: 240px; }
+.kb-key.accent { background: var(--primary); color: var(--on-primary); }
+.kb-key:active { opacity: .75; }
+
+/* 模型中心标签行（第四轮：用途/格式标签） */
+.tag-row { display: flex; gap: 4px; margin-top: 4px; flex-wrap: wrap; }
+.tag-row .achip { font-size: 10px; padding: 1px 7px; }
+.tag-row .tag-kind { background: var(--secondary-container); color: var(--on-secondary-container); }
+
 /* ---------- 顶栏（CenterAlignedTopAppBar） ---------- */
 #app { display: flex; flex-direction: column; height: 100%; overflow: hidden; position: relative; }
 .topbar {

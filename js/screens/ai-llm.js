@@ -71,7 +71,7 @@
       '<div class="msg-row">' +
       '<button class="icbtn" data-a="llm-attach" title="附加图片">' + icon('image') + '</button>';
     if (att) h += '<button class="attach-chip" data-a="llm-unattach" title="移除附件">' + assetThumb(att, 'th') + '<span>' + icon('close') + '</span></button>';
-    h += '<input class="field-input" style="flex:1" data-keep="llm-q" placeholder="输入消息…">' +
+    h += '<input class="field-input" style="flex:1" data-keep="llm-q" data-kb="1" placeholder="输入消息…">' +
       (sess && sess.thinking ?
         '<button class="btn stop" style="min-height:48px;padding:0 18px" data-a="llm-stop">' + icon('stop') + '</button>' :
         '<button class="btn" style="min-height:48px;padding:0 18px" data-a="llm-send">' + icon('send') + '</button>') + '</div>' +

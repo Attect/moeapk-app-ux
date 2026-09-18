@@ -12,7 +12,10 @@
     { id: 'as2', kind: 'image', hue: 200, label: '示例·海面', date: '2026-09-12' },
     { id: 'as3', kind: 'video', hue: 300, label: '示例·夜樱', date: '2026-09-08', meta: '0:12' },
     { id: 'as4', kind: 'image', hue: 150, label: '示例·林间', date: '2026-09-06' },
-    { id: 'as5', kind: 'image', hue: 45, label: '示例·街角', date: '2026-09-02' }
+    { id: 'as5', kind: 'image', hue: 45, label: '示例·街角', date: '2026-09-02' },
+    // 点云素材两种形态：有预览图（列表显示预览）/ 无预览图（占位符）
+    { id: 'as6', kind: 'pointcloud', hue: 26, label: '示例·晚霞·点云', date: '2026-09-16', src: 'as1', preview: true },
+    { id: 'as7', kind: 'pointcloud', hue: 200, label: '示例·海面·点云', date: '2026-09-10', src: 'as2' }
   ];
 
   const FAIL_TEXT = { unreachable: '网络不可达', timeout: '连接超时', expired: '下载地址已过期', throttled: '请求过于频繁', nospace: '存储空间不足', badhash: '校验失败' };
@@ -33,7 +36,22 @@
     pause(id) { const t = find(id); if (t) { t.status = 'paused'; render(); } },
     resume(id) { const t = find(id); if (t) { t.status = 'downloading'; render(); } },
     remove(id) { S.x.tasks = S.x.tasks.filter(t => t.id !== id); render(); },
-    fail(id, kind) { const t = find(id); if (t) { t.status = 'failed'; t.error = FAIL_TEXT[kind] || '下载失败'; render(); } },
+    fail(id, kind) { const t = find(id); if (t) { t.status = 'failed'; t.errorKind = kind; t.error = FAIL_TEXT[kind] || '下载失败'; render(); } },
+
+    // 设计语义（对应 App 前后台生命周期）：退后台下载**不暂停**（进程存活即继续），
+    // 回前台进度无缝衔接——进度只增不减，绝不因前后台切换清零。
+    setBackground(bg) {
+      S.x.bgMode = bg;
+      if (!bg) {
+        const list = S.x.tasks.filter(t => t.status === 'downloading' || t.status === 'verifying' || t.status === 'done');
+        if (list.length) {
+          const parts = list.map(t => '「' + (t.name.length > 14 ? t.name.slice(0, 14) + '…' : t.name) + '」' +
+            (t.status === 'done' ? '已完成' : Math.round(t.downloaded / t.size * 100) + '%'));
+          toast('后台期间下载未中断：' + parts.join('、'));
+        }
+      }
+      render();
+    },
 
     // 通用进度任务（AI 测试台的"下载/加载/生成"）。入 AI 任务队列（ai-queue 子页展示）。
     startJob(key, label, ms, phases) {
@@ -78,13 +96,16 @@
 
   function find(id) { return S.x.tasks.find(t => t.id === id); }
 
-  // 下载推进：每 500ms 一拍，速度按"源"略有差异，接近完成时进入校验
+  // 下载推进：每 500ms 一拍，速度按"源"略有差异，接近完成时进入校验。
+  // 前后台（S.x.bgMode）不影响推进：退后台照走，回前台进度无缝衔接。
   setInterval(() => {
     let changed = false;
     S.x.tasks.forEach(t => {
       if (t.status !== 'downloading') return;
       const speed = t.source === 1 ? 1.6e6 : 2.4e6; // bytes/tick
       if (t.downloaded === 0 && Math.random() < 0.18) { t.source = 2; changed = true; } // 偶发换源
+      t.lastSpeed = t.prevTick == null ? 0 : t.downloaded - t.prevTick;
+      t.prevTick = t.downloaded;
       t.downloaded = Math.min(t.size, t.downloaded + speed * (0.7 + Math.random() * 0.6));
       if (t.size - t.downloaded < speed) { t.status = 'verifying'; changed = true; }
       else changed = true;

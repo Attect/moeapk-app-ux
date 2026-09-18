@@ -129,6 +129,8 @@
 
     const cur = nav.current();
     app.className = cur ? '' : 'has-nav'; // Tab 页（有底栏）标记：横屏时底栏变左栏 rail
+    // 模拟键盘只在对话页有效，切走自动收起
+    if (S.x.kbDemo && (!cur || cur.page !== 'llm')) S.x.kbDemo = false;
     let title, content, showBack, bottom = '';
     if (cur) {
       const def = SCREENS[cur.page];
@@ -149,6 +151,10 @@
       '<div class="toast">' + esc(t.text) +
       (t.act ? '<button class="toast-act" data-a="' + t.act + '"' + (t.arg != null ? ' data-arg="' + esc(t.arg) + '"' : '') + '>' + esc(t.label) + '</button>' : '') +
       '</div>').join('');
+    // 第四轮：软键盘行为定案——输入框 focus 时键盘面板从底部顶起内容区，
+    // 输入区（composer）紧贴键盘上沿，两者之间**只有 composer 自身 padding，无多余空白**；
+    // 对话列表同步收缩，最后一条消息不被遮挡。（App 侧对应 imePadding 正确实现，勿重复加间距。）
+    const kbDemo = S.x.kbDemo ? kbdemoHtml() : '';
     // 子页可在 topRight 声明一个图标按钮（如 LLM 对话的侧边菜单）
     const def0 = cur ? SCREENS[cur.page] : null;
     const full = !!(cur && def0.full); // 沉浸式全屏子页（如素材查看器）：无顶栏，自带悬浮返回
@@ -168,7 +174,7 @@
     document.body.classList.toggle('has-full', full); // 全屏页隐藏 proto-bar 调试条（避免与查看器顶部信息重叠）
     const html =
       topbar +
-      '<main class="content' + (full ? ' full' : '') + '" id="content">' + content + '</main>' + bottom +
+      '<main class="content' + (full ? ' full' : '') + '" id="content">' + content + '</main>' + kbDemo + bottom +
       '<button class="to-top' + (S.x.showTop ? ' on' : '') + '" data-a="to-top">' + icon('arrow_upward') + '</button>' +
       onboard +
       '<div class="toast-wrap">' + toasts + '</div>' + dialogHtml();
@@ -218,6 +224,32 @@
       if (!!show !== !!S.x.showTop) { S.x.showTop = show; render(); }
     }
   }, true);
+
+  // ---------- 模拟软键盘（第四轮：键盘行为定案的可视化验证） ----------
+  // 设计定案：输入框 focus → 键盘顶起内容区；composer 紧贴键盘（零多余间隙）；
+  // 仅 LLM 对话页启用（该页输入框 data-kb="1"），切页自动收起。
+  function kbdemoHtml() {
+    const row = keys => '<div class="kb-row">' + keys.map(k =>
+      '<button class="kb-key' + (k.length > 1 ? ' wide' : '') + '" data-a="kb-key">' + esc(k) + '</button>').join('') + '</div>';
+    return '<div class="kbdemo">' +
+      '<div class="kb-tag">[模拟键盘 · 验证输入区贴合]</div>' +
+      row(['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p']) +
+      row(['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l']) +
+      row(['⇧', 'z', 'x', 'c', 'v', 'b', 'n', 'm', '⌫']) +
+      '<div class="kb-row"><button class="kb-key space" data-a="kb-key">空格</button>' +
+      '<button class="kb-key wide accent" data-a="kb-close">✓ 完成</button></div></div>';
+  }
+  document.addEventListener('focusin', e => {
+    if (e.target.dataset && e.target.dataset.kb === '1') {
+      if (!S.x.kbDemo) { S.x.kbDemo = true; render(); }
+    }
+  });
+  action('kb-key', () => { /* 模拟按键不回填文本，仅验证布局贴合 */ });
+  action('kb-close', (ds, el) => {
+    S.x.kbDemo = false;
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+    render();
+  });
 
   // 首次引导文案（各 Tab 一次）
   const ONBOARD_TIPS = {

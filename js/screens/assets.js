@@ -15,19 +15,31 @@
     else list.sort((x, y) => (y.date || '').localeCompare(x.date || '')); // time 默认
     return list;
   }
+  // 第四轮：网格不叠任何文字（名称/类型遮挡图片、互相看不清）。
+  // 类型只用左上角小角标图标区分；视频时长保留角标（信息必要且小）。
+  // 点云素材显示生成时保存的预览图（原图 1/4 缩放）；无预览图 → 中性占位符。
   function gridCell(a, sel, batch) {
-    let inner = '';
+    let inner = '', bg = 'linear-gradient(165deg,hsl(' + a.hue + ',62%,64%),hsl(' + ((a.hue + 60) % 360) + ',48%,30%))';
+    const corner = (ic) => '<span style="position:absolute;left:6px;top:6px;width:22px;height:22px;border-radius:6px;background:rgba(0,0,0,.42);display:flex;align-items:center;justify-content:center;color:#fff">' + icon(ic) + '</span>';
     if (a.kind === 'video') inner =
+      corner('play_arrow') +
       '<span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center"><span style="width:36px;height:36px;border-radius:50%;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;color:#fff">' + icon('play_arrow') + '</span></span>' +
       '<span style="position:absolute;right:6px;bottom:4px;font-size:10px;color:#fff;background:rgba(0,0,0,.4);border-radius:4px;padding:1px 5px">' + esc(a.meta || '0:12') + '</span>';
-    else if (a.kind === 'audio') inner =
-      '<span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.9)">' + icon('play_arrow') + '</span>' +
-      '<span style="position:absolute;left:0;right:0;bottom:4px;text-align:center;font-size:10px;color:#fff;background:rgba(0,0,0,.4)">音频</span>';
-    else if (a.kind === 'pointcloud') inner =
-      '<span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.9)">' + icon('apps') + '</span>' +
-      '<span style="position:absolute;left:0;right:0;bottom:4px;text-align:center;font-size:10px;color:#fff;background:rgba(0,0,0,.4)">3D 点云</span>';
+    else if (a.kind === 'audio') inner = corner('music_note') +
+      '<span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.9)">' + icon('play_arrow') + '</span>';
+    else if (a.kind === 'pointcloud') {
+      if (a.preview) {
+        // 有预览图：显示预览图（模拟为源图色调底 + 淡化点云标记）；App 侧为原图 1/4 缩放的真实缩略图
+        inner = corner('apps') +
+          '<span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.55)">' + icon('apps') + '</span>';
+      } else {
+        // 无预览图：中性占位符
+        bg = 'var(--surface-variant)';
+        inner = '<span style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:var(--outline)">' + icon('apps') + '</span>';
+      }
+    }
     const check = batch && sel[a.id] ? '<span class="as-check">' + icon('check_circle') + '</span>' : '';
-    return '<div class="as-cell' + (batch && sel[a.id] ? ' selected' : '') + '" data-a="av-open" data-arg="' + a.id + '" style="background:linear-gradient(165deg,hsl(' + a.hue + ',62%,64%),hsl(' + ((a.hue + 60) % 360) + ',48%,30%))">' + inner + check + '</div>';
+    return '<div class="as-cell' + (batch && sel[a.id] ? ' selected' : '') + '" data-a="av-open" data-arg="' + a.id + '" style="background:' + bg + '">' + inner + check + '</div>';
   }
   function listRow(a, sel, batch) {
     const check = batch && sel[a.id] ? '<span class="as-check">' + icon('check_circle') + '</span>' : '';
@@ -362,15 +374,16 @@
     });
     toast('扩图完成，已存为新素材');
   }));
-  // 3D 点云处理：结果作为 pointcloud 素材保存，直接切到结果查看
-  action('av-3d', () => runProc('3D 点云处理', ['下载深度模型', '重建点云', '生成 pcache'], 5200, () => {
+  // 3D 点云处理：结果作为 pointcloud 素材保存（生成时同步保存预览图：原图 1/4 缩放），直接切到结果查看
+  action('av-3d', () => runProc('3D 点云处理', ['下载深度模型', '重建点云', '生成 pcache', '生成预览图'], 5200, () => {
     const src = cur();
     const cloud = {
       id: 'as' + Date.now(), kind: 'pointcloud', hue: src.hue,
-      label: src.label + '·点云', date: '2026-09-18', src: src.id
+      label: src.label + '·点云', date: '2026-09-18', src: src.id,
+      preview: true // 预览图已生成（原图 1/4 缩放）；App 侧 AssetStore 存 thumb，列表优先用它
     };
     S.x.assets.splice(assets().indexOf(src) + 1, 0, cloud);
     S.x.viewId = cloud.id;
-    toast('点云已生成，保存为素材');
+    toast('点云已生成，保存为素材（含预览图）');
   }));
 })();
