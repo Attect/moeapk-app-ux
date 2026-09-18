@@ -25,23 +25,26 @@ MoeApk App（`../app`，当前 0.9.5/26）UX 的 1:1 Web 还原。**UX 调整先
 
 | 原型 | Compose 源 |
 |---|---|
-| `js/screens/apk.js`（tab:apk + 详情 + **favorites 收藏子页**） | `ui/apk/ApkScreen.kt`、`ApkHomeScreen.kt`、`CatalogScreens.kt`、`OpenScreens.kt`；Favorites 为新增设计 |
-| `js/screens/assets.js`（tab:assets 素材网格 + asset 查看器） | **新设计（2026-09-18）**：取代 ui/wallpaper/WallpaperCenterScreen.kt |
-| `js/screens/ai.js`（tab:ai 入口枢纽 + ai-queue 任务队列子页） | **新设计（2026-09-18）**：取代 ui/ai/AiScreen.kt 五子页结构 |
-| `js/screens/ai-llm.js`（llm / llm-config 子页） | `LlmBench.kt`（Agent 化改造后）；llm-config 为新增设计 |
-| `js/screens/ai-diffusion.js`（diffusion / diff-config 子页） | `DiffusionBench.kt`；diff-config 为新增设计 |
-| `js/screens/ai-tts.js`（tts / tts-voices 子页） | `TtsBench.kt`；tts-voices 为新增设计 |
+| `js/screens/apk.js`（tab:apk + 详情 + favorites 收藏子页） | `ui/apk/ApkScreen.kt`、`ApkHomeScreen.kt`、`CatalogScreens.kt`、`OpenScreens.kt`、`ApkRepo.kt`；收藏 `ui/favorites/FavoritesScreen.kt` + `FavoriteRepo.kt` + `:core FavoritesPref` |
+| `js/screens/assets.js`（tab:assets 素材网格 + asset 查看器） | `ui/assets/AssetsScreen.kt`、`AssetViewerScreen.kt`、`AssetDialogs.kt`、`AssetOps.kt` + `:assets`（`AssetStore`/`AssetImporter`/`AssetThumbnails`/`AssetMigrator`） |
+| `js/screens/ai.js`（tab:ai 入口枢纽 + ai-queue 任务队列子页） | `ui/ai/AiHubScreen.kt`、`AiQueueScreen.kt` + `:ai InferenceHub`/`InferenceQueue` |
+| `js/screens/ai-llm.js`（llm / llm-config 子页） | `ui/ai/LlmScreen.kt`、`LlmConfigScreen.kt` |
+| `js/screens/ai-diffusion.js`（diffusion / diff-config 子页） | `ui/ai/DiffusionScreen.kt`、`DiffConfigScreen.kt` |
+| `js/screens/ai-tts.js`（tts / tts-voices 子页） | `ui/ai/TtsScreen.kt`、`TtsVoicesScreen.kt` |
 | `js/screens/ai-models.js`（models / model-search） | `ui/ai/ModelHubScreen.kt`、`ModelSearchScreen.kt` |
-| `js/screens/download.js`（downloads 子页） | `ui/download/DownloadScreen.kt` |
+| `js/screens/download.js`（downloads 子页） | `ui/download/DownloadScreen.kt`（入口在 我的 → 下载任务） |
 | `js/screens/mine.js` | `ui/mine/MineScreen.kt` |
-| `js/screens/pages-account.js`（login/register/account/security） | `ui/account/LoginScreen.kt`、`RegisterScreen.kt`、`AccountScreen.kt`、`SecurityScreen.kt` |
+| `js/screens/pages-account.js`（login/register） | `ui/login/LoginScreen.kt`、`RegisterScreen.kt` |
+| `js/screens/pages-account.js`（account/security） | `ui/account/AccountScreen.kt`、`SecurityScreen.kt` |
 | `js/screens/pages-account.js`（update） | `ui/about/UpdateScreen.kt` |
 | `js/screens/about.js` | `ui/about/AboutScreen.kt` |
-| `js/screens/wallpaper-dialog.js`（壁纸对话框） | `WallpaperCenterScreen.kt` 的 SetWallpaperDialog / 视频壁纸对话框 |
-| `js/store.js`（导航栈/Tab） | `ui/AppRoot.kt`（MainTab/SubPage/Crossfade） |
-| `js/mock.js`（下载队列/任务进度/AI 任务队列/toast 撤销动作/网络模拟） | `:download` DownloadManager |
-| `js/ui.js`（组件库/渲染 + registerScreen 子页自动收集 + 回顶/引导/输入聚焦） | 各 M3 组件 + 本仓 EntryCard/SectionColumn 等私有组件 |
-| `css/app.css`（设计令牌） | `ui/theme/Theme.kt`（dynamic color，fallback 种子 #E8A562） |
+| `js/screens/wallpaper-dialog.js`（壁纸对话框） | `ui/assets/AssetDialogs.kt`（设桌面/锁屏/双设、动态壁纸）、`ui/wallpaper/PointCloudPreviewScreen.kt`（点云预览/取景） |
+| `js/store.js`（导航栈/Tab） | `ui/AppRoot.kt`（MainTab + `NavEntry` 参数栈）、`ui/UiBus.kt`（通用跳转） |
+| `js/mock.js`（下载队列/任务进度/AI 任务队列/toast 撤销动作/网络模拟） | `:download` DownloadManager；AI 任务队列 `:ai InferenceQueue` + `InferenceHub`；toast/撤销 `ui/UiFeedback.kt` |
+| `js/ui.js`（组件库/渲染 + registerScreen 子页自动收集 + 回顶/引导/输入聚焦） | `ui/CommonUi.kt`（`ScrollToTopBox`/`SkeletonBox`/`EmptyState`/`OnboardingTip`/`bringIntoViewOnFocus`）+ 各 M3 组件 |
+| `css/app.css`（设计令牌） | `ui/theme/Theme.kt`（dynamic color；fallback 种子 #E8A562、`onPrimary` #FFF3E6；0.22s 明暗颜色过渡） |
+
+> **App 侧对齐状态（2026-09-18）**：本表所列全部页面已按原型落到 Compose（四批次：壳层/素材/AI/APK + 主题过渡），过程与逐项差异记录见 `docs/prototype-alignment/00-overview.md`～`d-apk-and-server.md`。原型仍是 UX 的唯一变更入口（见「工作约定」第 1 条）。
 
 ## 当前设计（2026-09-18 三轮调整）
 
