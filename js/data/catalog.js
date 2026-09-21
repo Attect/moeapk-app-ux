@@ -5,26 +5,32 @@
 // DEMO_ITEMS：真实目录当前仅 moeapk-service 一条。为撑起首页"应用/游戏"分区的多条目体感，
 // 附带了 2 条由 _example.json 模板派生的演示项（id 带 demo- 前缀）。设 false 可查看真实单条目状态。
 window.DB = window.DB || {};
-window.DB.SNAPSHOT_DATE = '2026-09-19';
+window.DB.SNAPSHOT_DATE = '2026-09-21';
 window.DB.DEMO_ITEMS = true;
 window.DB.CATALOG = [
   {
     "id": "moeapk-service",
     "title": "MoeApk 服务 App",
-    "version": "0.10.2",
+    "version": "0.10.3",
     "summary": "MoeApk 服务 App：MK 通行证子授权、数据下载、端侧 AI 推理（LLM/扩散/TTS）、模型中心、素材中心（静态/视差/3D 点云/视频壁纸）、更新检测。",
     "tags": ["工具", "AI", "服务"],
     "category": "app",
-    "published_at": "2026-09-18",
+    "published_at": "2026-09-21",
     "package": "com.moeapk",
-    "version_code": 29,
+    "version_code": 30,
     "min_sdk": 31,
     "channel": "stable",
     "parts": [
-      { "name": "moeapk-0.10.2.apk", "kind": "apk", "size": 6085319, "location": "b+node" }
+      { "name": "moeapk-0.10.3.apk", "kind": "apk", "size": 6087447, "location": "b+node" }
     ],
     "install": { "type": "apk", "package": "com.moeapk", "notes": "直接安装 APK。需 Android 12+。" },
     "changelog": [
+      { "version": "0.10.3", "version_code": 30, "notes": [
+        "新增：对话模型库上线 27B 级大模型——2.13-bit 量化约 7.2GB，多模态版本另含图片理解能力（约 7.8GB）；在模型中心下载，对话时自动选用",
+        "优化：长对话更稳——上下文接近上限时自动整理更早的对话并提示，不再中断或报错",
+        "修复：多模态模型先发图片、再发纯文字时可能出错的问题",
+        "优化：KV 缓存默认量化存储，长上下文更省内存",
+        "新增：对话配置新增「图片细节」档位，可限制单张图片占用的上下文，编码更快"] },
       { "version": "0.10.2", "version_code": 29, "notes": [
         "修复：模型中心「写实图片放大」各芯片档位只下载一个却全部显示已就绪的问题",
         "修复：同名模型文件互相覆盖、切换芯片档位需重新下载的问题——各档位模型现在分开保存、可同时保留"] },
@@ -131,6 +137,6 @@ window.DB.CATALOG = [
 ];
 // 演示更新：让"更新卡"有可点状态。真实逻辑由服务端 updates 接口驱动，这里快照一条。
 window.DB.UPDATES = [
-  { "id": "moeapk-service", "version": "0.10.2", "version_code": 29, "size": 6085319, "force": true,
+  { "id": "moeapk-service", "version": "0.10.3", "version_code": 30, "size": 6085319, "force": true,
     "notes": ["演示：修复若干问题", "演示：优化壁纸加载速度"] }
 ];
