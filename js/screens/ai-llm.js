@@ -63,6 +63,15 @@
     const pct = Math.min(100, Math.round(tokens / cfg.ctxLen * 100));
     const attId = sess ? sess.attach : l.attach;
     const att = attId && (S.x.assets || []).find(a => a.id === attId);
+    // 输入区提示行（与 App 端 InputArea 同一套互斥规则，同一时刻最多一行）：
+    // 会话已建但模型未就绪 → 加载中（此时「先发送一条消息」已是过时建议——消息已发出，
+    //   模型是在发送后的队列任务里加载的，大模型可能要好几分钟）；
+    // 已就绪但无视觉能力 → 不支持附件；新对话未发过消息 → 发送后可知。
+    let hint = null;
+    if (!m) hint = '请先选择模型；目录推荐模型会在首次发送时自动下载。';
+    else if (sess && !sess.loaded) hint = '模型加载中，附件能力加载完成后可知…';
+    else if (sess && !sess.multiModal) hint = '当前模型不支持图片附件';
+    else if (!sess) hint = '附件能力需模型加载后生效：先发送一条消息即可知当前模型是否支持图片。';
     h += '<div class="composer">' +
       '<div class="composer-top">' +
       '<button class="chip model-chip" data-a="llm-pick">' + icon('smart_toy') + '<span>' + esc(m.name) + '</span>' + icon('expand_more') + '</button>' +
@@ -75,6 +84,7 @@
       (sess && sess.thinking ?
         '<button class="btn stop" style="min-height:48px;padding:0 18px" data-a="llm-stop">' + icon('stop') + '</button>' :
         '<button class="btn" style="min-height:48px;padding:0 18px" data-a="llm-send">' + icon('send') + '</button>') + '</div>' +
+      (hint ? '<div class="composer-hint">' + esc(hint) + '</div>' : '') +
       '</div>';
     if (!wide && S.x.llmDrawer) h += drawerHtml(l);
     return h + (wide ? '</div></div>' : '</div>');

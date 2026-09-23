@@ -469,6 +469,10 @@ body.has-full .proto-bar { opacity: 0; pointer-events: none; transition: opacity
 .composer .ctx > span { font-size: 11px; color: var(--on-surface-variant); white-space: nowrap; }
 .composer .ctx .pbar { flex: 1; }
 .composer .msg-row { margin-top: 10px; }
+/* 输入区提示行：与 App 端 InputArea 的互斥提示同规则（未选模型/加载中/不支持/发送后可知），最多一行 */
+.composer-hint { margin-top: 6px; font-size: 11px; color: var(--on-surface-variant); }
+/* 输入框单行 56px 起步：对齐 App 端 56dp 最小高（App 端多行长高至 180dp 后内部滚动） */
+.composer .field-input { min-height: 56px; }
 
 /* 侧边抽屉：会话列表 + 底部设置 */
 .drawer-mask { position: absolute; inset: 0; z-index: 40; background: rgba(0,0,0,.45); display: flex; }
