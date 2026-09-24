@@ -1,0 +1,30 @@
+name: 新设计提案
+description: 新页面、新流程或大改版的设计提案（大改动建议先发 Discussions 讨论）
+title: "[设计] "
+labels: ["设计提案"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: 要解决什么问题
+      description: 现有设计缺什么？面向什么使用场景？
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: 设计方案
+      description: 描述你的设计（页面结构、交互流程、与现有页面的关系）
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: 涉及范围
+      description: 哪些页面/组件会受影响？
+  - type: checkboxes
+    id: ai
+    attributes:
+      label: AI 辅助声明
+      options:
+        - label: 本提案由 AI 辅助设计/撰写（我已人工核对内容）

@@ -1,0 +1,30 @@
+name: 改进点（现有页面的问题/优化）
+description: 现有界面的 bug、细节问题或交互优化建议
+title: "[改进] "
+labels: ["改进"]
+body:
+  - type: textarea
+    id: current
+    attributes:
+      label: 现状
+      description: 现在是什么样？哪里不舒服？（注明涉及的页面/子页）
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期望
+      description: 你希望它变成什么样？
+    validations:
+      required: true
+  - type: textarea
+    id: shots
+    attributes:
+      label: 截图（可选）
+      description: 附上原型截图说明问题位置
+  - type: checkboxes
+    id: ai
+    attributes:
+      label: AI 辅助声明
+      options:
+        - label: 本 Issue 由 AI 辅助撰写（我已人工核对内容）
