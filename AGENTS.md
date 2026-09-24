@@ -1,6 +1,6 @@
 # AGENTS.md — 给 AI 编码工具的项目说明书
 
-本文件面向 AI 编码 Agent（DeepSeek Harness、KimiCode、OpenCode、MimoCode、WorkBuddy、Qoder 等），描述这个仓库的架构、技术约定与禁区。**改动前请完整阅读**；人类贡献者的流程说明见 README.md 与 CONTRIBUTING.md。
+本文件面向 AI 编码 Agent（DeepSeek Harness、KimiCode、OpenCode、MimoCode、[WorkBuddy](https://www.workbuddy.cn/events/invite?inviteCode=9ah09ti9ho2h)、[Qoder](https://qoder.cn/activities?referral_code=LYNx4WWEjZuiQ2C7eOV1jndtjPFMRR1Y) 等），描述这个仓库的架构、技术约定与禁区。**改动前请完整阅读**；人类贡献者的流程说明见 README.md 与 CONTRIBUTING.md。
 
 ## 这是什么
 

@@ -24,7 +24,7 @@
 
 ## 用 AI Agent 修改原型（推荐方式）
 
-原型是纯静态网页、没有任何构建步骤，非常适合交给 AI 编码工具（DeepSeek Harness、KimiCode、OpenCode、MimoCode、WorkBuddy、Qoder 各类 Agent 等）直接修改：
+原型是纯静态网页、没有任何构建步骤，非常适合交给 AI 编码工具（DeepSeek Harness、KimiCode、OpenCode、MimoCode、[WorkBuddy](https://www.workbuddy.cn/events/invite?inviteCode=9ah09ti9ho2h)、[Qoder](https://qoder.cn/activities?referral_code=LYNx4WWEjZuiQ2C7eOV1jndtjPFMRR1Y) 各类 Agent 等）直接修改：
 
 1. **Fork 本仓库**，并 clone 到本地；
 2. 仓库根目录有一份 **[AGENTS.md](AGENTS.md)**——这是写给 AI 的项目说明书（架构地图、技术约定、禁区清单）。主流 AI 编码工具会**自动读取**它；如果你的工具不自动读，手动把它贴给 AI 或配置为项目上下文；

@@ -3,7 +3,7 @@
 // 原型版本约定：PROTO_COMMIT / PROTO_DATE 记录本原型自身的 git 提交，
 // 由维护者在每次提交前更新为当前 HEAD（提交者无需处理）。
 // App 关于页显示同形态的一行，值为其 UX 同步所依据的原型提交。
-const PROTO_COMMIT = '069633e';
+const PROTO_COMMIT = '3fecb30';
 const PROTO_DATE = '2026-09-24';
 const PROTO_COMMIT_URL = 'https://github.com/Attect/moeapk-app-ux/commit/';
 
