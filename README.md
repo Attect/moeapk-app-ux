@@ -45,6 +45,12 @@
   - 一个 PR 只做一件事，便于评审；
 - 更多细节见 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
+## 社区讨论
+
+设计想法、使用反馈、想复活的 App，都欢迎来 QQ 群聊聊（群号 **259076133**，与 [moeapk.com](https://moeapk.com) 首页同一个群）：
+
+<img src="docs/qq_group.png" alt="萌萌安卓 QQ 群二维码" width="240">
+
 ## 仓库里有什么
 
 | 路径 | 说明 |
