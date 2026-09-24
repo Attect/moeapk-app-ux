@@ -41,7 +41,8 @@
         h += '<div id="chat">';
         sess.messages.forEach((msg, mi) => {
           if (msg.role === 'sys') { h += '<div class="msg-row"><div class="msg-card sys">' + esc(msg.text) + '</div></div>'; return; }
-          h += '<div class="msg-row"><div class="msg-card ' + msg.role + '">' +
+          h += '<div class="msg-row">' + (msg.role === 'ai' ? '<img class="msg-mascot" src="assets/chara-head.webp" alt="">' : '') +
+            '<div class="msg-card ' + msg.role + '">' +
             (msg.img != null ? assetThumb({ hue: msg.img }, 'msg-img') : '') +
             (msg.text ? esc(msg.text) : '') + '</div></div>';
           // F8 消息操作：AI 最后一条 → 复制/重新生成；用户最后一条 → 编辑重发
@@ -54,7 +55,7 @@
             h += '<div class="msg-actions"><button data-a="llm-edit-last" title="编辑并重新发送">' + icon('edit') + '</button></div>';
           }
         });
-        if (sess.thinking) h += '<div class="msg-row"><div class="msg-card ai">' + esc(sess.partial || '') + '<span class="muted">▍</span></div></div>';
+        if (sess.thinking) h += '<div class="msg-row"><img class="msg-mascot" src="assets/chara-head.webp" alt=""><div class="msg-card ai">' + esc(sess.partial || '') + '<span class="muted">▍</span></div></div>';
         h += '</div>';
       }
     }

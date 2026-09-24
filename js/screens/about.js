@@ -3,7 +3,7 @@
 // 原型版本约定：PROTO_COMMIT / PROTO_DATE 记录本原型自身的 git 提交，
 // 由维护者在每次提交前更新为当前 HEAD（提交者无需处理）。
 // App 关于页显示同形态的一行，值为其 UX 同步所依据的原型提交。
-const PROTO_COMMIT = '3fecb30';
+const PROTO_COMMIT = '8dd7aa2';
 const PROTO_DATE = '2026-09-24';
 const PROTO_COMMIT_URL = 'https://github.com/Attect/moeapk-app-ux/commit/';
 
@@ -28,7 +28,7 @@ const PROTO_COMMIT_URL = 'https://github.com/Attect/moeapk-app-ux/commit/';
       const open = S.x.licenseOpen;
       let h = '<div style="text-align:center;padding-top:28px">' +
         '<img src="assets/ic_launcher_fg.png" alt="MoeApk" style="width:72px;height:72px;border-radius:16px;background:#fff;object-fit:cover">' +
-        '<div class="headline" style="font-size:22px;margin-top:10px">MoeApk</div>' +
+        '<div class="headline moe-brand" style="font-size:24px;margin-top:6px">MoeApk</div>' +
         '<div class="muted">版本 0.10.3（30）</div>' +
         '<div class="muted small" style="margin-top:4px">界面原型 <a href="' + PROTO_COMMIT_URL + PROTO_COMMIT + '" style="color:var(--primary)">' + PROTO_COMMIT + '</a>（' + PROTO_DATE + '）</div></div>';
       h += sectionTitle('开源许可');

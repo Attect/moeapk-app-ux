@@ -41,11 +41,28 @@
 | `js/store.js`（导航栈/Tab） | `ui/AppRoot.kt`（MainTab + `NavEntry` 参数栈）、`ui/UiBus.kt`（通用跳转） |
 | `js/mock.js`（下载队列/任务进度/AI 任务队列/toast 撤销动作/网络模拟） | `:download` DownloadManager；AI 任务队列 `:ai InferenceQueue` + `InferenceHub`；toast/撤销 `ui/UiFeedback.kt` |
 | `js/ui.js`（组件库/渲染 + registerScreen 子页自动收集 + 回顶/引导/输入聚焦） | `ui/CommonUi.kt`（`ScrollToTopBox`/`SkeletonBox`/`EmptyState`/`OnboardingTip`/`bringIntoViewOnFocus`）+ 各 M3 组件 |
-| `css/app.css`（设计令牌） | `ui/theme/Theme.kt`（dynamic color；fallback 种子 #E8A562、`onPrimary` #FFF3E6；0.22s 明暗颜色过渡） |
+| `css/app.css`（设计令牌） | `ui/theme/Theme.kt`（dynamic color；fallback MoeApk 主题：樱粉 #E94E8A 系渐变、玻璃表面、彩色软阴影；0.22s 明暗颜色过渡） |
 
 > **App 侧对齐状态（2026-09-18）**：上表所列全部页面已按原型落到 Compose（壳层/素材/AI/APK + 主题过渡）。原型仍是 UX 的唯一变更入口（见「工作约定」第 1 条）。
 
 ## 设计沿革
+
+### 第七轮（2026-09-25，MoeApk 二次元风格全面改版）
+
+原型从 Material 3 原生观感全面转为**二次元「MoeApk」主题**，色彩全部取自吉祥物安卓娘设定图：樱粉（蝴蝶结）/ 抹茶绿（裙）/ 天空蓝（鞋）/ 紫藤（点缀）。
+
+**表现语言**：
+
+1. **背景**：多层柔光 mesh 渐变（浅色=樱粉/薄荷/天蓝/奶油光斑；暗色=紫夜极光），内容滚动其上。
+2. **玻璃质感**：卡片半透明 + 1px 亮色描边 + 彩色软阴影；`backdrop-filter` 模糊**只用于 chrome 层**（顶栏/底栏/抽屉/对话框/悬浮条/吸顶标题），列表卡片不模糊（性能预算）。
+3. **发光**：主按钮/选中 chip/导航选中/开关/进度条/角标使用樱粉渐变 + 小面积彩色光晕（`--glow-primary`/`--glow-soft` 令牌）。
+4. **渐变文字**：顶栏标题、`.headline`、`.sec-title` 用粉→紫渐变文字；`.section-title`（吸顶）为保持可读性用纯色 + ✦ 前缀。
+5. **吉祥物**：统一为 Grok Bot 大头风（黑色胶囊眼 / 无嘴鼻 / 椭圆腮红 / 微歪头 / 色块无描边），两种姿态差分 × 明暗两版共 4 张透明素材（合计约 108KB）：日常问候（我的页横幅 + LLM 对话 AI 消息小头像）、眯眯笑眼迎宾（登录页）；**暗色一律换靛紫睡帽 + 睡衣领口版**，HTML 双 `<img>` + CSS `d-only`/`n-only` 工具类按主题切换。素材由设定图经 Qwen-Image 2.1（RGBA 模板）重绘生成，**制作手册（来源/风格规范/生成流程/提示词模板）见 [mascot-assets.md](mascot-assets.md)**。
+6. **暗色差异化**：暗色「星夜」不只是反白——更深的紫夜底色、更亮的发光、独立的睡帽版吉祥物。
+7. **点缀动画**：hero 区 2-3 颗 ✦ 闪烁（transform/opacity）、登录页大头浮动；`prefers-reduced-motion` 全部停用。
+8. **设计令牌**：沿用旧令牌名（`--surface-*`/`--primary` 等）改值，新增 `--grad-*`（渐变）、`--glass-*`（玻璃）、`--glow-*`（发光）、`--bg-mesh`（背景）四组；`avatar()` 改为经 `--ah` 传色相由 CSS 生成渐变。
+
+**App 同步要点**：Compose 侧对应 = Theme.kt 换种子/角色（樱粉 #E94E8A 系）+ 卡片/顶栏/底栏的半透明与描边 + 小面积 shadow 光晕；吉祥物素材与明暗切换逻辑可直接复用 assets/chara-*.webp（暗色一律换 `-night` 版）。动态取色开启时以系统色为准，本主题为 fallback。
 
 ### 第六轮（2026-09-24，软键盘避让修正）
 
@@ -165,7 +182,7 @@ LLM 对话输入框聚焦时弹出模拟键盘面板（仅原型演示用），�
 
 ## 与真机的刻意差异（原型简化）
 
-- 动态取色不可还原，统一用 fallback 种子色 #E8A562（+M3 baseline 其余角色）。
+- 动态取色不可还原，统一用 fallback 主题「MoeApk」（樱粉 #E94E8A 系，见第七轮）。
 - 开源条目图标用首字占位图（原型离线，不请求网络图标）。
 - 下拉刷新为"点击模拟"链接；点云预览用 CSS 粒子舞台代替 GL 渲染。
 - AI 对话/生图/语音结果均为模拟数据，用于验证布局与流程，不验证模型效果。

@@ -5,6 +5,18 @@
     render() {
       const cache = S.x.iconCache = S.x.iconCache || { count: 12, bytes: 7340032, mem: 30, disk: 12, net: 4 };
       let h = '';
+      // 吉祥物问候横幅（MoeApk 主题：渐变 hero + Grok Bot 大头，明暗双版）
+      h += '<div class="moe-hero">' +
+        '<div class="moe-hero-text">' +
+        '<div class="moe-hero-title">' + (S.loggedIn && S.user ? esc(S.user.name) + '，欢迎回来！' : '你好呀，游客！') + '</div>' +
+        '<div class="moe-hero-sub"><span class="moe-brand">MoeApk</span> · 萌萌安卓<br>今天也要元气满满地折腾哦</div>' +
+        '</div>' +
+        '<img class="moe-hero-img d-only" src="assets/chara-head.webp" alt="安卓娘">' +
+        '<img class="moe-hero-img n-only" src="assets/chara-head-night.webp" alt="安卓娘">' +
+        '<span class="sparkle" style="left:50%;top:16px">✦</span>' +
+        '<span class="sparkle s2" style="left:44%;top:56px;font-size:9px">✧</span>' +
+        '<span class="sparkle s3" style="left:62%;bottom:18px;font-size:8px">✦</span>' +
+        '</div>';
       // 账户
       h += sectionTitle('账户');
       h += card(listItem({

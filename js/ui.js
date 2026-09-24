@@ -25,7 +25,8 @@
   window.avatar = (title, cls) => {
     let hsh = 0; for (const c of title) hsh = (hsh * 31 + c.charCodeAt(0)) >>> 0;
     const hue = AVATAR_HUES[hsh % AVATAR_HUES.length];
-    return '<div class="avatar ' + (cls || '') + '" style="background:hsl(' + hue + ',26%,42%)">' + esc(title.trim()[0] || '?') + '</div>';
+    // 色相经 --ah 传给 CSS，由样式表生成柔和渐变（MoeApk 主题）
+    return '<div class="avatar ' + (cls || '') + '" style="--ah:' + hue + '">' + esc(title.trim()[0] || '?') + '</div>';
   };
 
   // ---------- 组件 ----------

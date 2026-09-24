@@ -1,5 +1,5 @@
-// 主题：Material 3 观感。App 侧为动态取色（Android 12+），fallback 种子色 #E8A562（纸箱橙），
-// 这里以 fallback 方案为基准：primary 覆盖为种子色，其余角色取 M3 baseline。
+// 主题：MoeApk（二次元）双主题。App 侧为动态取色（Android 12+），fallback 种子色为樱粉 #E94E8A，
+// 原型以该 fallback 方案为基准：primary 渐变樱粉，辅助色抹茶绿/天空蓝/紫藤（取自吉祥物设定图）。
 // 明/暗跟随系统，也可在原型内手动切换（App 无手动切换，此为原型调试便利）。
 (function () {
   const root = document.documentElement;

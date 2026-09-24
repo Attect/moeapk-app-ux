@@ -7,6 +7,9 @@
     render() {
       const err = S.x.loginErr;
       return '<div class="form-pad">' +
+        '<div class="login-mascot">' +
+        '<img class="d-only" src="assets/chara-head-hi.webp" alt="安卓娘">' +
+        '<img class="n-only" src="assets/chara-head-hi-night.webp" alt="安卓娘"></div>' +
         '<div class="headline">登录 MK 通行证</div>' +
         '<div class="sub">用户名 + 身份验证器动态码登录，无密码、不开放注册。</div>' +
         field({ id: 'login-name', label: '用户名', error: err === 'name' ? '请输入用户名' : '' }) +
