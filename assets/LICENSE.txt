@@ -1,0 +1,7 @@
+品牌素材许可说明
+
+本目录（assets/）内的文件——包括 logo、图标、MoeApk 字体（MoeApk.ttf）——
+不适用仓库根目录的 MIT 许可，著作权人（attect）保留所有权利。
+
+仅允许在为向本仓库（Attect/moeapk-app-ux）贡献而 fork/修改的范围内使用；
+不得二次分发，不得用于其他产品。

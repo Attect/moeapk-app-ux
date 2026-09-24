@@ -60,4 +60,4 @@
 ## 许可证
 
 - **代码**（HTML/CSS/JS）：[MIT](LICENSE)，可自由使用修改；
-- **`assets/` 内的品牌素材**（logo、图标、MoeApk 字体）：**不适用 MIT，保留所有权利**——仅允许在为向本仓库贡献而 fork/修改的范围内使用，不得二次分发或用于其他产品。
+- **`assets/` 内的品牌素材**（logo、图标、MoeApk 字体）：不适用 MIT，保留所有权利（见 [assets/LICENSE.txt](assets/LICENSE.txt)）——仅允许在为向本仓库贡献而 fork/修改的范围内使用，不得二次分发或用于其他产品。
