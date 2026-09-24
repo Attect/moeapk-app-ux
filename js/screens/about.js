@@ -1,4 +1,12 @@
-// 关于页：版本信息 + 开源许可列表。对应 ui/about/AboutScreen.kt
+// 关于页：版本信息 + 原型版本（git 提交）+ 开源许可列表。对应 ui/about/AboutScreen.kt
+//
+// 原型版本约定：PROTO_COMMIT / PROTO_DATE 记录本原型自身的 git 提交，
+// 由维护者在每次提交前更新为当前 HEAD（提交者无需处理）。
+// App 关于页显示同形态的一行，值为其 UX 同步所依据的原型提交。
+const PROTO_COMMIT = 'd8f0b69';
+const PROTO_DATE = '2026-09-24';
+const PROTO_COMMIT_URL = 'https://github.com/Attect/moeapk-app-ux/commit/';
+
 (function () {
   const LICENSES = [
     ['LocalDream', 'CC BY-NC 4.0', '生图引擎应用（本地 Diffusion）。署名-非商业性使用。'],
@@ -21,7 +29,8 @@
       let h = '<div style="text-align:center;padding-top:28px">' +
         '<img src="assets/ic_launcher_fg.png" alt="MoeApk" style="width:72px;height:72px;border-radius:16px;background:#fff;object-fit:cover">' +
         '<div class="headline" style="font-size:22px;margin-top:10px">MoeApk</div>' +
-        '<div class="muted">版本 0.10.3（30）</div></div>';
+        '<div class="muted">版本 0.10.3（30）</div>' +
+        '<div class="muted small" style="margin-top:4px">界面原型 <a href="' + PROTO_COMMIT_URL + PROTO_COMMIT + '" style="color:var(--primary)">' + PROTO_COMMIT + '</a>（' + PROTO_DATE + '）</div></div>';
       h += sectionTitle('开源许可');
       h += card('<div class="card tight expander" style="padding:0;margin-top:0">' + LICENSES.map((l, i) => {
         const exp = open === i;
