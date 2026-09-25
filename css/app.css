@@ -321,6 +321,7 @@ body.has-full .proto-bar { opacity: 0; pointer-events: none; transition: opacity
   font-size: 12px; color: var(--on-surface-variant);
   background: var(--surface-container);
   border: 1px solid var(--outline-variant); border-radius: 999px; padding: 2px 10px;
+  white-space: nowrap; /* 永不竖排折行；空间不够由 .entry-chips 的 flex-wrap 整颗换行 */
 }
 .entry-summary {
   font-size: 14px; color: var(--on-surface-variant);
