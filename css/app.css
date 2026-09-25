@@ -266,12 +266,25 @@ body.has-full .proto-bar { opacity: 0; pointer-events: none; transition: opacity
 .small { font-size: 12px; }
 .center { text-align: center; }
 .mono { font-family: ui-monospace, Consolas, monospace; }
+/* 分组标题（I3 吸顶；第八轮定案：玻璃胶囊）——
+ * ① 组前 26px 大留白（原 14px 与「标题→卡片」间距雷同，分组边界不辨）；
+ * ② 玻璃底收缩为文字宽胶囊（原满宽负 margin 横带），滚动吸顶时不再整带压住卡片软阴影；
+ * ③ top: 6px 悬浮（原 -8px 顶死滚动区上沿），滑过内容在胶囊上下留有缝隙。 */
 .section-title {
-  font-size: 14px; font-weight: 600;
-  padding: 14px 8px 4px; margin: 0 -4px;
+  position: sticky; top: 6px; z-index: 3;
+  width: fit-content; max-width: 100%;
+  margin: 26px 0 0 4px; padding: 6px 13px;
+  font-size: 13px; font-weight: 700; letter-spacing: .3px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   color: var(--primary);
+  background: var(--glass-chrome);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--glass-brd);
+  border-radius: 999px;
 }
-.section-title::before { content: '✦'; margin-right: 6px; font-size: 11px; }
+.section-title::before { content: '✦'; margin-right: 6px; font-size: 10px; }
+/* 页首首个分组标题上方无卡片，组前留白收敛 */
+.content > .section-title:first-child { margin-top: 14px; }
 .sec-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 4px 2px; }
 .sec-title {
   font-size: 14px; font-weight: 600;
@@ -812,7 +825,7 @@ body.has-full .proto-bar { opacity: 0; pointer-events: none; transition: opacity
 /* ---------- 主题切换过渡（I8：Compose 侧对应 animateColor） ---------- */
 body, .card, .li, .topbar, .navbar, .chip, .btn, .tbtn, .field-input,
 .content, .composer, .msg-card, .drawer, .dlg, .toast, .switch, .as-cell,
-.batch-bar, .onboard, .d-sess, .empty-illust {
+.batch-bar, .onboard, .d-sess, .empty-illust, .section-title {
   transition: background-color .22s ease, color .22s ease, border-color .22s ease, background .22s ease;
 }
 
@@ -855,13 +868,8 @@ body, .card, .li, .topbar, .navbar, .chip, .btn, .tbtn, .field-input,
 .onboard span { flex: 1; }
 .onboard b { flex: none; color: var(--primary); font-weight: 700; }
 
-/* ---------- 吸顶分区标题（I3 · 玻璃条防穿帮） ---------- */
-.section-title {
-  position: sticky; top: -8px; z-index: 3; padding-top: 10px;
-  background: var(--glass-chrome);
-  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-  border-radius: 12px;
-}
+/* ---------- 吸顶分区标题（I3）----------
+ * 样式已并入上方 .section-title 主定义（第八轮胶囊化），此节不再重复声明。 */
 
 /* ---------- 搜索与筛选（F1） ---------- */
 .search-row { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
