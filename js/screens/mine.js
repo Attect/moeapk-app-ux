@@ -1,15 +1,54 @@
 // 我的 Tab。对应 ui/mine/MineScreen.kt
+
+// ---------- 第八轮文案：hero 问候语 ----------
+// 未登录时标题按一天时段随机问候（登录时保持「用户名，欢迎回来！」）；
+// 第三行（品牌行 <br> 后）从随机池抽取。同一小时内复用已抽中的句子，避免每次 render 文案闪变。
+var HERO_GREETINGS = [ // from = 起始小时（升序），命中最后一个 from <= 当前小时 的时段
+  { from: 0,  name: '午夜', lines: ['该睡了哦~', '夜深人静，早点休息吧', '月亮都困了，你也该睡了'] },
+  { from: 4,  name: '黎明', lines: ['是不是熬穿了，注意身体', '天蒙蒙亮了，喝口水休息一下吧', '通宵虽爽，可别贪杯哦'] },
+  { from: 6,  name: '早上', lines: ['精神满满的一天开始了', '早安！今天也是崭新的一天', '早上好，元气加载完成~'] },
+  { from: 11, name: '中午', lines: ['现在适合放松一下呢', '午饭时间到，先犒劳一下自己', '中午好，给自己充充电吧'] },
+  { from: 13, name: '下午', lines: ['努力的一天~继续加油', '下午时光，效率拉满', '保持节奏，稳稳前进'] },
+  { from: 18, name: '傍晚', lines: ['晚霞正好，歇一会儿吧', '夕阳西下，辛苦一天啦', '傍晚的风，最适合出去走走'] },
+  { from: 20, name: '晚上', lines: ['精神满满自由时刻', '夜晚时间，做自己喜欢的事', '夜猫子模式，启动~'] }
+];
+var HERO_SUBS = [
+  '应用、壁纸、AI，都在等你哦',
+  '今天想折腾点什么好呢',
+  '安卓娘陪你一起折腾~',
+  '慢慢逛，发现喜欢的应用吧',
+  '开源世界里藏着好多宝藏'
+];
+// 抽句逻辑抽成函数便于走查（可按小时直调验证各时段）：heroCopyFor(hour) -> {hour, slot, greet, sub}
+function heroCopyFor(hour) {
+  let slot = HERO_GREETINGS[0];
+  for (const g of HERO_GREETINGS) { if (g.from <= hour) slot = g; }
+  return {
+    hour: hour, slot: slot.name,
+    greet: slot.lines[Math.floor(Math.random() * slot.lines.length)],
+    sub: HERO_SUBS[Math.floor(Math.random() * HERO_SUBS.length)]
+  };
+}
+function heroCopy() {
+  const h = new Date().getHours();
+  const c = S.x.heroCopy;
+  if (c && c.hour === h) return c;
+  return (S.x.heroCopy = heroCopyFor(h));
+}
+
 (function () {
   registerScreen('tab:mine', {
     title: '我的',
     render() {
       const cache = S.x.iconCache = S.x.iconCache || { count: 12, bytes: 7340032, mem: 30, disk: 12, net: 4 };
+      const hero = heroCopy();
       let h = '';
       // 吉祥物问候横幅（MoeApk 主题：渐变 hero + Grok Bot 大头，明暗双版）
+      // 第八轮文案：未登录标题 = 时段随机问候（heroCopy）；第三行 = 随机池（登录/未登录同池）
       h += '<div class="moe-hero">' +
         '<div class="moe-hero-text">' +
-        '<div class="moe-hero-title">' + (S.loggedIn && S.user ? esc(S.user.name) + '，欢迎回来！' : '你好呀，游客！') + '</div>' +
-        '<div class="moe-hero-sub"><span class="moe-brand">MoeApk</span> · 萌萌安卓<br>今天也要元气满满地折腾哦</div>' +
+        '<div class="moe-hero-title">' + (S.loggedIn && S.user ? esc(S.user.name) + '，欢迎回来！' : esc(hero.greet)) + '</div>' +
+        '<div class="moe-hero-sub"><span class="moe-brand">MoeApk</span> · 萌萌安卓<br>' + esc(hero.sub) + '</div>' +
         '</div>' +
         '<img class="moe-hero-img d-only" src="assets/chara-head.webp" alt="安卓娘">' +
         '<img class="moe-hero-img n-only" src="assets/chara-head-night.webp" alt="安卓娘">' +
