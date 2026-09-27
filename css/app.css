@@ -66,6 +66,10 @@
   --glow-soft: 0 4px 14px -4px rgba(233,78,138,.32);
   --ring-focus: 0 0 0 3px rgba(233,78,138,.20);
 
+  /* ---------- chrome 尺寸令牌（第十轮：顶栏 64→52 / 底栏 80→64 减薄） ---------- */
+  --topbar-h: 52px;
+  --navbar-h: 64px;
+
   /* ---------- 背景（多层柔光 mesh） ---------- */
   --bg-mesh:
     radial-gradient(120% 70% at 8% -4%, rgba(255,214,230,.85) 0%, transparent 55%),
@@ -192,7 +196,7 @@ body.has-full .proto-bar { opacity: 0; pointer-events: none; transition: opacity
 /* ---------- 顶栏（CenterAlignedTopAppBar · 玻璃模糊） ---------- */
 #app { display: flex; flex-direction: column; height: 100%; overflow: hidden; position: relative; }
 .topbar {
-  height: 64px; flex: none;
+  height: var(--topbar-h); flex: none;
   display: flex; align-items: center; padding: 0 8px;
   background: var(--glass-chrome);
   backdrop-filter: var(--blur-chrome); -webkit-backdrop-filter: var(--blur-chrome);
@@ -223,10 +227,22 @@ body.has-full .proto-bar { opacity: 0; pointer-events: none; transition: opacity
 }
 .content::-webkit-scrollbar { display: none; }
 .ptr-hint { text-align: center; color: var(--on-surface-variant); font-size: 12px; padding: 8px 0 0; }
+/* 下拉刷新指示器（第十轮定案，对应 App PullToRefreshBox）：玻璃圆底 + 主题樱粉圆环，
+ * 悬浮于内容顶部中央，刷新期间列表保持可见（不再整列表替换为菊花）。 */
+.ptr-indicator {
+  position: absolute; top: calc(var(--topbar-h) + 8px); left: 50%; transform: translateX(-50%); z-index: 8;
+  width: 40px; height: 40px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--glass-chrome);
+  backdrop-filter: var(--blur-chrome); -webkit-backdrop-filter: var(--blur-chrome);
+  border: 1px solid var(--glass-brd);
+  box-shadow: var(--shadow-float);
+}
+.ptr-indicator .spinner { width: 20px; height: 20px; border-width: 2.5px; }
 
 /* ---------- 底部导航（NavigationBar · 玻璃模糊 + 发光选中） ---------- */
 .navbar {
-  flex: none; height: 80px; padding-bottom: 8px;
+  flex: none; height: var(--navbar-h); padding-bottom: 4px;
   display: flex;
   background: var(--glass-chrome);
   backdrop-filter: var(--blur-chrome); -webkit-backdrop-filter: var(--blur-chrome);
@@ -488,7 +504,7 @@ body.has-full .proto-bar { opacity: 0; pointer-events: none; transition: opacity
 
 /* ---------- Toast（SnackBar 语义 · 深色玻璃） ---------- */
 .toast-wrap {
-  position: absolute; left: 16px; right: 16px; bottom: 96px; z-index: 50;
+  position: absolute; left: 16px; right: 16px; bottom: calc(var(--navbar-h) + 16px); z-index: 50;
   display: flex; flex-direction: column; align-items: center; gap: 8px;
   pointer-events: none;
 }
@@ -704,7 +720,7 @@ body.has-full .proto-bar { opacity: 0; pointer-events: none; transition: opacity
 
 /* ---------- 点云预览占位 ---------- */
 .pc-stage {
-  position: absolute; inset: 64px 0 0; z-index: 5;
+  position: absolute; inset: var(--topbar-h) 0 0; z-index: 5;
   background: radial-gradient(120% 90% at 50% 20%, #2b2140 0%, #120e1c 60%, #060409 100%);
   overflow: hidden; cursor: grab;
 }
@@ -849,7 +865,7 @@ body, .card, .li, .topbar, .navbar, .chip, .btn, .tbtn, .field-input,
 
 /* ---------- 回顶按钮（I3） ---------- */
 .to-top {
-  position: absolute; right: 14px; bottom: 84px; z-index: 8;
+  position: absolute; right: 14px; bottom: calc(var(--navbar-h) + 4px); z-index: 8;
   width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--glass-brd); cursor: pointer;
   background: var(--glass-chrome);
   backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
@@ -865,7 +881,7 @@ body, .card, .li, .topbar, .navbar, .chip, .btn, .tbtn, .field-input,
 
 /* ---------- 首次引导横幅（I1） ---------- */
 .onboard {
-  position: absolute; left: 14px; right: 14px; bottom: 78px; z-index: 9;
+  position: absolute; left: 14px; right: 14px; bottom: calc(var(--navbar-h) - 2px); z-index: 9;
   display: flex; align-items: center; gap: 10px;
   background: var(--grad-soft), var(--surface-high);
   border: 1px solid var(--glass-brd);
@@ -1025,7 +1041,7 @@ body, .card, .li, .topbar, .navbar, .chip, .btn, .tbtn, .field-input,
 /* ---------- ≥720px：NavigationRail ---------- */
 @container (min-width: 720px) {
   #app.has-nav .navbar {
-    position: absolute; left: 0; top: 64px; bottom: 0; width: 84px;
+    position: absolute; left: 0; top: var(--topbar-h); bottom: 0; width: 84px;
     flex-direction: column; height: auto; padding: 12px 0;
     border-top: 0; border-right: 1px solid var(--glass-brd);
     z-index: 6;

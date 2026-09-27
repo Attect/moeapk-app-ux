@@ -130,6 +130,24 @@
     const selPos = active && active.selectionStart != null ? active.selectionStart : null;
 
     const cur = nav.current();
+    // 滚动位置记忆（第十轮，对应 App 侧 SaveableStateHolder 按页留存列表态）：
+    // 屏标识 = tab+子分类 / 子页+参数；切屏前把旧屏位置记入 S.scrollMem，
+    // 回到旧屏（详情返回列表、切回 Tab）时还原；同屏重渲染保持原位——
+    // 顺带修复回顶按钮显隐触发 render 导致的滚动归零。
+    const oldC = document.getElementById('content');
+    const prevScroll = oldC ? oldC.scrollTop : 0;
+    const ident = cur ? 'sub:' + cur.page + '/' + (cur.arg || '')
+      : 'tab:' + S.tab + '/' + (S.tab === 'apk' ? S.apkSub : S.tab === 'ai' ? S.aiTab : '');
+    S.scrollMem = S.scrollMem || {};
+    let nextScroll;
+    if (app.__ident !== ident) {
+      if (app.__ident != null) S.scrollMem[app.__ident] = prevScroll;
+      app.__ident = ident;
+      nextScroll = S.scrollMem[ident] || 0;
+      S.x.showTop = nextScroll > 480; // 换屏即按目标位置校正回顶按钮（不带旧屏残值）
+    } else {
+      nextScroll = prevScroll;
+    }
     app.className = cur ? '' : 'has-nav'; // Tab 页（有底栏）标记：横屏时底栏变左栏 rail
     // 模拟键盘只在对话页有效，切走自动收起
     if (S.x.kbDemo && (!cur || cur.page !== 'llm')) S.x.kbDemo = false;
@@ -165,20 +183,24 @@
     const rightBtn = !full && tr ?
       '<button class="icbtn" data-a="' + tr.act + '"' + (tr.arg != null ? ' data-arg="' + esc(tr.arg) + '"' : '') + '>' + icon(tr.icon) + '</button>' :
       '<span class="icbtn"></span>';
-    // 首次进入某 Tab 的轻引导（一次性横幅，点"知道了"或切走即消失）
+    // 首次进入某 Tab 的轻引导（一次性横幅，点"知道了"永久消失——
+    // 第十轮修订：已读标记持久化到 localStorage，冷启动/刷新不再重现；
+    // 悬浮于底栏之上（不占布局），消除它不会引起任何内容位移。对应 App 侧 OnboardPref。）
     let onboard = '';
     if (!cur) {
-      S.seen = S.seen || {};
+      const seen = seenLoad();
       const tip = ONBOARD_TIPS[S.tab];
-      if (tip && !S.seen[S.tab]) onboard = '<div class="onboard" data-a="onboard-ok">' + icon(tip.icon) + '<span>' + tip.text + '</span><b>知道了</b></div>';
+      if (tip && !seen[S.tab]) onboard = '<div class="onboard" data-a="onboard-ok">' + icon(tip.icon) + '<span>' + tip.text + '</span><b>知道了</b></div>';
     }
     const topbar = full ? '' :
       '<header class="topbar">' + (showBack ? '<button class="icbtn" data-a="back">' + icon('arrow_back') + '</button>' : '<span class="icbtn"></span>') +
       '<span class="topbar-title">' + esc(title) + '</span>' + rightBtn + '</header>';
     document.body.classList.toggle('has-full', full); // 全屏页隐藏 proto-bar 调试条（避免与查看器顶部信息重叠）
+    // 下拉刷新指示器（第十轮）：刷新期间悬浮于内容顶部，列表保持原位可见
+    const ptr = S.x.apkLoading ? '<div class="ptr-indicator"><div class="spinner"></div></div>' : '';
     const html =
       topbar +
-      '<main class="content' + (full ? ' full' : '') + '" id="content">' + content + '</main>' + kbDemo + bottom +
+      '<main class="content' + (full ? ' full' : '') + '" id="content">' + content + '</main>' + kbDemo + bottom + ptr +
       '<button class="to-top' + (S.x.showTop ? ' on' : '') + '" data-a="to-top">' + icon('arrow_upward') + '</button>' +
       onboard +
       '<div class="toast-wrap">' + toasts + '</div>' + dialogHtml();
@@ -198,7 +220,7 @@
       }
     }
     const c = document.getElementById('content');
-    if (c && S.x.scrollTop != null) { c.scrollTop = S.x.scrollTop; S.x.scrollTop = null; }
+    if (c && c.scrollTop !== nextScroll) c.scrollTop = nextScroll;
   };
 
   // ---------- 全局事件 ----------
@@ -220,10 +242,9 @@
     const live = e.target.dataset && e.target.dataset.live;
     if (live && ACTIONS[live]) ACTIONS[live](e.target.dataset, e.target);
   });
-  // 屏幕滚动位置保存（返回时还原由具体页面处理，这里仅记录）+ 回顶按钮显隐
+  // 回顶按钮显隐（滚动位置的记忆/还原统一由 render() 的 S.scrollMem 机制承担）
   document.addEventListener('scroll', e => {
     if (e.target && e.target.id === 'content') {
-      S._scroll = e.target.scrollTop;
       const show = e.target.scrollTop > 480;
       if (!!show !== !!S.x.showTop) { S.x.showTop = show; render(); }
     }
@@ -262,7 +283,24 @@
     ai: { icon: 'auto_awesome', text: 'AI 模块全部端侧运行：对话 / 生图 / 语音 / 模型管理，任务在队列中排队' },
     mine: { icon: 'person', text: '登录 MK 通行证可多设备同步；下载任务与源偏好在「下载」中管理' }
   };
-  action('onboard-ok', () => { S.seen = S.seen || {}; S.seen[S.tab] = true; render(); });
+  // 「知道了」已读集合：localStorage 持久化（file:// 或隐私模式降级为会话级），
+  // 每个 Tab 的引导全程只出现一次，不再反复占用屏幕空间
+  function seenLoad() {
+    if (!S.seen) {
+      S.seen = {};
+      try {
+        (JSON.parse(localStorage.getItem('proto-onboard-seen') || '[]') || [])
+          .forEach(t => { S.seen[t] = true; });
+      } catch (e) { /* 忽略 */ }
+    }
+    return S.seen;
+  }
+  action('onboard-ok', () => {
+    const s = seenLoad();
+    s[S.tab] = true;
+    try { localStorage.setItem('proto-onboard-seen', JSON.stringify(Object.keys(s))); } catch (e) { /* 忽略 */ }
+    render();
+  });
   action('to-top', () => { const c = document.getElementById('content'); if (c) c.scrollTo({ top: 0, behavior: 'smooth' }); });
 
   // 输入框聚焦时滚入视野（软键盘场景兜底，对应 Compose 侧 imePadding + 自动滚动）

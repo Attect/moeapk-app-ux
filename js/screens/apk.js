@@ -49,7 +49,9 @@
         '</div><div class="li-sub">' + esc(DB.UPDATES[0].version) + ' 版本可用 · 点击查看全部</div></div>' +
         textBtn('查看', 'go-update') + textBtn('忽略', 'dismiss-update') + '</div>', 'update-card');
     }
-    const loading = S.x.apkLoading;
+    // 第十轮：刷新期间不再把分组替换为菊花——内容保持原位，
+    // 顶部悬浮 .ptr-indicator 承担刷新反馈（与 App PullToRefresh 行为一致）
+    const loading = false;
     const apps = byCat('app').filter(i => i.id !== 'moeapk-service');
     const games = byCat('game');
     const opens = DB.OPEN;
@@ -94,7 +96,6 @@
         chip('全部', !tag, 'apk-tag', '') +
         allTags.map(t => chip(t, tag === t, 'apk-tag', t)).join('') + '</div>';
     }
-    if (S.x.apkLoading) return h + spinner();
     if (!items.length) return h + emptyHint(tag ? '没有匹配的条目' : '这里还没有内容');
     // 横屏/平板（≥920px）：条目两列排布（css .two-col）
     return h + '<div class="two-col">' + items.map(catalogCard).join('') + '</div>';
@@ -143,7 +144,6 @@
   function renderOpenList() {
     let items = DB.OPEN;
     let h = '<div class="ptr-hint"><span data-a="apk-refresh" style="color:var(--primary)">点击模拟下拉刷新</span></div>';
-    if (S.x.apkLoading) return h + spinner();
     h += items.length ? '<div class="two-col">' + items.map(openCard).join('') + '</div>' : emptyHint('这里还没有内容');
     h += '<div class="muted small center" style="padding:18px 24px">内容在开源平台由原作者维护，本站只同步最新版本。<br>下载直达开源平台，遇到问题请向原作者反馈。</div>';
     return h;

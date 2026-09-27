@@ -47,6 +47,43 @@
 
 ## 设计沿革
 
+### 第十轮（2026-09-27，真机走查五项修正）
+
+真机反馈五个界面问题，全部定案（App 侧同步 Compose）：
+
+1. **引导横幅「知道了」永久生效（I1 修订）**：原先已读标记只在会话内存（`S.seen`），
+   冷启动/刷新后每个 Tab 的顶部提示反复弹出。定案：已读集合**持久化**
+   （原型 localStorage `proto-onboard-seen`，App 侧对应新增 `:core OnboardPref` DataStore），
+   每个 Tab 的引导全程只出现一次。横幅保持**悬浮于底栏之上**的形态（不占布局流），
+   消除它不引起任何内容位移——App 侧原先把横幅内嵌在内容顶部（在流内占位），
+   消除后内容整体上跳，是「APK 页分类标签被标题栏遮挡」观感的根因，同步改为悬浮覆盖。
+2. **APK 分类标签行上边距**：分类行 padding 上 6px 是配合「顶部有引导横幅」定的，
+   横幅悬浮化后分类行直接贴顶栏下沿显挤；分类行保持 上 6 下 10 不变，
+   由内容区顶部 padding 承担间距（顶栏到分类行的视觉间距 = 8+6=14px），不再依赖横幅占位。
+   **App 侧对应**：App 内容区无顶部 padding，`ApkScreen` 分类行 padding 上 6→**14dp** 对齐。
+3. **详情返回还原分类页与滚动位置**：新增**滚动位置记忆**（`S.scrollMem`）——
+   屏标识 = `tab:apk/apps`（tab+子分类）/ `sub:catalog-detail/xxx`（子页+参数）；
+   切屏时把旧屏位置记入，回到旧屏（详情返回、切回 Tab、切换子分类）自动还原；
+   同屏重渲染（输入过滤、显隐开关等）保持原位。弹栈/切 Tab 时**丢弃被离开子页的记忆**
+   （重进子页从顶部开始）。**App 侧对应**：`AppRoot` 的 Crossfade 内容包
+   `SaveableStateHolder.SaveableStateProvider`（键：Tab 按名、子页按 page+arg+序号），
+   否则页面离屏即销毁 `rememberSaveable`（详情返回回「首页」的根因）；
+   弹栈后延迟清理被弃子页的保存态。
+4. **下拉刷新指示器主题色**：定案形态 = 悬浮于内容顶部中央的玻璃圆（玻璃底 + 1px
+   描边 + 悬浮阴影），圆环用 `--primary` 樱粉；刷新期间**列表保持原位可见**（原先模拟
+   把整列表替换为菊花，内容跳动）。原型新增 `.ptr-indicator`；**App 侧对应**：
+   `PullToRefreshBox` 默认指示器容器/圆环色不跟主题，统一封装 `MoePullToRefreshBox`
+   （`PullToRefreshDefaults.Indicator` 显式 `containerColor=玻璃圆底`、`color=primary`），
+   APK 首页/应用/游戏/开源四处共用。
+5. **chrome 层减薄**：顶栏 64→**52px**、底栏 80→**64px**（新增 `--topbar-h`/`--navbar-h`
+   尺寸令牌，toast/回顶键/引导横幅/横屏 rail 偏移/点云舞台 inset 全部改由令牌推导）。
+   **App 侧对应**：`CenterAlignedTopAppBar`/`NavigationBar` 的 M3 默认 64/80dp 不可调，
+   换自研 `AppTopBar`（52dp + 状态栏 inset）与细底栏（64dp + 手势区 inset），
+   顶栏动作槽（`TopBarActions`）行为不变。
+
+顺带修复一个存量缺陷：同屏重渲染（如滚动过 480px 触发回顶按钮显隐）会重建 DOM
+把滚动位置归零——由第 3 条的「同屏重渲染保持原位」一并解决。
+
 ### 第九轮（2026-09-27，APK 分类页真机走查修正）
 
 真机反馈五个问题，全部定案（App 侧同步 Compose）：

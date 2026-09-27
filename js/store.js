@@ -35,17 +35,32 @@
     if (location.hash !== h) history.replaceState(null, '', h);
   }
 
+  // 子页滚动记忆键（render() 的 S.scrollMem 机制使用）
+  function subKey(e) { return 'sub:' + e.page + '/' + (e.arg || ''); }
+  // 丢弃子页滚动记忆：返回/切走后重进该子页从顶部开始（对应 App 侧弹栈即弃保存态）
+  function dropSubScroll(entries) {
+    if (!S.scrollMem) return;
+    entries.forEach(e => { delete S.scrollMem[subKey(e)]; });
+  }
+
   window.nav = {
     goTab(id) {
+      const dropped = S.stack;
       S.tab = id; S.stack = []; S.dialog = null;
       render(); syncHash();
+      dropSubScroll(dropped);
     },
     push(page, arg) {
       S.stack.push({ page, arg: arg || '' }); S.dialog = null;
       render(); syncHash();
     },
     pop() {
-      if (S.stack.length) { S.stack.pop(); S.dialog = null; render(); syncHash(); return true; }
+      if (S.stack.length) {
+        const top = S.stack.pop();
+        S.dialog = null; render(); syncHash();
+        dropSubScroll([top]);
+        return true;
+      }
       return false;
     },
     current() { return S.stack[S.stack.length - 1] || null; },
