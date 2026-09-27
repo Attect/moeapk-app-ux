@@ -86,8 +86,9 @@
         CATS.map(c => chip(c[1], cat === c[0], 'mdl-cat', c[0])).join('') + '</div>';
       h += card('<div class="msg-row" style="margin-top:0">' + icon('search', 'small') +
         '<input class="field-input" style="flex:1" data-keep="mdl-q" placeholder="过滤模型名称…" value="' + esc((S.x.keep && S.x.keep['mdl-q']) || '') + '"></div>' +
-        '<div style="padding:0 12px 10px;display:flex;gap:8px;align-items:center">' + textBtn('＋ 从手机导入', 'models-import') +
-        '<span class="muted" style="font-size:11px;flex:1;text-align:right">排序：</span>' +
+        // 第十一轮：导入按钮 nowrap——原先在窄宽度下被挤成两行（「从手机导/入」）
+        '<div style="padding:0 12px 10px;display:flex;gap:8px;align-items:center">' + textBtn('＋ 从手机导入', 'models-import', null, 'nowrap') +
+        '<span class="muted" style="font-size:11px;flex:1;text-align:right;white-space:nowrap">排序：</span>' +
         chip('时间', S.x.mdlSort !== 'size' && S.x.mdlSort !== 'name', 'mdl-sort', 'time') +
         chip('大小', S.x.mdlSort === 'size', 'mdl-sort', 'size') +
         chip('名称', S.x.mdlSort === 'name', 'mdl-sort', 'name') + '</div>');
@@ -128,7 +129,9 @@
         '<div class="chip-row" style="padding-top:0">' + ['全部', '魔塔社区', 'HF 镜像', 'HuggingFace'].map(x =>
           chip(x, src === x, 'mdl-src', x)).join('') + '</div>' +
         '<div style="padding:0 12px 12px">' + btn('搜索模型库', 'models-find', null, 'small block') + '</div>');
-      return h;
+      // mdl-page：页级样式域——本页吸顶分类行（top:-8px 满宽横带）与吸顶分组标题胶囊
+      // 错位共存（分组标题改为 top:44px 吸在分类行下沿，见 app.css），避免两者重叠
+      return '<div class="mdl-page">' + h + '</div>';
     }
   });
   action('mdl-cat', ds => { S.x.mdlCat = ds.arg; render(); });

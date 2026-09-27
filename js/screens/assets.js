@@ -147,6 +147,7 @@
     render();
   });
   action('av-open', ds => {
+    if (lpFired) { lpFired = false; return; } // 长按后的松手 click：吞掉（见长按定时器注释）
     if (S.x.asBatch) {
       S.x.asSel = S.x.asSel || {};
       S.x.asSel[ds.arg] = !S.x.asSel[ds.arg];
@@ -156,12 +157,17 @@
     S.x.viewId = ds.arg; nav.push('asset', ds.arg);
   });
   // F6：长按进入多选（ pointer 按住 500ms；Compose 侧对应 combinedClickable onLongClick ）
-  let lpTimer = null, lpTarget = null;
+  // 第十一轮：长按触发后抑制紧随其后的松手 click——否则 click 命中重建后的同一素材格，
+  // 把长按刚选中的项又取消（真机行为：长按选中 → 松手即取消，多选入口形同虚设）。
+  // lpFired 在每次 pointerdown 复位，长按定时器触发时置位，av-open 消费一次。
+  let lpTimer = null, lpTarget = null, lpFired = false;
   document.addEventListener('pointerdown', e => {
+    lpFired = false;
     const cell = e.target.closest('.as-cell[data-arg],.as-row[data-arg]');
     if (!cell || S.x.asBatch) { lpTarget = null; return; }
     lpTarget = cell.dataset.arg;
     lpTimer = setTimeout(() => {
+      lpFired = true;
       S.x.asBatch = true; S.x.asSel = {}; S.x.asSel[lpTarget] = true;
       render();
     }, 500);
@@ -181,7 +187,7 @@
     const n = Math.round(90 * cfg.quality / 100);
     const dots = S.x.pcDots.slice(0, n).map(d =>
       '<div class="av-cloud-dot" style="left:' + d.x + '%;top:' + d.y + '%;width:' + (d.s * cfg.zoom) + 'px;height:' + (d.s * cfg.zoom) + 'px;opacity:' + (0.35 + d.d * 0.6) + '"></div>').join('');
-    const tilt = 'rotateX(' + cfg.tiltX + 'deg) rotateY(' + cfg.tiltY + 'deg)' + (cfg.sway ? '' : '');
+    const tilt = 'rotateX(' + cfg.tiltX + 'deg) rotateY(' + cfg.tiltY + 'deg)';
     let panel = '';
     if (cfg.panel) {
       panel = '<div class="cloud-panel">' +
@@ -202,10 +208,14 @@
   action('cl-set', (ds, el) => {
     const cfg = cur().cloudCfg; const k = ds.k;
     cfg[k] = +el.value;
+    // 手动拖姿态滑杆 → 自动关摇摆（对应 App 侧 onDragStart 关 sway；
+    // 否则 sway 的 CSS 动画覆盖 inline transform，拖滑杆看似无效）
+    const tilted = (k === 'tiltX' || k === 'tiltY');
+    if (tilted && cfg.sway) { cfg.sway = false; render(); return; }
     const lb = el.parentElement.querySelector('.li-title');
     if (lb) {
       const base = lb.textContent.replace(/ [\-\d.]+[°%x]?$/, '');
-      lb.textContent = base + ' ' + (k === 'quality' ? cfg[k] + '%' : (k === 'zoom' ? cfg[k].toFixed(1) + 'x' : (k === 'tiltX' || k === 'tiltY' ? cfg[k] + '°' : cfg[k].toFixed(1))));
+      lb.textContent = base + ' ' + (k === 'quality' ? cfg[k] + '%' : (k === 'zoom' ? cfg[k].toFixed(1) + 'x' : (tilted ? cfg[k] + '°' : cfg[k].toFixed(1))));
     }
     if (k === 'zoom' || k === 'quality') render(); // 点数/尺寸即时变化
     else { // 姿态滑杆即时倾斜

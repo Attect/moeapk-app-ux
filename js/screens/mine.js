@@ -69,7 +69,6 @@ function heroCopy() {
       }) + '<div class="hr"></div>' + listItem({
         icon: 'verified', title: '已授权应用', arrow: true, action: 'go-account'
       }), 'tight');
-      action('go-favorites', () => nav.push('favorites'));
       // 服务
       h += sectionTitle('服务');
       h += card(listItem({
@@ -122,6 +121,7 @@ function heroCopy() {
   action('go-account', () => nav.push(S.loggedIn ? 'account' : 'login'));
   action('go-about', () => nav.push('about'));
   action('go-downloads', () => nav.push('downloads'));
+  action('go-favorites', () => nav.push('favorites'));
   action('mine-service', () => { S.serviceRunning = !S.serviceRunning; toast(S.serviceRunning ? '后台服务已启动（模拟）' : '后台服务已停止（模拟）'); render(); });
   action('mine-battery', () => { S.batteryWhitelisted = !S.batteryWhitelisted; toast(S.batteryWhitelisted ? '已加入电池优化白名单（模拟）' : '已移除白名单（模拟）'); render(); });
   action('mine-src', ds => { S.srcPref = ds.arg; render(); });

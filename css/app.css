@@ -281,6 +281,7 @@ body.has-full .proto-bar { opacity: 0; pointer-events: none; transition: opacity
 .muted { color: var(--on-surface-variant); }
 .small { font-size: 12px; }
 .center { text-align: center; }
+.nowrap { white-space: nowrap; }
 .mono { font-family: ui-monospace, Consolas, monospace; }
 /* 分组标题（I3 吸顶；第八轮定案：玻璃胶囊）——
  * ① 组前 26px 大留白（原 14px 与「标题→卡片」间距雷同，分组边界不辨）；
@@ -301,6 +302,9 @@ body.has-full .proto-bar { opacity: 0; pointer-events: none; transition: opacity
 .section-title::before { content: '✦'; margin-right: 6px; font-size: 10px; }
 /* 页首首个分组标题上方无卡片，组前留白收敛 */
 .content > .section-title:first-child { margin-top: 14px; }
+/* 模型中心（第十一轮）：吸顶分类行（top:-8px 满宽横带）与吸顶分组标题胶囊错位共存——
+ * 分组标题吸在分类行下沿（分类行可见高度 ≈ 42px），否则两者同区重叠互压。 */
+.mdl-page .section-title { top: 44px; }
 .sec-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 4px 2px; }
 .sec-title {
   font-size: 14px; font-weight: 600;
