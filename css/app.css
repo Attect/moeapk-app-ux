@@ -227,16 +227,16 @@ body.has-full .proto-bar { opacity: 0; pointer-events: none; transition: opacity
 }
 .content::-webkit-scrollbar { display: none; }
 .ptr-hint { text-align: center; color: var(--on-surface-variant); font-size: 12px; padding: 8px 0 0; }
-/* 下拉刷新指示器（第十轮定案，对应 App PullToRefreshBox）：玻璃圆底 + 主题樱粉圆环，
- * 悬浮于内容顶部中央，刷新期间列表保持可见（不再整列表替换为菊花）。 */
+/* 下拉刷新指示器（第十二轮修订，对应 App PullToRefreshBox）：**只换主题色**——
+ * 实色圆底（surface-highest，近不透明）+ 主题樱粉圆环，圆形与升降交给 M3 Indicator。
+ * 教训（App 0.11.2 真机事故）：**不要**给指示器加 backdrop 模糊与悬浮阴影——
+ * 模糊取样的是内容层、阴影是外部绘制层，都不随指示器自身的隐藏一起消失，
+ * 会在列表顶部留下常驻残影；半透明圆底再与 elevation 叠加，还会把正圆糊成灰边。 */
 .ptr-indicator {
   position: absolute; top: calc(var(--topbar-h) + 8px); left: 50%; transform: translateX(-50%); z-index: 8;
   width: 40px; height: 40px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
-  background: var(--glass-chrome);
-  backdrop-filter: var(--blur-chrome); -webkit-backdrop-filter: var(--blur-chrome);
-  border: 1px solid var(--glass-brd);
-  box-shadow: var(--shadow-float);
+  background: var(--surface-highest);
 }
 .ptr-indicator .spinner { width: 20px; height: 20px; border-width: 2.5px; }
 
