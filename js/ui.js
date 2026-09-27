@@ -70,15 +70,16 @@
     '<input type="range" min="' + min + '" max="' + max + '" step="' + (step || 0.05) + '" value="' + val + '" class="slider"></label>';
 
   // EntryCard：目录/开源共用条目卡（对应 ApkScreen.kt EntryCard）
+  // o.full：详情页模式——简介不截断（默认列表模式两行 clamp，对应 Compose 侧 summaryMaxLines）
   window.entryCard = (o) => {
-    // o: {title, version, tags[], summary, meta, avatarTitle, noIcon, action, arg}
+    // o: {title, version, tags[], summary, meta, avatarTitle, noIcon, full, action, arg}
     const chips = (o.tags || []).slice(0, 4).map(assistChip).join('');
     return '<div class="card entry" data-a="' + o.action + '" data-arg="' + esc(o.arg || '') + '">' +
       '<div class="entry-head">' + (o.noIcon ? '' : avatar(o.avatarTitle || o.title, 'entry-ic')) +
       '<div class="entry-titles"><div class="entry-title">' + esc(o.title) + '</div>' +
       (o.version ? '<div class="entry-ver">' + esc(o.version) + '</div>' : '') + '</div></div>' +
       (chips ? '<div class="entry-chips">' + chips + '</div>' : '') +
-      '<div class="entry-summary">' + esc(o.summary || '') + '</div>' +
+      '<div class="entry-summary' + (o.full ? ' full' : '') + '">' + esc(o.summary || '') + '</div>' +
       (o.meta ? '<div class="entry-meta">' + esc(o.meta) + '</div>' : '') + '</div>';
   };
 
@@ -156,11 +157,13 @@
     // 输入区（composer）紧贴键盘上沿，两者之间**只有 composer 自身 padding，无多余空白**；
     // 对话列表同步收缩，最后一条消息不被遮挡。（App 侧对应 imePadding 正确实现，勿重复加间距。）
     const kbDemo = S.x.kbDemo ? kbdemoHtml() : '';
-    // 子页可在 topRight 声明一个图标按钮（如 LLM 对话的侧边菜单）
-    const def0 = cur ? SCREENS[cur.page] : null;
+    // 子页/Tab 均可在 topRight 声明一个图标按钮（如 LLM 对话的侧边菜单、APK 分类页的搜索）；
+    // topRight 可为对象或返回对象的函数（函数每次 render 求值，可随页面状态显隐/换图标）。
+    const def0 = cur ? SCREENS[cur.page] : SCREENS['tab:' + S.tab];
     const full = !!(cur && def0.full); // 沉浸式全屏子页（如素材查看器）：无顶栏，自带悬浮返回
-    const rightBtn = cur && !full && def0.topRight ?
-      '<button class="icbtn" data-a="' + def0.topRight.act + '"' + (def0.topRight.arg != null ? ' data-arg="' + esc(def0.topRight.arg) + '"' : '') + '>' + icon(def0.topRight.icon) + '</button>' :
+    const tr = def0 && def0.topRight ? (typeof def0.topRight === 'function' ? def0.topRight() : def0.topRight) : null;
+    const rightBtn = !full && tr ?
+      '<button class="icbtn" data-a="' + tr.act + '"' + (tr.arg != null ? ' data-arg="' + esc(tr.arg) + '"' : '') + '>' + icon(tr.icon) + '</button>' :
       '<span class="icbtn"></span>';
     // 首次进入某 Tab 的轻引导（一次性横幅，点"知道了"或切走即消失）
     let onboard = '';
@@ -254,7 +257,7 @@
 
   // 首次引导文案（各 Tab 一次）
   const ONBOARD_TIPS = {
-    apk: { icon: 'apps', text: 'APK 页浏览汉化/重配音应用与开源收录；顶部可按分类与标签筛选' },
+    apk: { icon: 'apps', text: 'APK 页浏览汉化/重配音应用与开源收录；分类页可按标签筛选，搜索在右上角 🔍' },
     assets: { icon: 'image', text: '素材统一管理图片/视频/音频/3D 点云；长按进入多选，点按进查看器' },
     ai: { icon: 'auto_awesome', text: 'AI 模块全部端侧运行：对话 / 生图 / 语音 / 模型管理，任务在队列中排队' },
     mine: { icon: 'person', text: '登录 MK 通行证可多设备同步；下载任务与源偏好在「下载」中管理' }

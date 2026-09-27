@@ -24,7 +24,7 @@
 
 | 原型 | Compose 源 |
 |---|---|
-| `js/screens/apk.js`（tab:apk + 详情 + favorites 收藏子页） | `ui/apk/ApkScreen.kt`、`ApkHomeScreen.kt`、`CatalogScreens.kt`、`OpenScreens.kt`、`ApkRepo.kt`；收藏 `ui/favorites/FavoritesScreen.kt` + `FavoriteRepo.kt` + `:core FavoritesPref` |
+| `js/screens/apk.js`（tab:apk + apk-search 搜索子页 + 详情 + favorites 收藏子页） | `ui/apk/ApkScreen.kt`、`ApkHomeScreen.kt`、`CatalogScreens.kt`、`OpenScreens.kt`、`ApkSearchScreen.kt`、`ApkRepo.kt`；收藏 `ui/favorites/FavoritesScreen.kt` + `FavoriteRepo.kt` + `:core FavoritesPref` |
 | `js/screens/assets.js`（tab:assets 素材网格 + asset 查看器） | `ui/assets/AssetsScreen.kt`、`AssetViewerScreen.kt`、`AssetDialogs.kt`、`AssetOps.kt` + `:assets`（`AssetStore`/`AssetImporter`/`AssetThumbnails`/`AssetMigrator`） |
 | `js/screens/ai.js`（tab:ai 入口枢纽 + ai-queue 任务队列子页） | `ui/ai/AiHubScreen.kt`、`AiQueueScreen.kt` + `:ai InferenceHub`/`InferenceQueue` |
 | `js/screens/ai-llm.js`（llm / llm-config 子页） | `ui/ai/LlmScreen.kt`、`LlmConfigScreen.kt` |
@@ -46,6 +46,35 @@
 > **App 侧对齐状态（2026-09-18）**：上表所列全部页面已按原型落到 Compose（壳层/素材/AI/APK + 主题过渡）。原型仍是 UX 的唯一变更入口（见「工作约定」第 1 条）。
 
 ## 设计沿革
+
+### 第九轮（2026-09-27，APK 分类页真机走查修正）
+
+真机反馈五个问题，全部定案（App 侧同步 Compose）：
+
+1. **搜索迁出列表**：应用/游戏/开源分类页内嵌搜索框常驻列表顶部，占屏且随滚动占位。改为
+   **分类页顶栏右上角 🔍 按钮 → 独立搜索子页（apk-search）**：进入自动聚焦，按搜索域
+   （应用/游戏/开源，开源另匹配许可）过滤，清空键回到空态；返回即回列表。列表页只保留
+   标签筛选行。`ui.js` 顶栏动作槽随之支持 Tab 页（`topRight` 可为对象或函数，函数随
+   `S.apkSub` 显隐——首页不显示搜索钮）。**App 侧对应**：`CatalogListScreen`/`OpenListScreen`
+   移除搜索框，经 `TopBarActions` 注册 🔍；新增 `SubPage.APK_SEARCH` + `ApkSearchScreen.kt`。
+2. **分类标签行收高 + 上下对称留白**：chip 32px 高（原 34）、padding 6/14（原 7/16）；
+   `.chip-row` 上下 8px 对称（原 10/6 上松下紧，激活光晕在滚动容器下沿被裁）；APK 分类行
+   独立为 `.apk-tabs`（贯通屏宽负 margin 保留，上 6 下 10，给激活光晕留位）。
+   **App 侧对应**：chips 显式 `height(32.dp)`，分类行 padding 改上 6 下 10。
+3. **列表图标槽固定 48×48**：App 侧 `EntryCard` 用 `IntrinsicSize.Min` + `fillMaxHeight`
+   推导图标高，`aspectRatio` 的本征测量把高度顶到卡宽，出现失控巨图。定案：图标槽**固定
+   48×48 + Crop**（原型 `.avatar` 同步显式 `height:48px`），不再由内容推断。
+   **App 侧对应**：`EntryCard` 图标改 `.size(48.dp)`；`OpenIconLoader` 解码后限 192px 省内存。
+4. **详情页完整简介**：`entryCard` 新增 `full: true`（`.entry-summary.full` 取消两行 clamp），
+   应用详情/开源详情启用；列表卡仍两行截断。**App 侧对应**：`EntryCard` 加
+   `summaryMaxLines` 参数，详情页传 `Int.MAX_VALUE`。
+5. **开源详情只列 APK 下载项**：发行版资产按 `.apk` 后缀过滤（忽略大小写），源码包/校验和等
+   不再出现；该版本无 APK 时给提示并引导「发行版页面」。演示数据 kireibox 追加一条
+   checksums.txt（非真实快照内容，供走查验证过滤生效）。
+
+顺带修复两个存量缺陷：应用/游戏子页 `apkSub`（apps/games）与数据 `category`（app/game）
+单复数不一致导致列表恒空；列表搜索框只写 `data-keep` 未接 `data-live`，输入不过滤。
+后者随搜索迁入子页一并解决（子页输入即 `data-live` 重渲染，焦点/光标由 render 保持）。
 
 ### 第八轮（2026-09-25，「我的」分组标题胶囊化）
 

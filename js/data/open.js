@@ -1,5 +1,6 @@
 // 开源收录数据快照
 // 来源：website/mukaapp_moeapk/site_moeapk/open/*.json（2026-09-18 全量 4 条真实条目）
+// 注：kireibox 的 checksums.txt 是演示用非 APK 资产（走查验证详情页过滤逻辑），非真实快照内容。
 window.DB = window.DB || {};
 window.DB.SNAPSHOT_DATE = window.DB.SNAPSHOT_DATE || '2026-09-18';
 window.DB.OPEN = [
@@ -43,7 +44,8 @@ window.DB.OPEN = [
         "修复：一些已知问题"
       ],
       "assets": [
-        { "name": "KireiBox-0.5.0-alpha.16-v24-release-arm64-v8a.apk", "size": 57846721 }
+        { "name": "KireiBox-0.5.0-alpha.16-v24-release-arm64-v8a.apk", "size": 57846721 },
+        { "name": "KireiBox-0.5.0-alpha.16-checksums.txt", "size": 486 }
       ],
       "release_url": "https://github.com/Yukin0a/KireiBox/releases/tag/v0.5.0-alpha.16"
     },

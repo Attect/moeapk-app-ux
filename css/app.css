@@ -305,14 +305,17 @@ body.has-full .proto-bar { opacity: 0; pointer-events: none; transition: opacity
 .card.entry { cursor: pointer; transition: background .15s, transform .12s, box-shadow .18s; }
 .card.entry:active { background: var(--surface-high); transform: scale(.985); }
 .entry-head { display: flex; align-items: stretch; gap: 12px; min-height: 48px; }
+/* 图标槽固定 48×48（第九轮定案）：App 侧真实图标同样锁 48dp +
+ * ContentScale.Crop，不得用内容推断高度（曾出现图标随卡宽失控放大）。 */
 .avatar {
-  flex: none; width: 48px; border-radius: 14px;
+  flex: none; width: 48px; height: 48px; border-radius: 14px;
   display: flex; align-items: center; justify-content: center;
-  color: #fff; font-size: 22px; font-weight: 500; aspect-ratio: 1;
+  color: #fff; font-size: 22px; font-weight: 500;
   background: linear-gradient(140deg, hsl(var(--ah, 330), 68%, 68%), hsl(calc(var(--ah, 330) + 38), 58%, 55%));
   box-shadow: 0 4px 12px -4px hsla(var(--ah, 330), 60%, 55%, .45);
   text-shadow: 0 1px 3px rgba(60,20,50,.3);
 }
+.avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
 .entry-titles { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; justify-content: center; }
 .entry-title { font-size: 16px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .entry-ver { font-size: 12px; color: var(--on-surface-variant); }
@@ -327,6 +330,8 @@ body.has-full .proto-bar { opacity: 0; pointer-events: none; transition: opacity
   font-size: 14px; color: var(--on-surface-variant);
   margin-top: 8px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
+/* 详情页（.full）：简介不截断，完整展示 App 介绍（列表模式仍两行 clamp） */
+.entry-summary.full { display: block; -webkit-line-clamp: unset; overflow: visible; }
 .entry-meta { font-size: 12px; color: var(--on-surface-variant); margin-top: 6px; }
 
 /* ---------- 按钮（渐变 + 发光） ---------- */
@@ -375,14 +380,18 @@ body.has-full .proto-bar { opacity: 0; pointer-events: none; transition: opacity
 .li-arrow { color: var(--on-surface-variant); display: inline-flex; }
 .hr { height: 1px; background: var(--outline-variant); opacity: .7; margin: 0 16px; }
 
-/* ---------- Chip 行（全圆角 + 选中发光） ---------- */
-.chip-row { display: flex; gap: 8px; padding: 10px 0 6px; overflow-x: auto; scrollbar-width: none; }
+/* ---------- Chip 行（全圆角 + 选中发光） ----------
+ * 第九轮：chip 收紧为 32px 高（原 34 + 更宽 padding，激活时显得过高）；
+ * 行内上下留白对称（原 10/0/6 上松下紧，选中光晕在滚动容器下沿被裁）。 */
+.chip-row { display: flex; gap: 8px; padding: 8px 0; overflow-x: auto; scrollbar-width: none; }
 .chip-row::-webkit-scrollbar { display: none; }
+/* APK 顶部分类标签行：贯通屏宽（负 margin 抵消内容 padding），上下留白给激活光晕 */
+.chip-row.apk-tabs { margin: 0 -16px; padding: 6px 16px 10px; }
 .chip {
   flex: none; border: 1px solid var(--outline-variant);
   background: var(--surface-container); backdrop-filter: none;
   color: var(--on-surface-variant); border-radius: 999px;
-  font-size: 13px; padding: 7px 16px; cursor: pointer; min-height: 34px;
+  font-size: 13px; padding: 6px 14px; cursor: pointer; min-height: 32px;
   transition: background .18s, color .18s, box-shadow .18s, border-color .18s;
 }
 .chip.on {
@@ -872,7 +881,7 @@ body, .card, .li, .topbar, .navbar, .chip, .btn, .tbtn, .field-input,
 /* ---------- 吸顶分区标题（I3）----------
  * 样式已并入上方 .section-title 主定义（第八轮胶囊化），此节不再重复声明。 */
 
-/* ---------- 搜索与筛选（F1） ---------- */
+/* ---------- 搜索与筛选（F1；第九轮：APK 列表搜索迁入独立子页，列表只留标签行） ---------- */
 .search-row { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
 .search-row .field-input { flex: 1; min-width: 0; padding-left: 36px; border-radius: 999px; }
 .search-box { position: relative; flex: 1; min-width: 0; }
@@ -880,6 +889,12 @@ body, .card, .li, .topbar, .navbar, .chip, .btn, .tbtn, .field-input,
   position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
   width: 18px; height: 18px; color: var(--on-surface-variant); pointer-events: none;
 }
+/* 搜索框右侧清空键（有词时出现） */
+.search-box .search-clear {
+  position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+  width: 36px; height: 36px; color: var(--on-surface-variant);
+}
+.search-box .search-clear .ic { width: 18px; height: 18px; }
 
 /* ---------- 骨架屏（I4） ---------- */
 .skel {

@@ -22,13 +22,16 @@
   // ---------- Tab 容器 ----------
   registerScreen('tab:apk', {
     title: 'APK',
+    // 分类子页（应用/游戏/开源）顶栏右侧给搜索入口：搜索不再内嵌列表占用屏幕，
+    // 点开进入独立搜索子页（apk-search）；首页不显示。
+    topRight: () => S.apkSub === 'home' ? null : { icon: 'search', act: 'apk-search-open', arg: S.apkSub },
     render() {
       const subs = [['home', '首页'], ['apps', '应用'], ['games', '游戏'], ['open', '开源']];
       let body = '';
       if (S.apkSub === 'home') body = renderHome();
       else if (S.apkSub === 'open') body = renderOpenList();
       else body = renderCatalogList(S.apkSub);
-      return '<div class="chip-row" style="margin:0 -16px;padding:6px 16px 2px">' +
+      return '<div class="chip-row apk-tabs">' +
         subs.map(s => chip(s[1], S.apkSub === s[0], 'apk-sub', s[0])).join('') + '</div>' + body;
     }
   });
@@ -71,46 +74,77 @@
     setTimeout(() => { S.x.apkLoading = false; render(); }, 900);
   });
 
-  // ---------- 应用 / 游戏列表（F1：搜索 + 标签筛选） ----------
-  const TAG_LABELS = { zh: '汉化', re: '重配音' };
-  function renderCatalogList(cat) {
-    const kw = ((S.x.keep && S.x.keep['apk-q']) || '').trim().toLowerCase();
+  // ---------- 应用 / 游戏列表（F1 修订：标签筛选保留在列表；搜索移到顶栏右上角 → apk-search 子页） ----------
+  // apkSub 取值 'apps'/'games'，数据 category 为单数 'app'/'game'（历史遗留映射，勿直接 ===）。
+  const subCat = sub => sub === 'games' ? 'game' : 'app';
+  function renderCatalogList(sub) {
+    const cat = subCat(sub);
     const tag = S.x.apkTag || '';
     let items = byCat(cat);
-    if (tag) items = items.filter(i => (i.tags || []).includes(TAG_LABELS[tag] || tag));
-    if (kw) items = items.filter(i => (i.title + ' ' + i.summary + ' ' + (i.tags || []).join(' ')).toLowerCase().indexOf(kw) >= 0);
+    if (tag) items = items.filter(i => (i.tags || []).includes(tag));
     // 收藏置顶（F4）
     const favs = S.favs || [];
     items = items.slice().sort((a, b) => (favs.indexOf(b.id) >= 0) - (favs.indexOf(a.id) >= 0));
 
     let h = '<div class="ptr-hint"><span data-a="apk-refresh" style="color:var(--primary)">点击模拟下拉刷新</span></div>';
-    // 搜索框
-    h += '<div class="search-row"><div class="search-box">' + icon('search') +
-      '<input class="field-input" data-keep="apk-q" placeholder="搜索名称 / 简介 / 标签…" value="' + esc((S.x.keep && S.x.keep['apk-q']) || '') + '"></div></div>';
     // 标签筛选（该分类下出现过的标签）
     const allTags = [...new Set(byCat(cat).flatMap(i => i.tags || []))];
     if (allTags.length) {
-      h += '<div class="chip-row" style="padding-top:8px">' +
+      h += '<div class="chip-row">' +
         chip('全部', !tag, 'apk-tag', '') +
         allTags.map(t => chip(t, tag === t, 'apk-tag', t)).join('') + '</div>';
     }
     if (S.x.apkLoading) return h + spinner();
-    if (!items.length) return h + emptyHint(kw || tag ? '没有匹配的条目' : '这里还没有内容');
+    if (!items.length) return h + emptyHint(tag ? '没有匹配的条目' : '这里还没有内容');
     // 横屏/平板（≥920px）：条目两列排布（css .two-col）
     return h + '<div class="two-col">' + items.map(catalogCard).join('') + '</div>';
   }
   action('apk-tag', ds => { S.x.apkTag = ds.arg; render(); });
 
-  // ---------- 开源列表（含搜索） ----------
+  // ---------- 搜索子页（从分类页顶栏 🔍 进入；返回即回列表，列表不再常驻搜索框） ----------
+  registerScreen('apk-search', {
+    title: '搜索',
+    render(arg) {
+      const open = arg === 'open';
+      const key = 'apk-search-q';
+      const kw = ((S.x.keep && S.x.keep[key]) || '').trim().toLowerCase();
+      let h = '<div class="search-row" style="margin-top:2px"><div class="search-box">' + icon('search') +
+        '<input class="field-input" data-keep="' + key + '" data-live="apk-search-live"' +
+        (kw ? ' style="padding-right:44px"' : '') +
+        ' placeholder="' + (open ? '搜索开源项目（名称 / 简介 / 标签 / 许可）…' : '搜索名称 / 简介 / 标签…') +
+        '" value="' + esc((S.x.keep && S.x.keep[key]) || '') + '">' +
+        (kw ? '<button class="icbtn search-clear" data-a="apk-search-clear" title="清空">' + icon('close') + '</button>' : '') +
+        '</div></div>';
+      if (!kw) return h + emptyHint('输入关键词，搜索' + (open ? '开源收录' : arg === 'games' ? '游戏' : '应用') + '的名称 / 简介 / 标签');
+      let items;
+      if (open) items = DB.OPEN.filter(i => (i.title + ' ' + i.summary + ' ' + (i.tags || []).join(' ') + ' ' + i.license).toLowerCase().indexOf(kw) >= 0);
+      else items = byCat(subCat(arg)).filter(i => (i.title + ' ' + i.summary + ' ' + (i.tags || []).join(' ')).toLowerCase().indexOf(kw) >= 0);
+      if (!items.length) return h + emptyHint('没有匹配的条目，换个关键词试试');
+      return h + '<div class="two-col">' + items.map(open ? openCard : catalogCard).join('') + '</div>';
+    }
+  });
+  action('apk-search-open', ds => {
+    // 换搜索域（应用/游戏/开源）时清空上一个域的关键词
+    if (S.x.apkSearchFor !== ds.arg) {
+      S.x.keep = S.x.keep || {}; S.x.keep['apk-search-q'] = '';
+      S.x.apkSearchFor = ds.arg;
+    }
+    nav.push('apk-search', ds.arg);
+    setTimeout(() => { const el = document.querySelector('[data-keep="apk-search-q"]'); if (el) el.focus(); }, 60);
+  });
+  action('apk-search-live', () => render()); // 输入即过滤（render 会保焦点/光标）
+  action('apk-search-clear', () => {
+    S.x.keep = S.x.keep || {}; S.x.keep['apk-search-q'] = '';
+    render();
+    setTimeout(() => { const el = document.querySelector('[data-keep="apk-search-q"]'); if (el) el.focus(); }, 30);
+  });
+
+  // ---------- 开源列表（搜索同应用/游戏：移到顶栏右上角 → apk-search 子页） ----------
   function renderOpenList() {
-    const kw = ((S.x.keep && S.x.keep['apk-open-q']) || '').trim().toLowerCase();
     let items = DB.OPEN;
-    if (kw) items = items.filter(i => (i.title + ' ' + i.summary + ' ' + (i.tags || []).join(' ') + ' ' + i.license).toLowerCase().indexOf(kw) >= 0);
     let h = '<div class="ptr-hint"><span data-a="apk-refresh" style="color:var(--primary)">点击模拟下拉刷新</span></div>';
-    h += '<div class="search-row"><div class="search-box">' + icon('search') +
-      '<input class="field-input" data-keep="apk-open-q" placeholder="搜索开源项目…" value="' + esc((S.x.keep && S.x.keep['apk-open-q']) || '') + '"></div></div>';
     if (S.x.apkLoading) return h + spinner();
-    h += items.length ? '<div class="two-col">' + items.map(openCard).join('') + '</div>' : emptyHint('没有匹配的开源项目');
+    h += items.length ? '<div class="two-col">' + items.map(openCard).join('') + '</div>' : emptyHint('这里还没有内容');
     h += '<div class="muted small center" style="padding:18px 24px">内容在开源平台由原作者维护，本站只同步最新版本。<br>下载直达开源平台，遇到问题请向原作者反馈。</div>';
     return h;
   }
@@ -160,7 +194,7 @@
       const total = it.parts.reduce((s, p) => s + p.size, 0);
       let h = entryCard({
         title: it.title, version: 'v' + it.version + '（' + it.version_code + '）', tags: it.tags,
-        summary: it.summary, noIcon: true
+        summary: it.summary, noIcon: true, full: true
       });
       if (it.install && it.install.notes) {
         h += sectionTitle('安装说明');
@@ -199,17 +233,21 @@
       this.topRight = { icon: S.favs.indexOf(arg) >= 0 ? 'favorite' : 'favorite_border', act: 'fav-toggle', arg };
       let h = entryCard({
         title: it.title, version: it.latest ? it.latest.tag : '', tags: it.tags,
-        summary: it.summary, avatarTitle: it.title
+        summary: it.summary, avatarTitle: it.title, full: true
       });
       if (it.latest) {
+        // 只提供可直接安装的 APK 下载项：源码包/校验和等非 APK 资产一律不列，
+        // 避免用户下载到无法安装的文件；其余文件经下方「发行版页面」获取。
+        const apks = (it.latest.assets || []).filter(a => /\.apk$/i.test(a.name));
         h += sectionTitle('最新版本 ' + it.latest.tag + '（' + it.latest.published_at + '）');
         h += card('<ul class="changes muted" style="font-size:13px">' +
           it.latest.notes.map(n => '<li>' + esc(n) + '</li>').join('') + '</ul>' +
           '<div class="hr"></div>' +
-          it.latest.assets.map(a =>
+          (apks.length ? apks.map(a =>
             '<div class="li"><div class="li-body"><div class="li-title" style="font-weight:400;word-break:break-all">' + esc(a.name) + '</div>' +
             '<div class="li-sub">' + fmtSize(a.size) + '</div></div>' +
-            textBtn('下载', 'open-asset-download', JSON.stringify({ id: it.id, name: a.name, size: a.size })) + '</div>').join(''));
+            textBtn('下载', 'open-asset-download', JSON.stringify({ id: it.id, name: a.name, size: a.size })) + '</div>').join('')
+            : '<div class="muted small" style="padding:12px 4px 4px">此版本未提供可直接安装的 APK（共 ' + (it.latest.assets || []).length + ' 个其它文件），请从下方「发行版页面」获取。</div>'));
       } else {
         h += card('<div class="muted center">等待首个发行版，敬请期待。</div>');
       }
