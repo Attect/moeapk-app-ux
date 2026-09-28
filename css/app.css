@@ -70,6 +70,14 @@
   --topbar-h: 52px;
   --navbar-h: 64px;
 
+  /* ---------- 系统栏安全区（第十三轮）----------
+     真机系统栏不归 App 画，但**会吃掉落在其上的触摸**。沉浸式页面（素材查看器 /
+     点云舞台）内容边到边铺满，交互元素若贴顶 8px 就会整颗压在状态栏下——实机表现为
+     「按钮看得见却点不动」。故凡沉浸式页面内的悬浮元素，一律以本令牌偏移。
+     数值取真机典型值（412dp 框：状态栏 32dp / 手势条 16dp）。 */
+  --statusbar-h: 32px;
+  --gesture-h: 16px;
+
   /* ---------- 背景（多层柔光 mesh） ---------- */
   --bg-mesh:
     radial-gradient(120% 70% at 8% -4%, rgba(255,214,230,.85) 0%, transparent 55%),
@@ -567,7 +575,7 @@ body.has-full .proto-bar { opacity: 0; pointer-events: none; transition: opacity
   box-shadow: 0 12px 40px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.08);
 }
 .av-counter {
-  position: absolute; top: 12px; left: 0; right: 0; text-align: center;
+  position: absolute; top: calc(var(--statusbar-h) + 12px); left: 0; right: 0; text-align: center;
   color: rgba(255,255,255,.75); font-size: 12px;
   text-shadow: 0 1px 4px rgba(0,0,0,.5);
 }
@@ -597,7 +605,7 @@ body.has-full .proto-bar { opacity: 0; pointer-events: none; transition: opacity
   display: flex; justify-content: space-around;
   background: rgba(18,14,30,.72); backdrop-filter: blur(14px);
   border-top: 1px solid rgba(255,255,255,.10);
-  padding: 10px 6px 18px;
+  padding: 10px 6px calc(2px + var(--gesture-h));
 }
 .tool {
   border: 0; background: none; cursor: pointer;
@@ -624,14 +632,14 @@ body.has-full .proto-bar { opacity: 0; pointer-events: none; transition: opacity
 }
 .av-cloud-dot { position: absolute; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #ffd9a8, #b46a3c 70%, transparent 75%); }
 .cloud-panel {
-  position: absolute; left: 10px; right: 10px; bottom: 86px; z-index: 7;
+  position: absolute; left: 10px; right: 10px; bottom: calc(70px + var(--gesture-h)); z-index: 7;
   background: rgba(16,12,28,.82); backdrop-filter: blur(10px);
   border: 1px solid rgba(255,255,255,.10);
   border-radius: 16px; padding: 8px 12px 10px; color: #cfd2e0;
   max-height: 46vh; overflow-y: auto;
 }
 .cloud-toggle {
-  position: absolute; right: 12px; top: 36px; z-index: 7;
+  position: absolute; right: 12px; top: calc(var(--statusbar-h) + 8px); z-index: 7;
   width: 40px; height: 40px; border-radius: 50%; border: 1px solid rgba(255,255,255,.16); cursor: pointer;
   background: rgba(255,255,255,.12); backdrop-filter: blur(8px); color: rgba(255,255,255,.9);
   display: flex; align-items: center; justify-content: center;
@@ -722,27 +730,17 @@ body.has-full .proto-bar { opacity: 0; pointer-events: none; transition: opacity
 .pick-cell:active { transform: scale(.95); }
 .pick-cell.on { border-color: var(--primary); box-shadow: var(--glow-soft); }
 
-/* ---------- 点云预览占位 ---------- */
-.pc-stage {
-  position: absolute; inset: var(--topbar-h) 0 0; z-index: 5;
-  background: radial-gradient(120% 90% at 50% 20%, #2b2140 0%, #120e1c 60%, #060409 100%);
-  overflow: hidden; cursor: grab;
-}
+/* ---------- 点云统计卡 ----------
+   名字保留 pc- 前缀（历史），实际挂在素材查看器的 .cloud-panel 内
+   （点云预览页已并入查看器，旧 .pc-stage / .pc-controls / .pc-dot 于第十三轮清理）。 */
 .pc-stats {
-  position: absolute; top: 10px; left: 10px; z-index: 6;
+  position: absolute; top: calc(var(--statusbar-h) + 10px); left: 10px; z-index: 6;
   background: rgba(16,12,28,.75); backdrop-filter: blur(6px); color: #cfd2e0;
   border: 1px solid rgba(255,255,255,.10);
   border-radius: 12px;
   font-family: ui-monospace, Consolas, monospace; font-size: 10px; line-height: 1.7; padding: 8px 10px;
   max-width: 62%;
 }
-.pc-controls {
-  position: absolute; left: 10px; right: 10px; bottom: 10px; z-index: 6;
-  background: rgba(16,12,28,.80); backdrop-filter: blur(10px);
-  border: 1px solid rgba(255,255,255,.10);
-  border-radius: 16px; padding: 10px 12px; color: #cfd2e0;
-}
-.pc-dot { position: absolute; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #ffd9a8, #b46a3c 70%, transparent 75%); }
 
 /* ---------- 更新卡 / 徽标 ---------- */
 .update-card {
@@ -803,7 +801,7 @@ body.has-full .proto-bar { opacity: 0; pointer-events: none; transition: opacity
 
 /* ---------- 素材查看器返回键 ---------- */
 .av-back {
-  position: absolute; left: 10px; top: 8px; z-index: 8;
+  position: absolute; left: 10px; top: calc(var(--statusbar-h) + 8px); z-index: 8;
   width: 40px; height: 40px; border-radius: 50%; border: 1px solid rgba(255,255,255,.16); cursor: pointer;
   background: rgba(255,255,255,.12); backdrop-filter: blur(8px); color: rgba(255,255,255,.92);
   display: flex; align-items: center; justify-content: center;

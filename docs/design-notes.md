@@ -47,6 +47,28 @@
 
 ## 设计沿革
 
+### 第十三轮（2026-09-28，系统栏安全区）
+
+**起因**：点云查看器真机走查发现右上齿轮「看得见点不动」。实测定位：齿轮中心
+（1260×2800 / 560dpi 设备上 y=98px）落在系统状态栏内（状态栏约 112px），触摸被系统
+抢走；改点按钮下半部（y=160）立即生效。根因是**沉浸式页面把交互元素贴到了屏幕物理顶端**。
+
+**为什么原型没暴露**：原型是浏览器里的手机框，没有系统状态栏，`.av-back { top: 8px }`、
+`.cloud-toggle { top: 36px }` 在画布上完全正常——原型缺的正是**系统栏占位**这层表达。
+
+**修正**：新增 `--statusbar-h: 32px` / `--gesture-h: 16px` 令牌（真机典型值），所有沉浸式
+页面的顶部悬浮元素改为 `calc(var(--statusbar-h) + Npx)`、底部元素含 `var(--gesture-h)`；
+顺带把 `.cloud-toggle` 的 36px 与 `.av-back` 的 8px 统一（App 侧两者本就同线，原型错位 28px）。
+**App 侧对应**：`PointCloudStage` 两个玻璃圆键与统计卡加 `statusBarsPadding()`、
+底部工具栏加 `navigationBarsPadding()`（放在 `background` 之后——玻璃底仍铺到屏幕最底，
+只有内容避让）；素材查看器顶部「返回 + 序号」行同样处理。
+
+**教训**：**原型的「无系统栏」是简化，不是可忽略项**——只要页面是全屏沉浸式（`full: true`），
+就必须用令牌表达系统栏占位，否则贴顶的交互元素在真机上会集体失效。
+
+顺带：清理点云预览页迁入查看器后遗留的死样式 `.pc-stage` / `.pc-controls` / `.pc-dot`
+（全库无引用；保留仍在用的 `.pc-stats` 并在注释说明其现挂在查看器内）。
+
 ### 第十二轮（2026-09-27，下拉刷新指示器定案收口）
 
 **只换主题色，不改形状。** 原第十轮给下拉刷新指示器定的「玻璃圆底（backdrop 模糊 + 悬浮阴影）
@@ -206,6 +228,18 @@ LLM 对话输入框聚焦时弹出模拟键盘面板（仅原型演示用），�
 ### 素材查看器（沉浸式全屏）
 
 素材查看器（asset 子页）为**无顶栏全屏界面**：`registerScreen` 的 `full: true` 选项不渲染 TopAppBar（Compose 侧对应全屏 Dialog / immersive viewer），返回用左上角悬浮键（Esc / 安卓返回键同样生效），顶部悬浮序号，底部按类型变化的工具栏；全屏时 proto-bar 调试条自动隐藏。
+
+**系统栏安全区（第十三轮定案）**：沉浸式页面内容边到边铺满，但**系统状态栏/手势条会吃掉落在其上的触摸**——悬浮元素若贴顶 8px，在真机上会整颗压在状态栏下，表现为「按钮看得见却点不动」（App 0.11.3 真机事故）。故凡沉浸式页面内的悬浮元素一律以 `--statusbar-h`（顶）/ `--gesture-h`（底）偏移：
+
+| 选择器 | 位置 |
+|--------|------|
+| `.av-back`（查看器返回键） | `top: calc(var(--statusbar-h) + 8px)` |
+| `.cloud-toggle`（点云控制面板齿轮） | `top: calc(var(--statusbar-h) + 8px)`（与返回键同线，旧值 36px 是笔误） |
+| `.av-counter`（查看器序号） | `top: calc(var(--statusbar-h) + 12px)` |
+| `.pc-stats`（点云统计卡） | `top: calc(var(--statusbar-h) + 10px)` |
+| `.av-toolbar` / `.cloud-panel`（底部） | `padding-bottom` / `bottom` 含 `var(--gesture-h)` |
+
+原型不画系统栏（那是系统的事），但**必须表达它的占位**——同一套令牌在 App 侧的对应物是 `Modifier.statusBarsPadding()` / `navigationBarsPadding()`（见 `ASSET_VIEWER` 全屏子页，`contentWindowInsets = WindowInsets(0,0,0,0)` 之下自行避让）。
 
 ### 横屏 / 平板适配（App 侧对应 WindowSizeClass + NavigationSuiteScaffold + ListDetailPaneScaffold）
 
