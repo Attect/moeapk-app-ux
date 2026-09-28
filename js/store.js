@@ -71,7 +71,11 @@
       const tab = TABS.some(t => t.id === parts[0]) ? parts[0] : 'apk';
       S.tab = tab; S.stack = [];
       if (parts[1] && SUB_PAGES.includes(parts[1])) {
-        S.stack.push({ page: parts[1], arg: decodeURIComponent(parts[2] || '') });
+        const arg = decodeURIComponent(parts[2] || '');
+        S.stack.push({ page: parts[1], arg });
+        // 查看器按 S.x.viewId 取素材（不读栈里的 arg），hash 直达需一并写入——
+        // 否则 #assets/asset/as6 这类深链会退回第一张素材。
+        if (parts[1] === 'asset' && arg) S.x.viewId = arg;
       }
       render();
     }

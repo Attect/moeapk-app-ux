@@ -534,23 +534,9 @@ body.has-full .proto-bar { opacity: 0; pointer-events: none; transition: opacity
 .expander .li { min-height: 48px; }
 .license-text { font-family: ui-monospace, Consolas, monospace; font-size: 12px; color: var(--on-surface-variant); padding: 0 16px 14px; white-space: pre-wrap; }
 
-/* ---------- 壁纸中心 ---------- */
-.wp-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding-top: 10px; }
-.wp-cell {
-  aspect-ratio: 9/16; border-radius: 14px; overflow: hidden; cursor: pointer;
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
-  color: rgba(255,255,255,.92); font-size: 12px; text-align: center;
-  box-shadow: 0 4px 14px -4px rgba(40,20,60,.3);
-  transition: transform .15s;
-}
-.wp-cell:active { transform: scale(.96); }
-.wp-cell .ic { width: 28px; height: 28px; }
-.wp-add { background: var(--surface-container); color: var(--on-surface-variant); border: 1.5px dashed var(--outline); box-shadow: none; }
-.wp-thumb { position: relative; }
-.wp-thumb span {
-  position: absolute; left: 0; right: 0; bottom: 0; padding: 4px 6px;
-  font-size: 10px; background: linear-gradient(transparent, rgba(20,10,30,.6));
-}
+/* ---------- 壁纸预览 ----------
+   仅 `.wp-preview` 存活（预览对话框用）；原「壁纸中心」网格样式
+   （.wp-grid/.wp-cell/.wp-add/.wp-thumb）随 0.9.5 素材统一下线清理。 */
 .wp-preview { height: min(280px, 30vh); aspect-ratio: 9/16; margin: 10px auto; border-radius: 18px; box-shadow: var(--shadow-float); }
 
 /* ---------- 素材中心 ---------- */
@@ -632,7 +618,9 @@ body.has-full .proto-bar { opacity: 0; pointer-events: none; transition: opacity
 }
 .av-cloud-dot { position: absolute; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #ffd9a8, #b46a3c 70%, transparent 75%); }
 .cloud-panel {
-  position: absolute; left: 10px; right: 10px; bottom: calc(70px + var(--gesture-h)); z-index: 7;
+  /* 顶部面板（对齐 App PointCloudStage：TopStart + statusBarsPadding + top 56dp）
+     ——原为底部 bottom: 86px，与 Compose 实现相反，第十三轮真机走查后对齐。 */
+  position: absolute; left: 10px; right: 10px; top: calc(var(--statusbar-h) + 56px); z-index: 7;
   background: rgba(16,12,28,.82); backdrop-filter: blur(10px);
   border: 1px solid rgba(255,255,255,.10);
   border-radius: 16px; padding: 8px 12px 10px; color: #cfd2e0;
@@ -663,7 +651,7 @@ body.has-full .proto-bar { opacity: 0; pointer-events: none; transition: opacity
 .chat-empty .ic { width: 42px; height: 42px; opacity: .45; }
 .composer { flex: none; padding: 10px 0 4px; border-top: 1px solid var(--glass-brd); }
 .composer-top { display: flex; align-items: center; gap: 10px; min-width: 0; }
-.model-chip { display: inline-flex; align-items: center; gap: 4px; max-width: 62%; overflow: hidden; }
+.model-chip { display: inline-flex; align-items: center; gap: 4px; max-width: 180px; overflow: hidden; }
 .model-chip > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .model-chip .ic { width: 15px; height: 15px; flex: none; opacity: .8; }
 .composer .ctx { flex: 1; display: flex; align-items: center; gap: 6px; min-width: 0; }
@@ -731,15 +719,14 @@ body.has-full .proto-bar { opacity: 0; pointer-events: none; transition: opacity
 .pick-cell.on { border-color: var(--primary); box-shadow: var(--glow-soft); }
 
 /* ---------- 点云统计卡 ----------
-   名字保留 pc- 前缀（历史），实际挂在素材查看器的 .cloud-panel 内
-   （点云预览页已并入查看器，旧 .pc-stage / .pc-controls / .pc-dot 于第十三轮清理）。 */
+   名字保留 pc- 前缀（历史），实际挂在素材查看器的 .cloud-panel 内：
+   定位与宽度由面板内的 inline 样式接管（position:static），此处只管视觉。
+   旧 .pc-stage / .pc-controls / .pc-dot 于第十三轮清理。 */
 .pc-stats {
-  position: absolute; top: calc(var(--statusbar-h) + 10px); left: 10px; z-index: 6;
   background: rgba(16,12,28,.75); backdrop-filter: blur(6px); color: #cfd2e0;
   border: 1px solid rgba(255,255,255,.10);
   border-radius: 12px;
   font-family: ui-monospace, Consolas, monospace; font-size: 10px; line-height: 1.7; padding: 8px 10px;
-  max-width: 62%;
 }
 
 /* ---------- 更新卡 / 徽标 ---------- */

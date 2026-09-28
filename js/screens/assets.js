@@ -191,7 +191,11 @@
     let panel = '';
     if (cfg.panel) {
       panel = '<div class="cloud-panel">' +
-        '<div class="pc-stats" style="position:static;max-width:none;margin-bottom:6px">点数 1,179,432 · pcache v2 · 帧耗时 36ms（28fps）</div>' +
+        '<div class="pc-stats" style="position:static;max-width:none;margin-bottom:6px">' +
+        '点数 1,179,432 · pcache v2 · 图源 1080×1920<br>' +
+        'fPx 1527 · covScale 1.19e-07<br>' +
+        'z ∈ [0.4, 1.8] · z p50 0.47 · 等效 σ ∈ [0.0001, 0.0097]<br>' +
+        '渲染 36 ms/帧（含 swap） · 实测间隔 41 ms ≈ 24 fps · 已绘 1,203 帧</div>' +
         '<label class="slider-row"><span class="li-title">强度 ' + cfg.power.toFixed(1) + '</span><input type="range" min="0.2" max="2" step="0.1" value="' + cfg.power + '" class="slider" data-live="cl-set" data-k="power"></label>' +
         '<label class="slider-row"><span class="li-title">点云精度（渲染性能）' + cfg.quality + '%</span><input type="range" min="30" max="100" step="1" value="' + cfg.quality + '" class="slider" data-live="cl-set" data-k="quality"></label>' +
         '<label class="slider-row"><span class="li-title">缩放 ' + cfg.zoom.toFixed(1) + 'x</span><input type="range" min="0.6" max="2.5" step="0.1" value="' + cfg.zoom + '" class="slider" data-live="cl-set" data-k="zoom"></label>' +
