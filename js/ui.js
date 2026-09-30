@@ -117,7 +117,8 @@
     return '<div class="dlg-mask" data-a="dialog-mask">' +
       '<div class="dlg"><div class="dlg-title">' + esc(d.title) + '</div>' +
       '<div class="dlg-body">' + (d.body || '') + '</div>' +
-      '<div class="dlg-actions">' + acts + '</div></div></div>';
+      // actions 为空（如点云档位选择：点选项即执行）时不渲染按钮条，不留 20px 尾巴
+      (acts ? '<div class="dlg-actions">' + acts + '</div>' : '') + '</div></div>';
   }
 
   // ---------- 渲染 ----------

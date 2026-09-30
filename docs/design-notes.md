@@ -25,14 +25,14 @@
 | 原型 | Compose 源 |
 |---|---|
 | `js/screens/apk.js`（tab:apk + apk-search 搜索子页 + 详情 + favorites 收藏子页） | `ui/apk/ApkScreen.kt`、`ApkHomeScreen.kt`、`CatalogScreens.kt`、`OpenScreens.kt`、`ApkSearchScreen.kt`、`ApkRepo.kt`；收藏 `ui/favorites/FavoritesScreen.kt` + `FavoriteRepo.kt` + `:core FavoritesPref` |
-| `js/screens/assets.js`（tab:assets 素材网格 + asset 查看器） | `ui/assets/AssetsScreen.kt`、`AssetViewerScreen.kt`、`AssetDialogs.kt`、`AssetOps.kt` + `:assets`（`AssetStore`/`AssetImporter`/`AssetThumbnails`/`AssetMigrator`） |
+| `js/screens/assets.js`（tab:assets 素材网格 + asset 查看器 + pcwall 点云壁纸设置页） | `ui/assets/AssetsScreen.kt`、`AssetViewerScreen.kt`、`AssetDialogs.kt`、`AssetOps.kt`、`ui/wallpaper/PointCloudPreviewScreen.kt`（点云查看器舞台）、`PointCloudSetupScreen.kt`（设为壁纸/壁纸管理页）+ `:assets`（`AssetStore`/`AssetImporter`/`AssetThumbnails`/`AssetMigrator`） |
 | `js/screens/ai.js`（tab:ai 入口枢纽 + ai-queue 任务队列子页） | `ui/ai/AiHubScreen.kt`、`AiQueueScreen.kt` + `:ai InferenceHub`/`InferenceQueue` |
 | `js/screens/ai-llm.js`（llm / llm-config 子页） | `ui/ai/LlmScreen.kt`、`LlmConfigScreen.kt` |
 | `js/screens/ai-diffusion.js`（diffusion / diff-config 子页） | `ui/ai/DiffusionScreen.kt`、`DiffConfigScreen.kt` |
 | `js/screens/ai-tts.js`（tts / tts-voices 子页） | `ui/ai/TtsScreen.kt`、`TtsVoicesScreen.kt` |
 | `js/screens/ai-models.js`（models / model-search） | `ui/ai/ModelHubScreen.kt`、`ModelSearchScreen.kt` |
 | `js/screens/download.js`（downloads 子页） | `ui/download/DownloadScreen.kt`（入口在 我的 → 下载任务） |
-| `js/screens/mine.js` | `ui/mine/MineScreen.kt` |
+| `js/screens/mine.js`（我的 + 当前壁纸管理入口） | `ui/mine/MineScreen.kt` |
 | `js/screens/pages-account.js`（login/register） | `ui/login/LoginScreen.kt`、`RegisterScreen.kt` |
 | `js/screens/pages-account.js`（account/security） | `ui/account/AccountScreen.kt`、`SecurityScreen.kt` |
 | `js/screens/pages-account.js`（update） | `ui/about/UpdateScreen.kt` |
@@ -46,6 +46,101 @@
 > **App 侧对齐状态（2026-09-18）**：上表所列全部页面已按原型落到 Compose（壳层/素材/AI/APK + 主题过渡）。原型仍是 UX 的唯一变更入口（见「工作约定」第 1 条）。
 
 ## 设计沿革
+
+### 第十六轮（2026-09-30，设置面板可隐藏 + 壁纸被系统重置后一步恢复）
+
+**起因**（真机反馈两连）：
+
+1. 从「我的 → 当前壁纸」进入时，底部调整面板**始终大面积遮挡壁纸画面**，难以判断调整是否最佳；
+2. **手机重启后系统恢复默认壁纸**（vivo 对第三方动态壁纸的重置行为；`am force-stop`
+   壁纸应用同样触发）——槽位数据都在，但进入「当前壁纸」后**无法直接重新设置**。
+
+**定案**：
+
+1. **调整面板可整块隐藏**：展开态面板标题行右侧加收起柄（`expand_more`）；隐藏后舞台
+   全屏可见，底部居中留「调整参数」小药粒（`expand_less`）随时唤回。查看器齿轮面板
+   本就是默认收起 + 齿轮唤出，设置页与此对齐。原型新增 `.pcw-panel-head` /
+   `.pcw-panel-hide` / `.pcw-panel-toggle`。
+2. **壁纸未启用态显式化 + 一步恢复**：
+   - 「我的 → 当前壁纸」行：槽位有数据但 `WallpaperManager.wallpaperInfo` 不是本服务时，
+     副标题追加「（未在系统中启用，点此恢复）」（回前台重算）；
+   - 设置页管理模式：同样检测（进页面 + ON_RESUME 刷新），主按钮由「保存并应用」变为
+     **「重新设为壁纸」**，并配樱粉说明行；点它 = 参数落盘 + 调系统选择器，一步恢复；
+     选择器起不来时不退出页面（可重试）。启用后按钮与提示自动复位。
+   - 原型 `S.x.pcSlot.systemActive` 恒 true（浏览器无系统壁纸概念），仅固定 UI 态。
+
+**原型同步**：`assets.js` pcwall 面板头部/收起柄/小药粒 + `pcw-panel-open` action；
+design-notes 本轮。`index.html` 资源版本号 v=37。
+
+### 第十五轮（2026-09-29，点云交互语义统一：默认跟随设备姿态 + GL 内加载画面）
+
+**起因**（真机反馈）：查看点云时没有跟随设备姿态的功能，也没有双指放大缩小、左右滑动切上/下一张；壁纸则只有跟随设备姿态（且强度体感无效），自动摇摆又无效——三处（查看器 / 壁纸设置页 / 壁纸服务）交互口径混乱。另外点云加载指示不在渲染画面上，转到系统设置壁纸预览和桌面加载时长时间黑屏。
+
+**定案**：
+
+1. **默认全部跟随设备姿态**：查看器、壁纸设置页、壁纸服务三处共用同一个传感器→倾斜通道
+   （`PointCloudTiltSensor`：旋转矢量优先，加速度计重力小角近似退化；One-Euro 滤波；
+   参考姿态每次进入重取）。`CLOUD_DEFAULTS.sway` 改 **false**，面板新增常驻说明行：
+   关摇摆 = 「跟随设备姿态改变视角」，开摇摆 = 「自动摇摆中（忽略设备姿态）」。
+2. **自动摇摆 = 显式二态开关**（持久化 `LiveWallpaperConfig.pointCloudSway`）：
+   开启 → 时间摇摆（双轴周期互质），**忽略设备姿态**；关闭 → 传感器驱动。
+   壁纸服务照此切换（不再常驻环境摇摆）。**强度在两种模式下都参与幅度换算**
+   （摇摆幅度 = 基准 × 强度），修复"强度无效"的体感来源之一。
+3. **加载画面画在渲染表面内**（`PointCloudRenderer.loadingPhotoFile` + LOADING 着色器）：
+   素材预览图 64px 缩略双线性放大（即模糊）+ 压暗 + 暗角 + 樱粉环形指示器（1.7rad
+   彗尾扫掠）。**系统壁纸选择器预览与桌面没有 App 的 Compose UI**，覆盖层在那两处
+   不可见——必须由 GL 自画。壁纸服务加载异步化（pcache 解析 + 网格化移到加载线程），
+   渲染线程在等待期间持续输出加载帧。查看器/设置页的 Compose 覆盖层随之移除。
+4. **查看器新手势**：双指捏合 = 缩放取景（0.6~2.5×，与单指拖拽倾斜共存）；
+   水平快滑（阈值 140px）= 切换上/下一张素材（与图片/视频查看器同口径）；
+   单指拖拽期间停用传感器（松手恢复并重取参考姿态，无跳变）。
+
+**原型同步**：`CLOUD_DEFAULTS.sway=false`；两处面板摇摆开关改「自动摇摆」+ 说明行；
+pcwall 参数草稿默认集同步（管理模式/同源素材仍读槽位参数）。原型为桌面环境无
+传感器与多点触控，跟随姿态/双指缩放在真机验证，原型只固定默认态与文案。
+
+### 第十四轮（2026-09-29，点云精度对话框精简 + 壁纸槽位化 + 点云加载态）
+
+**起因**（真机反馈五连）：
+1. App 新增了重建精度选择，原型落后；且现网对话框带大段技术说明，丑且啰嗦；
+2. 图片查看器「3D 点云（旗舰芯）」备注并进主标签，按钮过宽把「详情」挤成竖排两字；
+3. 点云查看器「渲染精度」拖过 100% 时尾值 Text 追加「（离屏 N% 像素）」变宽 →
+   `weight(1f)` 滑杆被压短 → 手指下的值回跳，**永远调不到目标精度**；
+4. 「设为壁纸」同时存在于齿轮面板与底部工具栏，两套操作逻辑并存；壁纸直接引用素材，
+   用户删掉素材壁纸就黑；
+5. 打开点云查看器只有一行「点云加载中…」（还藏在收起的面板里），pcache 解析期间纯黑屏。
+
+**定案**：
+
+1. **精度选择对话框**：内容即全部——「正常模式 / 高精度模式（帧率低）」两行选项，
+   点选项即执行（`av-3d-go`），无说明文字、无按钮条（`showDialog` 支持空 `actions`，
+   空时不再渲染按钮条容器）。标题只写「3D 点云」。
+2. **工具键不带任何备注**：图片查看器「3D 点云（旗舰芯）」备注并进主标签导致按钮过宽、
+   「详情」被挤成竖排两字。曾试「备注降级为第二行小字」（`.tool-sub`）——真机上按钮
+   高度仍与其它键不一致，用户反馈"导致错位"，**最终定案：按钮文案恒为「3D 点云」，
+   不带任何备注**（后端差异不展示；`.tool-label` 保留 nowrap 作布局兜底）。
+3. **渲染精度范围 30~200%**，>100% 的离屏像素说明并入**滑杆上方标签**（原型为
+   标签在上/滑杆在下的块布局，文案变长不动滑杆）。App 侧对应修复：尾值固定宽，
+   说明挪到滑杆下方常驻注释行。面板新增**「重置所有参数」**（恢复 `CLOUD_DEFAULTS`），
+   并补齐视野左右/上下、平面平移、网格渲染开关，与 App 面板齐平。
+4. **设为壁纸 = 独立全屏页 `pcwall`**：查看器工具栏「设为壁纸」进入；页面 = 舞台预览 +
+   底部常驻调整面板 + 说明文案 + 「重置所有参数 / 设为壁纸」。齿轮面板回归纯预览，
+   「应用为壁纸」移除（单一操作逻辑）。**壁纸槽位化**：确认时把点云（pcache + 原图纹理 +
+   预览图）与参数复制为独立副本（原型 `S.x.pcSlot`；App 侧 `filesDir/livewallpaper/pointcloud/`），
+   删除源素材不影响壁纸（删除 toast 明示），再次设置覆盖槽位。
+   **「我的 → 服务 → 当前壁纸」**进入同一页面的管理模式（`pcwall/@slot`，读槽位参数，
+   「保存并应用」），直接调当前壁纸，不用回素材库翻找。
+5. **点云加载态**：进入点云视图（查看/设置页/左右切换/生成完成）显示加载层——
+   缓存预览图压暗模糊打底（原型用源图色调渐变占位，App 侧为素材 thumb）+ 粒子聚合浮动
+   （`.av-load-dot`）+ 环形指示 + 「正在加载点云…」；就绪后整台 0.45s 淡入
+   （`.av-cloud.reveal`，只动 opacity，不与 sway/inline transform 冲突）。
+
+**App 同步要点**：对话框两行选项用 AlertDialog 全宽行（空 confirm 位）；
+`AssetToolbar` 主标签 `maxLines=1, softWrap=false` 兜底，**按钮文案不带备注**；
+渲染精度行尾值固定宽（`width(52.dp)` + `TextAlign.End`），离屏说明挪常驻注释行；
+新子页 `SubPage.PC_WALLPAPER_SETUP(fullScreen=true)` 承载 pcwall；壁纸槽位
+`PointCloudWallpaperSlot`（复制 pcache/父图/预览图 + meta.json），壁纸服务只读槽位
+（旧 itemId 路径一次性迁移）；加载层用 `AssetStore.previewFile` + Crossfade 到首帧回调。
 
 ### 第十三轮（2026-09-28，系统栏安全区）
 

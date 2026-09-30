@@ -602,6 +602,9 @@ body.has-full .proto-bar { opacity: 0; pointer-events: none; transition: opacity
 .tool:active { opacity: .6; transform: scale(.92); }
 .tool-ic { width: 40px; height: 30px; display: flex; align-items: center; justify-content: center; }
 .tool-ic .ic { width: 22px; height: 22px; }
+/* 主标签禁折行：任何备注都不并入主标签（曾因「3D 点云（旗舰芯）」撑宽按钮致邻键错位；
+   定案为按钮文案不带备注，nowrap 只作布局兜底） */
+.tool-label { white-space: nowrap; }
 
 /* ---------- 素材查看器：点云 / 音频 ---------- */
 .av-cloud {
@@ -632,6 +635,55 @@ body.has-full .proto-bar { opacity: 0; pointer-events: none; transition: opacity
   background: rgba(255,255,255,.12); backdrop-filter: blur(8px); color: rgba(255,255,255,.9);
   display: flex; align-items: center; justify-content: center;
 }
+/* 第十四轮：点云加载态——缓存预览图（原型为色调渐变占位）压暗模糊打底 +
+   粒子聚合浮动 + 环形指示；数据就绪后整台 .reveal 淡入（只动 opacity，
+   不与 inner 的 sway/inline transform 冲突） */
+.av-cloud.reveal { animation: cloudIn .45s ease-out; }
+@keyframes cloudIn { from { opacity: 0; } }
+.av-load-bg { position: absolute; inset: -20px; filter: blur(10px) brightness(.55); transform: scale(1.06); }
+.av-load { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; }
+.av-load-dot {
+  position: absolute; border-radius: 50%; background: rgba(255,255,255,.8);
+  box-shadow: 0 0 8px rgba(255,255,255,.35);
+  animation: loadDot 1.25s ease-in-out infinite alternate;
+}
+@keyframes loadDot { from { transform: translateY(7px) scale(.65); opacity: .22; } to { transform: translateY(-7px) scale(1); opacity: .9; } }
+.av-load-text { color: rgba(255,255,255,.85); font-size: 13px; text-shadow: 0 1px 4px rgba(0,0,0,.5); }
+/* 平面平移演示：摇摆从旋转改为位移 */
+.av-cloud-inner.sway-flat { animation: cloudSwayFlat 7s ease-in-out infinite alternate; }
+@keyframes cloudSwayFlat { from { transform: translate(-9px, 7px); } to { transform: translate(9px, -7px); } }
+/* 网格渲染演示：点更实（对应 App mesh+原图纹理的锐利观感） */
+.av-cloud-dot.crisp { background: radial-gradient(circle at 35% 30%, #ffd9a8 32%, #b46a3c 64%, transparent 70%); }
+/* 点云壁纸设置页（pcwall）底部调整面板：与 .cloud-panel 同玻璃质感但锚底 */
+.pcw-panel {
+  position: absolute; left: 10px; right: 10px; bottom: calc(10px + var(--gesture-h)); z-index: 7;
+  background: rgba(16,12,28,.82); backdrop-filter: blur(10px);
+  border: 1px solid rgba(255,255,255,.10);
+  border-radius: 16px; padding: 6px 12px 10px; color: #cfd2e0;
+  max-height: 52vh; overflow-y: auto;
+}
+/* 面板标题行 + 收起柄（2026-09-30：面板可整块隐藏，露出舞台判断取景） */
+.pcw-panel-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 2px 0 6px; font-size: 12px; color: rgba(207,210,224,.75);
+}
+.pcw-panel-hide {
+  display: inline-flex; align-items: center; border: 0; cursor: pointer;
+  background: rgba(255,255,255,.10); color: rgba(255,255,255,.75);
+  border-radius: 50%; width: 26px; height: 26px; justify-content: center;
+}
+.pcw-panel-hide .ic { width: 18px; height: 18px; }
+.pcw-panel-hide:hover { background: rgba(255,255,255,.18); }
+/* 面板隐藏态：底部「调整参数」小药丸 */
+.pcw-panel-toggle {
+  position: absolute; left: 50%; transform: translateX(-50%);
+  bottom: calc(16px + var(--gesture-h)); z-index: 7;
+  display: inline-flex; align-items: center; gap: 4px;
+  background: rgba(255,255,255,.14); backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,.16); border-radius: 20px;
+  color: rgba(255,255,255,.9); font-size: 12px; padding: 8px 16px; cursor: pointer;
+}
+.pcw-panel-toggle .ic { width: 16px; height: 16px; }
 .av-audio {
   display: flex; flex-direction: column; align-items: center; gap: 18px;
 }
@@ -1016,7 +1068,8 @@ body, .card, .li, .topbar, .navbar, .chip, .btn, .tbtn, .field-input,
 
 /* 减弱动态（无障碍 & 低端机）：停掉一切循环动画 */
 @media (prefers-reduced-motion: reduce) {
-  .sparkle, .login-mascot img, .av-cloud-inner.sway { animation: none !important; }
+  .sparkle, .login-mascot img, .av-cloud-inner.sway, .av-cloud-inner.sway-flat,
+  .av-load-dot, .av-cloud.reveal { animation: none !important; }
 }
 
 /* ============================================================
