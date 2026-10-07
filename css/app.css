@@ -1117,3 +1117,177 @@ body, .card, .li, .topbar, .navbar, .chip, .btn, .tbtn, .field-input,
   .chat-page.two-pane .pane-main > div[style*="padding-top:8px"] { max-width: 640px; width: 100%; margin-left: auto; margin-right: auto; }
   .chat-page.two-pane .composer { max-width: 640px; width: 100%; margin-left: auto; margin-right: auto; }
 }
+
+/* ============================================================
+ * 宅物陈列室（2026-10 新增板块，对应 js/screens/goods.js）
+ * 策展语言：无价格红字、无促销标签、无销量信息；
+ * 展品图为 emoji + 色相渐变占位（真实环境为 AI 筛选后的商品图）。
+ * ============================================================ */
+
+/* 展品封面占位（通用）：--gh 传色相；v1/v2 为详情页多图变体 */
+.g-cover {
+  display: flex; align-items: center; justify-content: center; overflow: hidden;
+  background: linear-gradient(var(--ga, 135deg), hsl(var(--gh), 64%, 78%) 0%, hsl(calc(var(--gh) + 36), 56%, 62%) 100%);
+}
+.g-cover span { font-size: 44px; filter: drop-shadow(0 4px 10px rgba(60, 25, 55, .25)); transition: transform .2s; }
+.g-cover.v1 { --ga: 160deg; }
+.g-cover.v2 { --ga: 108deg; }
+.g-cover.v1 span { transform: scale(1.35) rotate(-8deg); }
+.g-cover.v2 span { transform: scale(.8) rotate(10deg) translateY(6%); }
+[data-theme="dark"] .g-cover {
+  background: linear-gradient(var(--ga, 135deg), hsl(var(--gh), 44%, 34%) 0%, hsl(calc(var(--gh) + 36), 40%, 24%) 100%);
+}
+
+/* ---------- 主页 · 策展头 ---------- */
+.g-hero {
+  margin-top: 8px; padding: 16px 18px;
+  border-radius: 22px; background: var(--grad-hero);
+  border: 1px solid var(--glass-brd); box-shadow: var(--shadow-card);
+}
+.g-hero-title { font-size: 20px; font-weight: 700; letter-spacing: .5px; }
+.g-hero-sub { font-size: 12px; color: var(--on-surface-variant); margin-top: 4px; }
+
+/* ---------- 主页 · 新入荷横滑条（只署名不标价） ---------- */
+.g-fresh {
+  display: flex; gap: 10px; overflow-x: auto; scrollbar-width: none;
+  margin: 2px -16px 0; padding: 6px 16px 10px;
+}
+.g-fresh::-webkit-scrollbar { display: none; }
+.g-fresh-card { flex: none; width: 104px; cursor: pointer; }
+.g-fresh-card .g-cover {
+  aspect-ratio: 1; border-radius: 14px;
+  border: 1px solid var(--glass-brd); box-shadow: var(--shadow-card);
+  transition: transform .15s;
+}
+.g-fresh-card:active .g-cover { transform: scale(.95); }
+.g-fresh-name {
+  font-size: 12px; font-weight: 600; margin-top: 6px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.g-fresh-cat { font-size: 10px; color: var(--on-surface-variant); margin-top: 1px; }
+
+/* ---------- 主页 · 杂志错落分类墙（6 列网格，span/高度按节奏表） ---------- */
+.g-mosaic { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; grid-auto-flow: dense; margin-top: 2px; }
+.g-mos-card {
+  position: relative; border-radius: 18px; overflow: hidden; cursor: pointer;
+  border: 1px solid var(--glass-brd); box-shadow: var(--shadow-card);
+  transition: transform .15s, box-shadow .2s;
+}
+.g-mos-card:active { transform: scale(.965); }
+.g-mos-card .g-cover { position: absolute; inset: 0; }
+/* 拼贴感：封面微旋转（scale 补边），左右交替 */
+.g-mos-card:nth-child(odd) .g-cover { transform: rotate(.7deg) scale(1.07); }
+.g-mos-card:nth-child(even) .g-cover { transform: rotate(-.7deg) scale(1.07); }
+.g-mos-label {
+  position: absolute; left: 0; right: 0; bottom: 0; padding: 26px 12px 10px;
+  background: linear-gradient(transparent, rgba(28, 14, 38, .62));
+  color: #fff;
+}
+.g-mos-name { font-size: 15px; font-weight: 700; text-shadow: 0 1px 6px rgba(30, 10, 40, .5); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.g-mos-sub { font-size: 10px; opacity: .85; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ---------- 展厅（分类页） ---------- */
+.g-cat-hero { display: flex; align-items: center; gap: 14px; padding: 14px 4px 4px; }
+.g-cat-emoji {
+  flex: none; width: 56px; height: 56px; border-radius: 18px;
+  display: flex; align-items: center; justify-content: center; font-size: 28px;
+  background: var(--grad-soft), var(--surface-high);
+  border: 1px solid var(--glass-brd); box-shadow: var(--shadow-card);
+}
+.g-cat-name { font-size: 19px; font-weight: 700; }
+.g-cat-sub { font-size: 11px; color: var(--on-surface-variant); margin-top: 1px; }
+.g-cat-blurb { font-size: 12px; color: var(--on-surface-variant); margin-top: 4px; }
+
+/* 双列瀑布流（小红书式）；卡片比例按 id 哈希错开 */
+.g-falls { column-count: 2; column-gap: 10px; margin-top: 4px; }
+.g-fall-card {
+  break-inside: avoid; margin-bottom: 10px; border-radius: 16px; overflow: hidden; cursor: pointer;
+  background: var(--surface-low); border: 1px solid var(--glass-brd); box-shadow: var(--shadow-card);
+  transition: transform .12s;
+}
+.g-fall-card:active { transform: scale(.97); }
+.g-fall-card .g-cover span { font-size: 40px; }
+.g-fall-body { padding: 10px 12px 12px; }
+.g-fall-title {
+  font-size: 13px; font-weight: 600; line-height: 18px;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+/* 列表价格弱化：小号普通色，不用电商红 */
+.g-fall-meta { display: flex; align-items: baseline; justify-content: space-between; margin-top: 6px; font-size: 11px; color: var(--on-surface-variant); }
+.g-fall-price { font-weight: 600; }
+
+/* ---------- 展品卡（详情） ---------- */
+/* 顶部图片 pager：scroll-snap 横滑，负 margin 满宽 */
+.g-pager-wrap { position: relative; margin: 4px -16px 0; }
+.g-pager {
+  display: flex; overflow-x: auto; scrollbar-width: none;
+  scroll-snap-type: x mandatory; overscroll-behavior-x: contain;
+}
+.g-pager::-webkit-scrollbar { display: none; }
+.g-shot { flex: none; width: 100%; aspect-ratio: 1; scroll-snap-align: center; }
+.g-shot .g-cover { width: 100%; height: 100%; }
+.g-shot .g-cover span { font-size: 96px; }
+.g-dots { position: absolute; bottom: 12px; left: 0; right: 0; display: flex; justify-content: center; gap: 6px; pointer-events: none; }
+.g-dot { width: 6px; height: 6px; border-radius: 999px; background: rgba(255, 255, 255, .55); box-shadow: 0 1px 3px rgba(30, 10, 40, .3); transition: width .2s, background .2s; }
+.g-dot.on { width: 16px; background: #fff; }
+
+.g-d-title { font-size: 19px; font-weight: 700; line-height: 26px; margin-top: 14px; }
+.g-d-meta { font-size: 11px; color: var(--on-surface-variant); margin-top: 4px; }
+.g-d-price-row { display: flex; align-items: baseline; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
+/* 真实价：加大但用普通文字色（反广告定案：不用电商红/橙） */
+.g-d-price { font-size: 22px; font-weight: 700; color: var(--on-surface); }
+.g-d-list { font-size: 12px; color: var(--on-surface-variant); text-decoration: line-through; }
+.g-d-list-note { font-size: 11px; color: var(--on-surface-variant); }
+
+/* 陈列备注（展品说明牌）：柔和渐变底卡片 */
+.g-note {
+  margin-top: 12px; padding: 12px 14px; border-radius: 16px;
+  background: var(--grad-soft), var(--surface-low);
+  border: 1px solid var(--glass-brd); box-shadow: var(--shadow-card);
+  font-size: 13px; line-height: 20px;
+}
+.g-note-label { font-size: 11px; font-weight: 700; color: var(--primary); margin-bottom: 4px; letter-spacing: .3px; }
+.g-attrs { padding-bottom: 2px; }
+
+/* 原始标题折叠（透明度对照） */
+.g-org {
+  display: flex; align-items: center; gap: 4px; cursor: pointer;
+  padding: 8px 2px 2px; font-size: 12px; color: var(--on-surface-variant);
+}
+.g-org .ic { width: 18px; height: 18px; }
+.g-org-text {
+  margin-top: 6px; padding: 10px 12px; border-radius: 12px;
+  background: var(--surface-container); border: 1px solid var(--outline-variant);
+  font-size: 12px; line-height: 18px; color: var(--on-surface-variant);
+}
+
+/* 披露小字（详情页底部固定，合规 + 坦诚路线） */
+.g-legal { font-size: 11px; line-height: 17px; color: var(--on-surface-variant); padding: 16px 6px 4px; opacity: .85; }
+
+/* 底部 CTA：sticky 玻璃条（沿用 batch-bar 模式） */
+.g-cta {
+  position: sticky; bottom: 0; z-index: 5;
+  display: flex; align-items: center; gap: 10px;
+  background: var(--glass-chrome);
+  backdrop-filter: var(--blur-chrome); -webkit-backdrop-filter: var(--blur-chrome);
+  border: 1px solid var(--glass-brd); border-radius: 18px;
+  padding: 10px 12px; margin-top: 10px; box-shadow: var(--shadow-float);
+}
+.g-cta-copy {
+  border: 1px solid var(--outline-variant); border-radius: 14px;
+  width: 44px; height: 44px; color: var(--on-surface-variant);
+}
+.btn.g-buying { opacity: .7; pointer-events: none; }
+
+/* 主题切换过渡补入宅物卡片 */
+.g-fall-card, .g-mos-card, .g-cover, .g-note, .g-hero, .g-cat-emoji {
+  transition: background-color .22s ease, color .22s ease, border-color .22s ease;
+}
+
+/* ---------- 宅物 · 横屏 / 平板 ---------- */
+@container (min-width: 920px) {
+  /* 瀑布三列 */
+  .g-falls { column-count: 3; }
+  /* 详情页 pager 不再满宽出血，收为圆角大图居中 */
+  .g-pager-wrap { margin: 8px 0 0; border-radius: 20px; overflow: hidden; max-width: 640px; margin-left: auto; margin-right: auto; }
+}

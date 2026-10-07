@@ -3,6 +3,7 @@
 (function () {
   const TABS = [
     { id: 'apk', label: 'APK', icon: 'apps' },
+    { id: 'goods', label: '宅物', icon: 'redeem' },
     { id: 'assets', label: '素材', icon: 'image' },
     { id: 'ai', label: 'AI', icon: 'auto_awesome' },
     { id: 'mine', label: '我的', icon: 'person' }

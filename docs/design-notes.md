@@ -25,6 +25,7 @@
 | 原型 | Compose 源 |
 |---|---|
 | `js/screens/apk.js`（tab:apk + apk-search 搜索子页 + 详情 + favorites 收藏子页） | `ui/apk/ApkScreen.kt`、`ApkHomeScreen.kt`、`CatalogScreens.kt`、`OpenScreens.kt`、`ApkSearchScreen.kt`、`ApkRepo.kt`；收藏 `ui/favorites/FavoritesScreen.kt` + `FavoriteRepo.kt` + `:core FavoritesPref` |
+| `js/screens/goods.js`（tab:goods 宅物陈列室 + goods-cat 展厅 + goods-detail 展品卡） | （规划中）`ui/goods/GoodsHomeScreen.kt`、`GoodsCatScreen.kt`、`GoodsDetailScreen.kt` + `GoodsRepo.kt`（数据由 muka.cool 后台宅物模块经淘宝联盟 API 取数 + AI 加工后输出） |
 | `js/screens/assets.js`（tab:assets 素材网格 + asset 查看器 + pcwall 点云壁纸设置页） | `ui/assets/AssetsScreen.kt`、`AssetViewerScreen.kt`、`AssetDialogs.kt`、`AssetOps.kt`、`ui/wallpaper/PointCloudPreviewScreen.kt`（点云查看器舞台）、`PointCloudSetupScreen.kt`（设为壁纸/壁纸管理页）+ `:assets`（`AssetStore`/`AssetImporter`/`AssetThumbnails`/`AssetMigrator`） |
 | `js/screens/ai.js`（tab:ai 入口枢纽 + ai-queue 任务队列子页） | `ui/ai/AiHubScreen.kt`、`AiQueueScreen.kt` + `:ai InferenceHub`/`InferenceQueue` |
 | `js/screens/ai-llm.js`（llm / llm-config 子页） | `ui/ai/LlmScreen.kt`、`LlmConfigScreen.kt` |
@@ -46,6 +47,26 @@
 > **App 侧对齐状态（2026-09-18）**：上表所列全部页面已按原型落到 Compose（壳层/素材/AI/APK + 主题过渡）。原型仍是 UX 的唯一变更入口（见「工作约定」第 1 条）。
 
 ## 设计沿革
+
+### 第十七轮（2026-10-07，「宅物」陈列室板块）
+
+**起因**：muka.cool 已打通淘宝联盟（淘宝客）API，想把二次元周边数据加工后提供给 MoeApk App 做一个变现板块。硬广会伤害用户信任，定案走**策展路线**：板块做成「陈列室」而非商城——这个气质主要靠文案体系与信息减法实现，而不是靠伪装。
+
+**定案**：
+
+1. **文案体系替换**：商品=展品、上新=新入荷/收录、分类=展厅（俏皮主名 + 灰色标准词副名，如「小铁片 / 吧唧·马口铁徽章」）、详情=展品卡、按钮只有「去淘宝看看」（"买"字不出现）；无销量、无促销、无价格排序，排序只有「最近收录 / 随手翻翻」。
+2. **价格弱化梯度**：主页分类墙只有图+名（无价）；列表卡价格小号普通色；详情页正常字号但**不用电商红/橙**，划线价标注「为淘宝标价」。
+3. **坦诚披露**：详情页底部固定一行小字说明淘宝客推广关系与佣金用途（恰饭声明路线，同时满足广告可识别的合规要求）；列表/主页不加推广标。
+4. **陈列备注**：每件展品一句策展短评（AI 生成 + 人工抽查，抽查可关），是全板块气质的灵魂；「它在淘宝的原始标题」折叠区做透明度对照。
+5. **跳转淘宝**：不做 `resolveActivity` 预检（国产 ROM 会弹"查询已安装应用"权限提示）；直接 try startActivity → 捕获 ActivityNotFoundException 立即弹淘口令；发起成功则 5s 内 onResume 回流视为失败弹淘口令。淘口令服务端预生成随数据下发（`taobao.tbk.tpwd.create`），不点击不调 API。
+6. **主页形态**：策展语轮换 + 新入荷横滑条（只署名不标价）+ 杂志式错落分类墙（6 列网格、固定节奏 span/高度表、封面 ±0.7° 微旋转拼贴感、每厅随机抽展品做封面，「换一批」重摆，seed 伪随机保证 render 间不漂移）。
+7. **列表形态**：双列瀑布流（小红书式），封面比例按 id 哈希错开；≥920px 三列。
+
+**数据结构**：`js/data/goods.js` 即未来 feed 的字段约定（title 提炼名 / origin 原始标题 / note 陈列备注 / price 真实价 / list 划线价 / days 收录天数 / tpwd 预生成淘口令 / 图片以 emoji+hue 占位）。
+
+**原型同步**：新增 `js/screens/goods.js`（tab:goods + goods-cat + goods-detail）、`js/data/goods.js`（14 展厅 + 34 展品演示数据）；`store.js` TABS 插入宅物（第二位）；`ui.js` 引导文案；`icons.js` 新增 redeem/open_in_new；`css/app.css` 新增宅物一节（含暗色与横屏）。`index.html` 资源版本号 v=38。走查截图 shot-30~36。
+
+**数据管线备注**（实施时展开）：muka.cool 后台新增宅物模块直连淘宝联盟 API → AI 加工（多模态筛图 / 标题提炼 / 展厅映射 / 真实价核实）→ JSON feed 输出给 App。加工 LLM 用 B 机 `127.0.0.1:11455/v1`（qwen3.8-flash-next-iq3_s，多模态）——其为 B 本机地址，加工模块需与 B 同机或将该服务暴露给加工方，实施时再定。
 
 ### 第十六轮（2026-09-30，设置面板可隐藏 + 壁纸被系统重置后一步恢复）
 

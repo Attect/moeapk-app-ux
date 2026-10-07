@@ -280,6 +280,7 @@
   // 首次引导文案（各 Tab 一次）
   const ONBOARD_TIPS = {
     apk: { icon: 'apps', text: 'APK 页浏览汉化/重配音应用与开源收录；分类页可按标签筛选，搜索在右上角 🔍' },
+    goods: { icon: 'redeem', text: '宅物陈列室每周重新摆放：看中的展品点进去，再决定去不去淘宝' },
     assets: { icon: 'image', text: '素材统一管理图片/视频/音频/3D 点云；长按进入多选，点按进查看器' },
     ai: { icon: 'auto_awesome', text: 'AI 模块全部端侧运行：对话 / 生图 / 语音 / 模型管理，任务在队列中排队' },
     mine: { icon: 'person', text: '登录 MK 通行证可多设备同步；下载任务与源偏好在「下载」中管理' }
