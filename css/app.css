@@ -1130,6 +1130,8 @@ body, .card, .li, .topbar, .navbar, .chip, .btn, .tbtn, .field-input,
   background: linear-gradient(var(--ga, 135deg), hsl(var(--gh), 64%, 78%) 0%, hsl(calc(var(--gh) + 36), 56%, 62%) 100%);
 }
 .g-cover span { font-size: 44px; filter: drop-shadow(0 4px 10px rgba(60, 25, 55, .25)); transition: transform .2s; }
+/* 真实商品图（淘宝 CDN）：绝对定位覆盖渐变占位；加载失败由 onerror 移除 img 回落占位 */
+.g-cover img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .g-cover.v1 { --ga: 160deg; }
 .g-cover.v2 { --ga: 108deg; }
 .g-cover.v1 span { transform: scale(1.35) rotate(-8deg); }

@@ -31,10 +31,17 @@
   }
   function hashStr(s) { let h = 0; for (const c of s) h = (h * 31 + c.charCodeAt(0)) >>> 0; return h; }
 
-  // 展品封面占位：emoji + 色相渐变（真实环境为 AI 筛选后的商品图）。
-  // v 0/1/2 为同一件展品的不同"图"（渐变角度与 emoji 姿态不同），详情页 pager 用。
+  // 展品封面：优先真实商品图（images，淘宝 CDN；失败移除 img 回落 emoji 渐变占位）。
+  // 无图时用 emoji + 色相渐变占位（演示数据形态）。v 0/1/2 取多图/变体，详情页 pager 用。
   function cover(g, v) {
-    return '<div class="g-cover v' + (v || 0) + '" style="--gh:' + g.hue + '"><span>' + g.emoji + '</span></div>';
+    const vi = v || 0;
+    const img = g.images && g.images.length ? g.images[Math.min(vi, g.images.length - 1)] : null;
+    const ph = '<span>' + (g.emoji || '🎁') + '</span>';
+    if (img) {
+      return '<div class="g-cover v' + vi + '" style="--gh:' + (g.hue == null ? 300 : g.hue) + '">' + ph +
+        '<img src="' + esc(img) + '" alt="" loading="lazy" onerror="this.remove()"></div>';
+    }
+    return '<div class="g-cover v' + vi + '" style="--gh:' + (g.hue == null ? 300 : g.hue) + '">' + ph + '</div>';
   }
   function legalLine() {
     return '<div class="g-legal">展品来自淘宝客推广渠道，经链接成交后我们会获得少量佣金，用于维持服务器与开发开销。价格、评价、售后等信息以淘宝页面为准。</div>';
@@ -138,11 +145,13 @@
       if (!g) return emptyHint('这件展品已撤下');
       const c = catById(g.cat);
       const buying = S.x.buyFor === g.id;
-      // 顶部图片 pager：scroll-snap 横滑；圆点由下方全局 scroll 监听直接改 class（不走 render）
+      // 顶部图片 pager：scroll-snap 横滑；圆点由下方全局 scroll 监听直接改 class（不走 render）。
+      // 页数 = 真实图片数（演示数据的占位图固定 3 页；单图商品只出 1 页）。
+      const shots = Math.max(1, Math.min(3, (g.images && g.images.length) || 3));
       let h = '<div class="g-pager-wrap"><div class="g-pager">' +
-        [0, 1, 2].map(v => '<div class="g-shot">' + cover(g, v) + '</div>').join('') +
+        Array.from({ length: shots }, (_, v) => '<div class="g-shot">' + cover(g, v) + '</div>').join('') +
         '</div><div class="g-dots">' +
-        [0, 1, 2].map(i => '<i class="g-dot' + (i === 0 ? ' on' : '') + '"></i>').join('') +
+        Array.from({ length: shots }, (_, i) => '<i class="g-dot' + (i === 0 ? ' on' : '') + '"></i>').join('') +
         '</div></div>';
       h += '<div class="g-d-title">' + esc(g.title) + '</div>';
       h += '<div class="g-d-meta">' + esc(c ? c.name : '') + ' · ' + g.days + ' 天前收录</div>';
