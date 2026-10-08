@@ -103,8 +103,11 @@
   const ARS = ['1/1', '4/5', '3/4', '4/3']; // 封面比例按 id 哈希错开，瀑布有高差
   function fallCard(g) {
     const ar = ARS[hashStr(g.id) % ARS.length];
+    const img = g.images && g.images.length ? g.images[0] : null;
+    const inner = '<span>' + (g.emoji || '🎁') + '</span>' +
+      (img ? '<img src="' + esc(img) + '" alt="" loading="lazy" onerror="this.remove()">' : '');
     return '<div class="g-fall-card" data-a="goods-open" data-arg="' + g.id + '">' +
-      '<div class="g-cover" style="--gh:' + g.hue + ';aspect-ratio:' + ar + '"><span>' + g.emoji + '</span></div>' +
+      '<div class="g-cover v0" style="--gh:' + (g.hue == null ? 300 : g.hue) + ';aspect-ratio:' + ar + '">' + inner + '</div>' +
       '<div class="g-fall-body"><div class="g-fall-title">' + esc(g.title) + '</div>' +
       '<div class="g-fall-meta"><span class="g-fall-price">' + fmtPrice(g.price) + '</span>' +
       '<span>' + g.days + ' 天前收录</span></div></div></div>';
