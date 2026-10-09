@@ -50,16 +50,25 @@
   function hashStr(s) { let h = 0; for (const c of s) h = (h * 31 + c.charCodeAt(0)) >>> 0; return h; }
 
   // 展品封面：优先真实商品图（images，淘宝 CDN；失败移除 img 回落 emoji 渐变占位）。
-  // 无图时用 emoji + 色相渐变占位（演示数据形态）。v 0/1/2 取多图/变体，详情页 pager 用。
-  function cover(g, v) {
+  // 无图时用 emoji + 色相渐变占位（演示数据形态）。v 0/1/2… 取多图/变体，详情页 pager 用。
+  // 淘宝图基本 1:1 方形：focus（top/center/bottom，AI 选封面时返回）决定 cover 裁剪的纵向对齐；
+  // flat=true（宽扁槽位）改 contain 完整呈现、两侧露渐变底（与占位设计语言一致，绝不切商品）。
+  // ar 为可选的容器宽高比（瀑布流卡片用）。
+  function cover(g, v, opts) {
     const vi = v || 0;
+    const flat = !!(opts && opts.flat);
+    const ar = opts && opts.ar;
     const img = g.images && g.images.length ? g.images[Math.min(vi, g.images.length - 1)] : null;
     const ph = '<span>' + (g.emoji || '🎁') + '</span>';
+    const cls = 'g-cover v' + vi + (flat ? ' fit' : '');
+    const focus = (g.focus === 'top' || g.focus === 'bottom') ? g.focus : 'center';
+    const df = ' data-focus="' + focus + '"';
+    const style = '--gh:' + (g.hue == null ? 300 : g.hue) + (ar ? ';aspect-ratio:' + ar : '');
     if (img) {
-      return '<div class="g-cover v' + vi + '" style="--gh:' + (g.hue == null ? 300 : g.hue) + '">' + ph +
+      return '<div class="' + cls + '"' + df + ' style="' + style + '">' + ph +
         '<img src="' + esc(img) + '" alt="" loading="lazy" onerror="this.remove()"></div>';
     }
-    return '<div class="g-cover v' + vi + '" style="--gh:' + (g.hue == null ? 300 : g.hue) + '">' + ph + '</div>';
+    return '<div class="' + cls + '"' + df + ' style="' + style + '">' + ph + '</div>';
   }
   // 来源披露统一为一句小字：主页与详情页措辞略有分工，列表页不放
   function legalLine() {
@@ -94,6 +103,9 @@
 
       // 展厅墙：槽位顺序/跨列/高度按布局配置原样渲染（空厅跳过）。
       // 「换一批」不动布局，只在每个槽位的展厅内重抽封面展品（反复刷有新的脸面，布局不晕车）。
+      // 宽扁槽（宽高比 >1.25，如 span4×128）方形图 cover 会只剩中间一条横带——
+      // 改 contain 完整呈现、两侧露渐变底（与 emoji 占位同一设计语言）。
+      const SPAN_W = { 2: 126, 3: 194, 4: 262, 6: 398 }; // 6 列网格各跨列的代表宽度（430 视口估算）
       h += '<div class="sec-head"><span class="sec-title">展厅</span>' + textBtn('换一批', 'goods-reshuffle') + '</div>';
       h += '<div class="g-mosaic">';
       (home.mosaic || []).forEach(slot => {
@@ -102,8 +114,9 @@
         const items = goodsByCat(c.id);
         if (!items.length) return;
         const g = items[Math.floor(rand() * items.length)];
+        const flat = (SPAN_W[slot.span] || 126) / slot.height > 1.25;
         h += '<div class="g-mos-card" style="grid-column:span ' + slot.span + ';height:' + slot.height + 'px" data-a="goods-open-cat" data-arg="' + c.id + '">' +
-          cover(g) +
+          cover(g, 0, { flat: flat }) +
           '<div class="g-mos-label"><div class="g-mos-name">' + esc(c.name) + '</div>' +
           '<div class="g-mos-sub">' + esc(c.sub) + '</div></div></div>';
       });
@@ -121,16 +134,14 @@
   // 滚动接近底部自动追加下一批（对应 App 侧 Paging 懒加载 + 服务端分页下发；
   // 真机数据耗尽自然到底，没有"到底啦"提示，底部也不放任何说明文字）。
   // 原型数据有限：批次循环复用本厅展品，批间换序换比例，避免机械重复感。
-  const ARS = ['1/1', '4/5', '3/4', '4/3']; // 封面比例按 id 哈希错开，瀑布有高差
+  // 比例只留竖向（1/1、4/5、3/4）：淘宝图基本 1:1 方形，4/3 横卡会上下大裁切头切尾。
+  const ARS = ['1/1', '4/5', '3/4']; // 封面比例按 id 哈希错开，瀑布有高差
   const MAX_BATCH = 40; // 原型安全上限（防 DOM 无限增长），真机无此概念
   function fallCard(g, batch) {
     // 第 1 批比例按 id 固定（首屏稳定）；后续批次叠加批号盐，同件展品每批高差不同
     const ar = ARS[(hashStr(g.id) + (batch > 1 ? batch * 7 : 0)) % ARS.length];
-    const img = g.images && g.images.length ? g.images[0] : null;
-    const inner = '<span>' + (g.emoji || '🎁') + '</span>' +
-      (img ? '<img src="' + esc(img) + '" alt="" loading="lazy" onerror="this.remove()">' : '');
     return '<div class="g-fall-card" data-a="goods-open" data-arg="' + g.id + '">' +
-      '<div class="g-cover v0" style="--gh:' + (g.hue == null ? 300 : g.hue) + ';aspect-ratio:' + ar + '">' + inner + '</div>' +
+      cover(g, 0, { ar: ar }) +
       '<div class="g-fall-body"><div class="g-fall-title">' + esc(g.title) +
       (g.stale ? '<span class="g-fall-stale">或已绝版</span>' : '') + '</div>' +
       '<div class="g-fall-meta"><span class="g-fall-price">' + fmtPrice(g.price) + '</span>' +

@@ -11,6 +11,8 @@
 //   days   收录天数；tpwd 为预生成淘口令（真实环境由服务端 taobao.tbk.tpwd.create 预生成）
 //   stale  可能已失效标记（后台手动刷新时联盟查无此商品）：不下架、保留展示，详情页提示可搜同款
 //   fresh_days 数据年龄（距最近一次联盟核实的天数，服务端算出）：详情页落灰度文案依据
+//   focus  封面主体纵向位置 top/center/bottom（默认 center；AI 选封面时返回）：
+//          淘宝图基本 1:1 方形，非方形卡片 cover 裁剪时按它保商品主体；宽扁槽位改 contain 不切
 //   图片一律 emoji + 色相（hue）渐变占位——原型不内嵌任何外部图片。
 window.DB = window.DB || {};
 
@@ -153,7 +155,7 @@ window.DB.GOODS = [
     attrs: ['和纸', '15mm×7m'], tpwd: '￥Yt73HgFd50￥' },
 
   // ---------- 等身抱枕 ----------
-  { id: 'g22', cat: 'daki', title: '「月光茶会」等身抱枕套', price: 139, list: 169, emoji: '🌙', hue: 255, days: 6,
+  { id: 'g22', cat: 'daki', title: '「月光茶会」等身抱枕套', price: 139, list: 169, emoji: '🌙', hue: 255, days: 6, focus: 'top',
     note: '2WT 面料，滑但不起球，图是双面不同姿势。枕芯要另买，注意看尺寸。',
     origin: '月光茶会等身抱枕套二次元周边动漫双面枕套2WT面料生日礼物',
     attrs: ['2WT 面料', '160×50cm', '双面'], tpwd: '￥Ew45TzUi92￥' },
@@ -201,7 +203,7 @@ window.DB.GOODS = [
     note: '倒热水后岩浆纹路会亮起来，冬天的快乐。杯壁厚，保温比一般马克杯好。',
     origin: '岩浆变色马克杯陶瓷二次元周边创意感温杯子生日礼物送男友女友',
     attrs: ['陶瓷', '感温变色', '350ml'], tpwd: '￥Vb93NmQw67￥' },
-  { id: 'g32', cat: 'life', title: '星空印刷·透明长柄伞', price: 29, emoji: '☂️', hue: 240, days: 8,
+  { id: 'g32', cat: 'life', title: '星空印刷·透明长柄伞', price: 29, emoji: '☂️', hue: 240, days: 8, focus: 'top',
     note: '伞面内侧印星空，抬头可见——雨天限定的浪漫。伞骨 8 根，抗风一般但够用。',
     origin: '星空透明雨伞长柄二次元周边创意网红雨伞学生生日礼物',
     attrs: ['8 骨', '伞下直径 96cm'], tpwd: '￥Ty65GhJk02￥' },

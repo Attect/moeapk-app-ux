@@ -1132,6 +1132,11 @@ body, .card, .li, .topbar, .navbar, .chip, .btn, .tbtn, .field-input,
 .g-cover span { font-size: 44px; filter: drop-shadow(0 4px 10px rgba(60, 25, 55, .25)); transition: transform .2s; }
 /* 真实商品图（淘宝 CDN）：绝对定位覆盖渐变占位；加载失败由 onerror 移除 img 回落占位 */
 .g-cover img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+/* 宽扁槽位（fit）：方形商品图完整呈现，两侧露渐变底 */
+.g-cover.fit img { object-fit: contain; }
+/* 焦点对齐（focus 字段，cover 裁剪时保商品主体） */
+.g-cover[data-focus="top"] img { object-position: center top; }
+.g-cover[data-focus="bottom"] img { object-position: center bottom; }
 .g-cover.v1 { --ga: 160deg; }
 .g-cover.v2 { --ga: 108deg; }
 .g-cover.v1 span { transform: scale(1.35) rotate(-8deg); }
