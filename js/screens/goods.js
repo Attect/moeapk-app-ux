@@ -207,17 +207,19 @@
         '</div><div class="g-dots">' +
         Array.from({ length: shots }, (_, i) => '<i class="g-dot' + (i === 0 ? ' on' : '') + '"></i>').join('') +
         '</div></div>';
+      // 信息分区（2026-10-09 重排）：身份区（标题/展厅/收录时间）→ 价格区 →
+      // 策展区（陈列备注=灵魂 + 规格芯片）→ 坦诚区（落灰度/原始标题对照/失效提示/披露）→ CTA。
       h += '<div class="g-d-title">' + esc(g.title) + '</div>';
       h += '<div class="g-d-meta">' + esc(c ? c.name : '') + ' · ' + g.days + ' 天前收录</div>';
       // 真实价：普通文字色加大，不用电商红；划线价为淘宝标价
       h += '<div class="g-d-price-row"><span class="g-d-price">' + fmtPrice(g.price) + '</span>' +
         (g.list ? '<span class="g-d-list">' + fmtPrice(g.list) + '</span><span class="g-d-list-note">为淘宝标价</span>' : '') +
         '</div>';
-      // 数据落灰度（坦诚路线：数据不可能时刻全新，如实告知）
-      h += '<div class="g-d-fresh">数据更新：' + freshText(g) + '</div>';
       // 陈列备注（AI 生成 + 人工抽查，抽查可关）
       h += '<div class="g-note"><div class="g-note-label">✦ 陈列备注</div>' + esc(g.note) + '</div>';
       h += '<div class="chip-row g-attrs">' + g.attrs.map(assistChip).join('') + '</div>';
+      // —— 坦诚区：数据落灰度（失效展品由下方「这是古董」提示条承担，不再重复占行）——
+      if (!g.stale) h += '<div class="g-d-fresh">数据' + freshText(g) + '</div>';
       // 原始标题折叠：透明度对照——让人看到我们提炼了多少
       const orgOpen = !!S.x['goods-org-' + g.id];
       h += '<div class="g-org" data-a="goods-org" data-arg="' + g.id + '">' +
@@ -233,10 +235,10 @@
             '<div class="g-fresh-name">' + esc(x.title) + '</div>' +
             '<div class="g-fresh-cat">' + fmtPrice(x.price) + '</div></div>').join('') + '</div>';
       }
-      // 可能已失效（保留展示：用户可能去搜同款；坦诚提示，不拦跳转）
+      // 可能已失效（保留展示：用户可能去搜同款；坦诚提示，不拦跳转；落灰度语义并入首词）
       if (g.stale) {
         h += '<div class="g-stale">' + icon('info') +
-          '<span>这件可能已经下架了。若口令或跳转失效，可复制原始标题去淘宝搜同款。</span></div>';
+          '<span><b>这是古董</b>——这件可能已经下架了。若口令或跳转失效，可复制原始标题去淘宝搜同款。</span></div>';
       }
       // 披露（定案：固定于详情页底部，一句小字）
       h += legalLineDetail();
