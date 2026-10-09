@@ -118,7 +118,8 @@
       (img ? '<img src="' + esc(img) + '" alt="" loading="lazy" onerror="this.remove()">' : '');
     return '<div class="g-fall-card" data-a="goods-open" data-arg="' + g.id + '">' +
       '<div class="g-cover v0" style="--gh:' + (g.hue == null ? 300 : g.hue) + ';aspect-ratio:' + ar + '">' + inner + '</div>' +
-      '<div class="g-fall-body"><div class="g-fall-title">' + esc(g.title) + '</div>' +
+      '<div class="g-fall-body"><div class="g-fall-title">' + esc(g.title) +
+      (g.stale ? '<span class="g-fall-stale">或已绝版</span>' : '') + '</div>' +
       '<div class="g-fall-meta"><span class="g-fall-price">' + fmtPrice(g.price) + '</span>' +
       '<span>' + g.days + ' 天前收录</span></div></div></div>';
   }
@@ -216,6 +217,11 @@
             cover(x) +
             '<div class="g-fresh-name">' + esc(x.title) + '</div>' +
             '<div class="g-fresh-cat">' + fmtPrice(x.price) + '</div></div>').join('') + '</div>';
+      }
+      // 可能已失效（保留展示：用户可能去搜同款；坦诚提示，不拦跳转）
+      if (g.stale) {
+        h += '<div class="g-stale">' + icon('info') +
+          '<span>这件可能已经下架了。若口令或跳转失效，可复制原始标题去淘宝搜同款。</span></div>';
       }
       // 披露（定案：固定于详情页底部，一句小字）
       h += legalLineDetail();

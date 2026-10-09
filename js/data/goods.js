@@ -9,6 +9,7 @@
 //   note   陈列备注 / 策展短评（AI 生成 + 人工抽查，抽查可关）
 //   price  真实价（非引流最低价）；list 为淘宝划线价（可无）——feed 契约均为字符串，渲染端须兼容
 //   days   收录天数；tpwd 为预生成淘口令（真实环境由服务端 taobao.tbk.tpwd.create 预生成）
+//   stale  可能已失效标记（后台手动刷新时联盟查无此商品）：不下架、保留展示，详情页提示可搜同款
 //   图片一律 emoji + 色相（hue）渐变占位——原型不内嵌任何外部图片。
 window.DB = window.DB || {};
 
@@ -83,7 +84,7 @@ window.DB.GOODS = [
     attrs: ['亚克力', '8cm', '双挂链'], tpwd: '￥Hg93KpQw28￥' },
 
   // ---------- 塑料小人 ----------
-  { id: 'g08', cat: 'figure', title: '「庭院深深」1/7 完成品手办', price: 299, list: 358, emoji: '🎍', hue: 140, days: 3,
+  { id: 'g08', cat: 'figure', title: '「庭院深深」1/7 完成品手办', price: 299, list: 358, emoji: '🎍', hue: 140, days: 3, stale: true,
     note: '这个价位里少见的场景底座，苔藓和石灯都有细节。裙摆渐变涂装没翻车。',
     origin: '庭院深深1/7手办完成品二次元动漫周边模型摆件生日礼物收藏级正版授权',
     attrs: ['PVC 完成品', '1/7', '约 24cm'], tpwd: '￥Cv55NbMz74￥' },
