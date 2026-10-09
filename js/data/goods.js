@@ -10,6 +10,7 @@
 //   price  真实价（非引流最低价）；list 为淘宝划线价（可无）——feed 契约均为字符串，渲染端须兼容
 //   days   收录天数；tpwd 为预生成淘口令（真实环境由服务端 taobao.tbk.tpwd.create 预生成）
 //   stale  可能已失效标记（后台手动刷新时联盟查无此商品）：不下架、保留展示，详情页提示可搜同款
+//   fresh_days 数据年龄（距最近一次联盟核实的天数，服务端算出）：详情页落灰度文案依据
 //   图片一律 emoji + 色相（hue）渐变占位——原型不内嵌任何外部图片。
 window.DB = window.DB || {};
 
@@ -52,15 +53,15 @@ window.DB.GOODS_HOME = {
 
 window.DB.GOODS = [
   // ---------- 小铁片 ----------
-  { id: 'g01', cat: 'badge', title: '「星轨巡旅」镭射吧唧六枚组', price: 25.9, list: 32, emoji: '✨', hue: 290, days: 2,
+  { id: 'g01', cat: 'badge', title: '「星轨巡旅」镭射吧唧六枚组', price: 25.9, list: 32, emoji: '✨', hue: 290, days: 2, fresh_days: 0,
     note: '镭射底在光下会慢慢转色，别在帆布包肩带上正好。这家的边缘打磨得干净，不割手。',
     origin: '【正版授权】星轨巡旅吧唧徽章二次元周边谷子马口铁胸针58mm镭射闪底吧唧套装动漫挂件生日礼物送女友闺蜜',
     attrs: ['马口铁', '58mm', '6 枚装', '镭射闪底'], tpwd: '￥Xk72QpLm91￥' },
-  { id: 'g02', cat: 'badge', title: '猫耳女仆·闪底吧唧', price: 15.8, emoji: '🐱', hue: 340, days: 5,
+  { id: 'g02', cat: 'badge', title: '猫耳女仆·闪底吧唧', price: 15.8, emoji: '🐱', hue: 340, days: 5, fresh_days: 2,
     note: '细闪底不浮夸，女仆猫的表情画得很欠揍（褒义）。单枚包邮，凑包友好。',
     origin: '二次元猫耳女仆吧唧徽章动漫周边谷子闪底马口铁胸针学生书包挂件装饰可爱萌系生日礼物',
     attrs: ['马口铁', '58mm', '单枚'], tpwd: '￥Ab39TzWq20￥' },
-  { id: 'g03', cat: 'badge', title: '「深海邮局」烫金徽章', price: 19.9, emoji: '📮', hue: 210, days: 9,
+  { id: 'g03', cat: 'badge', title: '「深海邮局」烫金徽章', price: 19.9, emoji: '📮', hue: 210, days: 9, fresh_days: 5,
     note: '烫金线条在深色底上很出效果，别在牛仔外套上比别包上更合适。',
     origin: '深海邮局烫金徽章原创二次元周边金属质感胸针文艺复古挂件配饰学生礼物',
     attrs: ['马口铁', '烫金工艺', '44mm'], tpwd: '￥Qw81LmZx55￥' },
@@ -70,7 +71,7 @@ window.DB.GOODS = [
     attrs: ['马口铁', '32mm', '4 枚装'], tpwd: '￥Mn54KpWq83￥' },
 
   // ---------- 塑料片 ----------
-  { id: 'g05', cat: 'acrylic', title: '「放学后的天文部」立牌', price: 32, emoji: '🔭', hue: 250, days: 1,
+  { id: 'g05', cat: 'acrylic', title: '「放学后的天文部」立牌', price: 32, emoji: '🔭', hue: 250, days: 1, fresh_days: 10,
     note: '彩窗式印刷，逆光摆在窗台上效果最好。底座咬合紧，不会松松垮垮。',
     origin: '放学后的天文部亚克力立牌二次元动漫周边原创谷子桌面摆件学生生日礼物收藏',
     attrs: ['亚克力', '15cm', '含底座'], tpwd: '￥Zx20VbNm47￥' },
@@ -88,7 +89,7 @@ window.DB.GOODS = [
     note: '这个价位里少见的场景底座，苔藓和石灯都有细节。裙摆渐变涂装没翻车。',
     origin: '庭院深深1/7手办完成品二次元动漫周边模型摆件生日礼物收藏级正版授权',
     attrs: ['PVC 完成品', '1/7', '约 24cm'], tpwd: '￥Cv55NbMz74￥' },
-  { id: 'g09', cat: 'figure', title: 'Q版魔王·盒蛋随机款', price: 59, emoji: '😈', hue: 270, days: 6,
+  { id: 'g09', cat: 'figure', title: 'Q版魔王·盒蛋随机款', price: 59, emoji: '😈', hue: 270, days: 6, fresh_days: 20,
     note: '全 6 款随机，隐藏款是魔王打瞌睡。盒蛋的乐趣就是赌，量力而行。',
     origin: 'Q版魔王盒蛋盲盒手办二次元动漫周边桌面摆件随机款生日礼物',
     attrs: ['PVC', '约 8cm', '随机款'], tpwd: '￥Ty17WxQb66￥' },

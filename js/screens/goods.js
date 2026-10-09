@@ -16,6 +16,19 @@
     return '¥' + (n % 1 ? String(Math.round(n * 100) / 100) : String(n));
   };
 
+  // 数据落灰度文案（对应 feed 的 fresh_days：距最近一次联盟核实的天数）：
+  // 今天=刚刚擦新 / ≤3 天=放了两三天了 / ≤7 天=放了一段时间 / ≤14 天=有点落灰了 / 更久=落灰了；
+  // 失效（stale）展品恒为「这是古董」。旧数据缺 fresh_days 时回落收录天数。
+  function freshText(g) {
+    if (g.stale) return '这是古董';
+    const d = g.fresh_days == null ? (g.days || 0) : g.fresh_days;
+    if (d <= 0) return '刚刚擦新';
+    if (d <= 3) return '放了两三天了';
+    if (d <= 7) return '放了一段时间';
+    if (d <= 14) return '有点落灰了';
+    return '落灰了';
+  }
+
   // 按 seed 稳定的伪随机：换一批 / 随手翻翻 改变 seed 重排，render 之间不漂移
   function rng(seed) {
     let t = seed >>> 0;
@@ -200,6 +213,8 @@
       h += '<div class="g-d-price-row"><span class="g-d-price">' + fmtPrice(g.price) + '</span>' +
         (g.list ? '<span class="g-d-list">' + fmtPrice(g.list) + '</span><span class="g-d-list-note">为淘宝标价</span>' : '') +
         '</div>';
+      // 数据落灰度（坦诚路线：数据不可能时刻全新，如实告知）
+      h += '<div class="g-d-fresh">数据更新：' + freshText(g) + '</div>';
       // 陈列备注（AI 生成 + 人工抽查，抽查可关）
       h += '<div class="g-note"><div class="g-note-label">✦ 陈列备注</div>' + esc(g.note) + '</div>';
       h += '<div class="chip-row g-attrs">' + g.attrs.map(assistChip).join('') + '</div>';
