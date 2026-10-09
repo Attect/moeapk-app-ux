@@ -232,10 +232,19 @@
       // 坦诚区：原始标题直接展示（提炼对照，不再折叠）
       h += '<div class="g-org-label">它在淘宝的原始标题</div>' +
         '<div class="g-org-text">' + esc(g.origin) + '</div>';
-      // 可能存在的优惠（联盟促销条目；券会过期/有门槛，弱化呈现不催促）
+      // 可能存在的优惠（联盟促销条目；券会过期/有门槛，弱化呈现不催促）：
+      // 每条目一张小卡片 + SVG 图标示意（券=票券 / 折=百分号 / 减降补贴=降价标签 / 其它=通用优惠）
       if (g.promos && g.promos.length) {
+        const pIcon = p => {
+          if (p.includes('券')) return 'confirmation_number';
+          if (p.includes('折')) return 'percent';
+          if (p.includes('减') || p.includes('降') || p.includes('补贴')) return 'sell';
+          return 'local_offer';
+        };
         h += '<div class="g-promo"><div class="g-promo-label">可能存在的优惠</div>' +
-          g.promos.map(p => '<div class="g-promo-row">' + esc(p) + '</div>').join('') + '</div>';
+          '<div class="g-promo-list">' +
+          g.promos.map(p => '<div class="g-promo-card">' + icon(pIcon(p)) + '<span>' + esc(p) + '</span></div>').join('') +
+          '</div></div>';
       }
       // 同展厅还有
       const rel = goodsByCat(g.cat).filter(x => x.id !== g.id).slice(0, 5);
@@ -258,7 +267,7 @@
       h += '<div class="g-cta">' +
         '<button class="icbtn g-cta-copy" data-a="goods-tpwd" data-arg="' + g.id + '" title="复制淘口令">' + icon('content_copy') + '</button>' +
         btn(buying ? '正在唤起淘宝…' : icon('open_in_new') + ' 去淘宝看看', 'goods-buy', g.id, 'flex' + (buying ? ' g-buying' : '')) +
-        '<div class="g-cta-price">' + fmtPrice(g.price) +
+        '<div class="g-cta-price"><span class="g-cta-about">约</span>' + fmtPrice(g.price) +
         (g.list ? '<s title="为淘宝标价">' + fmtPrice(g.list) + '</s>' : '') + '</div>' +
         '</div>';
       return h;

@@ -1259,13 +1259,19 @@ body, .card, .li, .topbar, .navbar, .chip, .btn, .tbtn, .field-input,
   font-size: 12px; line-height: 18px; color: var(--on-surface-variant);
 }
 
-/* 可能存在的优惠（坦诚区；虚线卡片弱化呈现，不催促） */
-.g-promo {
-  margin-top: 10px; padding: 10px 12px; border-radius: 12px;
+/* 可能存在的优惠（坦诚区；每条目一张虚线小卡 + SVG 图标，弱化不催促） */
+.g-promo { margin-top: 10px; }
+.g-promo-label { font-size: 11px; color: var(--on-surface-variant); margin-bottom: 6px; }
+.g-promo-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.g-promo-card {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 6px 10px; border-radius: 10px;
   border: 1px dashed var(--outline-variant); background: var(--surface-container);
+  font-size: 12px; line-height: 18px; color: var(--on-surface);
 }
-.g-promo-label { font-size: 11px; color: var(--on-surface-variant); margin-bottom: 4px; }
-.g-promo-row { font-size: 12px; line-height: 20px; color: var(--on-surface); }
+.g-promo-card .ic { width: 15px; height: 15px; color: var(--primary); flex-shrink: 0; }
+/* CTA 价格的「约」（预估到手价，坦诚口径） */
+.g-cta-about { font-size: 11px; font-weight: 400; color: var(--on-surface-variant); margin-right: 1px; }
 
 /* 披露小字（详情页底部固定，合规 + 坦诚路线） */
 .g-legal { font-size: 11px; line-height: 17px; color: var(--on-surface-variant); padding: 16px 6px 4px; opacity: .85; }
