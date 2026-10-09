@@ -17,16 +17,16 @@
   };
 
   // 数据落灰度文案（对应 feed 的 fresh_days：距最近一次联盟核实的天数）：
-  // 今天=刚刚擦新 / ≤3 天=放了两三天了 / ≤7 天=放了一段时间 / ≤14 天=有点落灰了 / 更久=落灰了；
-  // 失效（stale）展品恒为「这是古董」。旧数据缺 fresh_days 时回落收录天数。
+  // 今天=此物刚刚擦新 / ≤3 天=此物放了两三天了 / ≤7 天=此物放了一段时间 /
+  // ≤14 天=此物有点落灰了 / 更久=此物落灰了；失效展品的「这是古董」由提示条承担，不走这里。
+  // 旧数据缺 fresh_days 时回落收录天数。
   function freshText(g) {
-    if (g.stale) return '这是古董';
     const d = g.fresh_days == null ? (g.days || 0) : g.fresh_days;
-    if (d <= 0) return '刚刚擦新';
-    if (d <= 3) return '放了两三天了';
-    if (d <= 7) return '放了一段时间';
-    if (d <= 14) return '有点落灰了';
-    return '落灰了';
+    if (d <= 0) return '此物刚刚擦新';
+    if (d <= 3) return '此物放了两三天了';
+    if (d <= 7) return '此物放了一段时间';
+    if (d <= 14) return '此物有点落灰了';
+    return '此物落灰了';
   }
 
   // 按 seed 稳定的伪随机：换一批 / 随手翻翻 改变 seed 重排，render 之间不漂移
@@ -200,11 +200,14 @@
     render();
   });
   action('goods-open-cat', ds => nav.push('goods-cat', ds.arg));
-  action('goods-open', ds => nav.push('goods-detail', ds.arg));
+  // goods-open 注册在下方「共享元素转场」节（带卡片快照与 FLIP 动画）
 
   // ---------- 展品卡（详情）：上图下文，底部固定「去淘宝看看」 ----------
+  // 信息分区（2026-10-09 重排）：身份区（顶栏标题=展品名；标题/展厅/收录时间/落灰度一行 meta）→
+  // 策展区（陈列备注=灵魂 + 规格芯片）→ 坦诚区（原始标题直展 + 失效提示 + 披露）→
+  // CTA 行（复制口令 / 去淘宝看看 / 价格居右）。
   registerScreen('goods-detail', {
-    title: '展品卡',
+    title: arg => { const g = goodById(arg); return g ? g.title : '展品卡'; },
     render(arg) {
       const g = goodById(arg);
       if (!g) return emptyHint('这件展品已撤下');
@@ -212,30 +215,23 @@
       const buying = S.x.buyFor === g.id;
       // 顶部图片 pager：scroll-snap 横滑；圆点由下方全局 scroll 监听直接改 class（不走 render）。
       // 页数 = 真实图片数（上限 5，与后端 pics 上限一致；演示数据的占位图固定 3 页）。
+      // 双指撑开/双击进全屏查看器（见文件末查看器节）。
       const shots = Math.max(1, Math.min(5, (g.images && g.images.length) || 3));
       let h = '<div class="g-pager-wrap"><div class="g-pager">' +
         Array.from({ length: shots }, (_, v) => '<div class="g-shot">' + cover(g, v) + '</div>').join('') +
         '</div><div class="g-dots">' +
         Array.from({ length: shots }, (_, i) => '<i class="g-dot' + (i === 0 ? ' on' : '') + '"></i>').join('') +
         '</div></div>';
-      // 信息分区（2026-10-09 重排）：身份区（标题/展厅/收录时间）→ 价格区 →
-      // 策展区（陈列备注=灵魂 + 规格芯片）→ 坦诚区（落灰度/原始标题对照/失效提示/披露）→ CTA。
+      // 身份区：标题 + 一行 meta（展厅 · 收录时间 · 落灰度；失效由下方古董条承担）
       h += '<div class="g-d-title">' + esc(g.title) + '</div>';
-      h += '<div class="g-d-meta">' + esc(c ? c.name : '') + ' · ' + g.days + ' 天前收录</div>';
-      // 真实价：普通文字色加大，不用电商红；划线价为淘宝标价
-      h += '<div class="g-d-price-row"><span class="g-d-price">' + fmtPrice(g.price) + '</span>' +
-        (g.list ? '<span class="g-d-list">' + fmtPrice(g.list) + '</span><span class="g-d-list-note">为淘宝标价</span>' : '') +
-        '</div>';
-      // 陈列备注（AI 生成 + 人工抽查，抽查可关）
+      h += '<div class="g-d-meta">' + esc(c ? c.name : '') + ' · ' + g.days + ' 天前收录' +
+        (g.stale ? '' : ' · ' + freshText(g)) + '</div>';
+      // 策展区：陈列备注（AI 生成 + 人工抽查，抽查可关）+ 规格芯片
       h += '<div class="g-note"><div class="g-note-label">✦ 陈列备注</div>' + esc(g.note) + '</div>';
       h += '<div class="chip-row g-attrs">' + g.attrs.map(assistChip).join('') + '</div>';
-      // —— 坦诚区：数据落灰度（失效展品由下方「这是古董」提示条承担，不再重复占行）——
-      if (!g.stale) h += '<div class="g-d-fresh">数据' + freshText(g) + '</div>';
-      // 原始标题折叠：透明度对照——让人看到我们提炼了多少
-      const orgOpen = !!S.x['goods-org-' + g.id];
-      h += '<div class="g-org" data-a="goods-org" data-arg="' + g.id + '">' +
-        icon(orgOpen ? 'expand_less' : 'expand_more') + '<span>它在淘宝的原始标题</span></div>' +
-        (orgOpen ? '<div class="g-org-text">' + esc(g.origin) + '</div>' : '');
+      // 坦诚区：原始标题直接展示（提炼对照，不再折叠）
+      h += '<div class="g-org-label">它在淘宝的原始标题</div>' +
+        '<div class="g-org-text">' + esc(g.origin) + '</div>';
       // 同展厅还有
       const rel = goodsByCat(g.cat).filter(x => x.id !== g.id).slice(0, 5);
       if (rel.length) {
@@ -253,10 +249,12 @@
       }
       // 披露（定案：固定于详情页底部，一句小字）
       h += legalLineDetail();
-      // 底部 CTA：复制淘口令（次） + 去淘宝看看（主）
+      // 底部 CTA：复制淘口令（次） + 去淘宝看看（主） + 价格（居右，划线价为淘宝标价）
       h += '<div class="g-cta">' +
         '<button class="icbtn g-cta-copy" data-a="goods-tpwd" data-arg="' + g.id + '" title="复制淘口令">' + icon('content_copy') + '</button>' +
         btn(buying ? '正在唤起淘宝…' : icon('open_in_new') + ' 去淘宝看看', 'goods-buy', g.id, 'flex' + (buying ? ' g-buying' : '')) +
+        '<div class="g-cta-price">' + fmtPrice(g.price) +
+        (g.list ? '<s title="为淘宝标价">' + fmtPrice(g.list) + '</s>' : '') + '</div>' +
         '</div>';
       return h;
     }
@@ -290,11 +288,6 @@
     }, 2000);
   });
   action('goods-tpwd', ds => { const g = goodById(ds.arg); if (g) copyTpwd(g); });
-  action('goods-org', ds => {
-    const k = 'goods-org-' + ds.arg;
-    S.x[k] = !S.x[k];
-    render();
-  });
   function copyTpwd(g) {
     const ok = () => toast('淘口令已复制，打开淘宝自动识别');
     const bad = () => toast('自动复制失败，请长按口令手动复制');
@@ -321,6 +314,228 @@
     S.x.goodsBatches[cur.arg] = nb + 1;
     falls.insertAdjacentHTML('beforeend', fallBatch(cur.arg, nb + 1, S.x.goodsSort || 'new'));
   }, true);
+
+  // ---------- 共享元素转场（卡片 → 详情大图，FLIP） ----------
+  // 点击卡片时克隆封面记录位置，详情渲染后克隆体从卡片位动画到 pager 位；
+  // 图片本就是缓存同一张，无缝无白闪。返回时反向缩回（capture 拦截 back）。
+  // App 侧对应：Compose sharedBounds/sharedElement 转场。
+  let hero = null; // { id, rect, html } —— 进入详情时的源卡片快照
+  function phoneRect() { return document.querySelector('.phone').getBoundingClientRect(); }
+  function heroClone(rel, rect, html) {
+    // rel 为定位参照（.phone）的视口 rect；rect 为内容视口 rect → 换算成 .phone 内绝对坐标
+    const clone = document.createElement('div');
+    clone.className = 'g-hero-anim';
+    clone.innerHTML = html;
+    const inner = clone.firstChild;
+    inner.style.position = 'absolute';
+    inner.style.inset = '0';
+    inner.style.width = '100%';
+    inner.style.height = '100%';
+    Object.assign(clone.style, {
+      left: (rect.left - rel.left) + 'px', top: (rect.top - rel.top) + 'px',
+      width: rect.width + 'px', height: rect.height + 'px',
+    });
+    document.querySelector('.phone').appendChild(clone);
+    return clone;
+  }
+  action('goods-open', (ds, el) => {
+    const card = el && el.closest ? el.closest('.g-fall-card, .g-fresh-card') : null;
+    const cov = card ? card.querySelector('.g-cover') : null;
+    hero = cov ? { id: ds.arg, rect: cov.getBoundingClientRect(), html: cov.outerHTML } : null;
+    nav.push('goods-detail', ds.arg);
+    if (hero) requestAnimationFrame(() => {
+      const target = document.querySelector('.g-shot .g-cover');
+      if (!target || !hero) return;
+      const clone = heroClone(phoneRect(), hero.rect, hero.html);
+      const tr = target.getBoundingClientRect();
+      const rel = phoneRect();
+      target.style.visibility = 'hidden';
+      requestAnimationFrame(() => {
+        Object.assign(clone.style, {
+          left: (tr.left - rel.left) + 'px', top: (tr.top - rel.top) + 'px',
+          width: tr.width + 'px', height: tr.height + 'px',
+        });
+      });
+      setTimeout(() => {
+        target.style.visibility = '';
+        clone.classList.add('out');
+        setTimeout(() => clone.remove(), 140);
+      }, 300);
+    });
+  });
+  // 返回时反向缩回源卡片（capture 拦截全局 back；无源快照或找不到卡片时走默认返回）
+  document.addEventListener('click', e => {
+    const b = e.target.closest('[data-a="back"]');
+    if (!b || !hero) return;
+    const cur = nav.current();
+    if (!cur || cur.page !== 'goods-detail' || cur.arg !== hero.id) return;
+    const pager = document.querySelector('.g-shot .g-cover');
+    if (!pager) return;
+    const pr = pager.getBoundingClientRect();
+    e.stopImmediatePropagation();
+    e.preventDefault();
+    const html = pager.outerHTML;
+    nav.pop();
+    requestAnimationFrame(() => {
+      const card = document.querySelector('.g-fall-card[data-arg="' + hero.id + '"] .g-cover, .g-fresh-card[data-arg="' + hero.id + '"] .g-cover');
+      if (!card) { hero = null; return; }
+      const clone = heroClone(phoneRect(), pr, html);
+      const tr = card.getBoundingClientRect();
+      const rel = phoneRect();
+      requestAnimationFrame(() => {
+        Object.assign(clone.style, {
+          left: (tr.left - rel.left) + 'px', top: (tr.top - rel.top) + 'px',
+          width: tr.width + 'px', height: tr.height + 'px',
+        });
+      });
+      setTimeout(() => { clone.classList.add('out'); setTimeout(() => clone.remove(), 140); }, 300);
+      hero = null;
+    });
+  }, true);
+
+  // ---------- 全屏查看器 ----------
+  // 双指撑开（或双击，桌面/调试）pager 图片进入；横滑切换；长按/右键出菜单
+  // （保存到相册 / 保存到素材 / 分享）；单击空白或图片、左上角 X、Esc 退出。
+  // 挂在 .phone 上而非 #app——render（如对话框打开）不会销毁查看器。
+  // App 侧契约：保存到相册=MediaStore 写入；保存到素材=入素材库；分享=系统分享。
+  let viewerEl = null;
+  function viewerSlides(g) {
+    const imgs = g.images && g.images.length ? g.images : null;
+    const n = imgs ? imgs.length : 1;
+    return Array.from({ length: n }, (_, i) => {
+      const inner = imgs
+        ? '<img src="' + esc(imgs[i]) + '" alt="" draggable="false" onerror="this.remove()">'
+        : '<div class="g-viewer-ph" style="--gh:' + (g.hue == null ? 300 : g.hue) + '"><span>' + (g.emoji || '🎁') + '</span></div>';
+      return '<div class="g-viewer-slide">' + inner + '</div>';
+    }).join('');
+  }
+  function openViewer(g, index) {
+    closeViewer(true);
+    const n = g.images && g.images.length ? g.images.length : 1;
+    const el = document.createElement('div');
+    el.className = 'g-viewer';
+    el.innerHTML = '<button class="g-viewer-x" aria-label="退出全屏">' + icon('close') + '</button>' +
+      '<div class="g-viewer-idx">' + (index + 1) + ' / ' + n + '</div>' +
+      '<div class="g-viewer-strip">' + viewerSlides(g) + '</div>';
+    document.querySelector('.phone').appendChild(el);
+    viewerEl = el;
+    const strip = el.querySelector('.g-viewer-strip');
+    strip.scrollLeft = strip.clientWidth * index;
+    strip.addEventListener('scroll', () => {
+      const i = Math.round(strip.scrollLeft / Math.max(1, strip.clientWidth));
+      el.querySelector('.g-viewer-idx').textContent = (i + 1) + ' / ' + n;
+    });
+    // 单击退出（滑动/拖拽不触发：位移 >10px 视为手势）
+    let downPos = null;
+    el.addEventListener('pointerdown', e => { downPos = { x: e.clientX, y: e.clientY }; });
+    el.addEventListener('click', e => {
+      if (e.target.closest('.g-viewer-x')) { closeViewer(); return; }
+      if (downPos && Math.hypot(e.clientX - downPos.x, e.clientY - downPos.y) > 10) return;
+      closeViewer();
+    });
+    // 长按 / 右键 → 菜单
+    let lpTimer = null;
+    el.addEventListener('touchstart', () => {
+      lpTimer = setTimeout(() => viewerMenu(g, currentViewerIndex(el)), 500);
+    }, { passive: true });
+    el.addEventListener('touchmove', () => clearTimeout(lpTimer), { passive: true });
+    el.addEventListener('touchend', () => clearTimeout(lpTimer), { passive: true });
+    el.addEventListener('contextmenu', e => {
+      e.preventDefault();
+      viewerMenu(g, currentViewerIndex(el));
+    });
+    requestAnimationFrame(() => el.classList.add('on'));
+  }
+  function currentViewerIndex(el) {
+    const strip = el.querySelector('.g-viewer-strip');
+    return Math.round(strip.scrollLeft / Math.max(1, strip.clientWidth));
+  }
+  function closeViewer(instant) {
+    if (!viewerEl) return;
+    const el = viewerEl;
+    viewerEl = null;
+    if (instant) { el.remove(); return; }
+    el.classList.remove('on');
+    setTimeout(() => el.remove(), 200);
+  }
+  function viewerMenu(g, idx) {
+    showDialog({
+      title: g.title,
+      body: '第 ' + (idx + 1) + ' 张图',
+      actions: [
+        { label: '保存到相册', run: () => { viewerSavePhoto(g, idx); } },
+        { label: '保存到素材', run: () => { viewerSaveAsset(g); } },
+        { label: '分享', run: () => { viewerShare(g); } },
+        { label: '取消', run: closeDialog },
+      ]
+    });
+  }
+  function viewerSavePhoto(g, idx) {
+    const url = g.images && g.images[idx];
+    if (!url) { toast('演示占位图没有可保存的图片'); return; }
+    // 真实图：尽力走浏览器下载（跨域受 CORS 限制，失败回落打开原图）；App 侧为 MediaStore
+    fetch(url).then(r => r.blob()).then(b => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(b);
+      a.download = (g.title || 'goods') + '.jpg';
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+      toast('已开始下载保存');
+    }).catch(() => window.open(url, '_blank'));
+  }
+  function viewerSaveAsset(g) {
+    const p = n => (n < 10 ? '0' : '') + n;
+    const t = new Date();
+    S.x.assets = S.x.assets || [];
+    S.x.assets.unshift({
+      id: 'as-g' + Date.now(), kind: 'image', hue: g.hue == null ? 300 : g.hue,
+      label: '宅物·' + g.title,
+      date: t.getFullYear() + '-' + p(t.getMonth() + 1) + '-' + p(t.getDate()),
+    });
+    toast('已存入素材库');
+  }
+  function viewerShare(g) {
+    const text = g.title + ' · ' + fmtPrice(g.price) + '（MoeApk 宅物陈列室）';
+    if (navigator.share) { navigator.share({ title: g.title, text: text }).catch(() => {}); return; }
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(() => toast('已复制分享文案'), () => toast('分享失败'));
+        return;
+      }
+    } catch (e) { /* fallthrough */ }
+    toast('当前环境不支持分享');
+  }
+  // 双指撑开 pager 图片 → 全屏（触摸）；双击 → 全屏（桌面/调试）
+  let pinch = null;
+  document.addEventListener('touchstart', e => {
+    const p = e.target.closest('.g-pager');
+    pinch = (p && e.touches.length === 2)
+      ? { d: Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY), fired: false }
+      : null;
+  }, { passive: true, capture: true });
+  document.addEventListener('touchmove', e => {
+    if (!pinch || pinch.fired || e.touches.length !== 2) return;
+    const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+    if (d / pinch.d > 1.3) {
+      pinch.fired = true;
+      const cur = nav.current();
+      if (!cur || cur.page !== 'goods-detail') return;
+      const g = goodById(cur.arg);
+      const pager = document.querySelector('.g-pager');
+      const idx = pager ? Math.round(pager.scrollLeft / Math.max(1, pager.clientWidth)) : 0;
+      if (g) openViewer(g, idx);
+    }
+  }, { passive: true, capture: true });
+  document.addEventListener('dblclick', e => {
+    if (!e.target.closest('.g-pager')) return;
+    const cur = nav.current();
+    if (!cur || cur.page !== 'goods-detail') return;
+    const g = goodById(cur.arg);
+    const pager = document.querySelector('.g-pager');
+    const idx = pager ? Math.round(pager.scrollLeft / Math.max(1, pager.clientWidth)) : 0;
+    if (g) openViewer(g, idx);
+  });
+  window.addEventListener('keydown', e => { if (e.key === 'Escape' && viewerEl) closeViewer(); });
 
   // pager 圆点跟随：直接改 DOM class，不触发 render（避免重建导致 pager 回滚）
   document.addEventListener('scroll', e => {
