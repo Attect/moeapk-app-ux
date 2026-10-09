@@ -261,17 +261,21 @@
   }
 
   // 无限瀑布流：接近底部（1.2 屏阈值，提前续上不露白）追加一批。
-  // 同屏重渲染由 scrollMem 保持滚动位置，已加载批次经 S.x.goodsBatches 还原
+  // 只往 .g-falls 尾部插 DOM，绝不走 render——滚动途中整页重建会打断滚轮动画、
+  // 主线程逐帧全量重排（滚到底冻住一拍、上下都动不了的根因）。批次计数照记 S.x，
+  // 之后任何 render（回顶按钮显隐等）都按原长度还原，不丢已加载内容。
   document.addEventListener('scroll', e => {
     const t = e.target;
     if (!t || t.id !== 'content') return;
     if (t.scrollHeight - t.scrollTop - t.clientHeight > t.clientHeight * 1.2) return;
     const cur = nav.current();
     if (!cur || cur.page !== 'goods-cat') return;
+    const falls = t.querySelector('.g-falls');
+    if (!falls) return;
     const nb = batchesOf(cur.arg);
     if (nb >= MAX_BATCH) return;
     S.x.goodsBatches[cur.arg] = nb + 1;
-    render();
+    falls.insertAdjacentHTML('beforeend', fallBatch(cur.arg, nb + 1, S.x.goodsSort || 'new'));
   }, true);
 
   // pager 圆点跟随：直接改 DOM class，不触发 render（避免重建导致 pager 回滚）
