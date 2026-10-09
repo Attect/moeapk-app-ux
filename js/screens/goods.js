@@ -9,7 +9,12 @@
   const catById = id => (DB.GOODS_CATS || []).find(c => c.id === id);
   const goodById = id => (DB.GOODS || []).find(g => g.id === id);
   const goodsByCat = cid => (DB.GOODS || []).filter(g => g.cat === cid);
-  const fmtPrice = p => '¥' + (p % 1 ? p.toFixed(1) : String(p));
+  // feed 契约中价格为字符串（"25.9"），演示数据是数字——两种都兼容
+  const fmtPrice = p => {
+    const n = typeof p === 'number' ? p : parseFloat(p);
+    if (!isFinite(n)) return '¥' + String(p);
+    return '¥' + (n % 1 ? String(Math.round(n * 100) / 100) : String(n));
+  };
 
   // 按 seed 稳定的伪随机：换一批 / 随手翻翻 改变 seed 重排，render 之间不漂移
   function rng(seed) {
@@ -57,29 +62,34 @@
     render() {
       const seed = S.x.goodsSeed || 0;
       const rand = rng(seed * 1009 + 7);
-      let h = '<div class="g-hero"><div class="g-hero-title">看看有什么好东西</div></div>';
+      // 首页布局来自数据层（对应 feed 的 home 对象；后台「展厅与首页」动态配置）
+      const home = DB.GOODS_HOME || { hero: '看看有什么好东西', fresh_count: 8, mosaic: [] };
+      let h = '<div class="g-hero"><div class="g-hero-title">' + esc(home.hero) + '</div></div>';
 
-      // 新入荷：收录最近的 8 件（卡片只署名不标价）
-      const fresh = (DB.GOODS || []).slice().sort((a, b) => a.days - b.days).slice(0, 8);
-      h += '<div class="sec-head"><span class="sec-title">新入荷</span></div>' +
-        '<div class="g-fresh">' + fresh.map(g => {
-          const c = catById(g.cat);
-          return '<div class="g-fresh-card" data-a="goods-open" data-arg="' + g.id + '">' +
-            cover(g) +
-            '<div class="g-fresh-name">' + esc(g.title) + '</div>' +
-            '<div class="g-fresh-cat">' + esc(c ? c.name : '') + ' · ' + g.days + ' 天前</div></div>';
-        }).join('') + '</div>';
+      // 新入荷：收录最近的 N 件（卡片只署名不标价；fresh_count=0 隐藏整个区块）
+      if (home.fresh_count > 0) {
+        const fresh = (DB.GOODS || []).slice().sort((a, b) => a.days - b.days).slice(0, home.fresh_count);
+        h += '<div class="sec-head"><span class="sec-title">新入荷</span></div>' +
+          '<div class="g-fresh">' + fresh.map(g => {
+            const c = catById(g.cat);
+            return '<div class="g-fresh-card" data-a="goods-open" data-arg="' + g.id + '">' +
+              cover(g) +
+              '<div class="g-fresh-name">' + esc(g.title) + '</div>' +
+              '<div class="g-fresh-cat">' + esc(c ? c.name : '') + ' · ' + g.days + ' 天前</div></div>';
+          }).join('') + '</div>';
+      }
 
-      // 展厅：分类乱序 + 每厅随机抽一件展品做封面；卡幅按固定节奏（6 列网格）
-      const SPANS = [[4, 148], [2, 148], [2, 112], [2, 124], [2, 112], [3, 136], [3, 136], [2, 128], [4, 128], [3, 120], [3, 132], [2, 108], [2, 120], [2, 108]];
+      // 展厅墙：槽位顺序/跨列/高度按布局配置原样渲染（空厅跳过）。
+      // 「换一批」不动布局，只在每个槽位的展厅内重抽封面展品（反复刷有新的脸面，布局不晕车）。
       h += '<div class="sec-head"><span class="sec-title">展厅</span>' + textBtn('换一批', 'goods-reshuffle') + '</div>';
       h += '<div class="g-mosaic">';
-      shuffle(DB.GOODS_CATS || [], rand).forEach((c, i) => {
+      (home.mosaic || []).forEach(slot => {
+        const c = catById(slot.hall);
+        if (!c) return;
         const items = goodsByCat(c.id);
         if (!items.length) return;
         const g = items[Math.floor(rand() * items.length)];
-        const sp = SPANS[i % SPANS.length];
-        h += '<div class="g-mos-card" style="grid-column:span ' + sp[0] + ';height:' + sp[1] + 'px" data-a="goods-open-cat" data-arg="' + c.id + '">' +
+        h += '<div class="g-mos-card" style="grid-column:span ' + slot.span + ';height:' + slot.height + 'px" data-a="goods-open-cat" data-arg="' + c.id + '">' +
           cover(g) +
           '<div class="g-mos-label"><div class="g-mos-name">' + esc(c.name) + '</div>' +
           '<div class="g-mos-sub">' + esc(c.sub) + '</div></div></div>';
@@ -91,7 +101,7 @@
   action('goods-reshuffle', () => {
     S.x.goodsSeed = (S.x.goodsSeed || 0) + 1;
     render();
-    toast('陈列已重新摆放');
+    toast('每个展厅都换了件展品露脸');
   });
 
   // ---------- 展厅（分类页）：无限双列瀑布流，偏小红书 ----------
@@ -176,8 +186,8 @@
       const c = catById(g.cat);
       const buying = S.x.buyFor === g.id;
       // 顶部图片 pager：scroll-snap 横滑；圆点由下方全局 scroll 监听直接改 class（不走 render）。
-      // 页数 = 真实图片数（演示数据的占位图固定 3 页；单图商品只出 1 页）。
-      const shots = Math.max(1, Math.min(3, (g.images && g.images.length) || 3));
+      // 页数 = 真实图片数（上限 5，与后端 pics 上限一致；演示数据的占位图固定 3 页）。
+      const shots = Math.max(1, Math.min(5, (g.images && g.images.length) || 3));
       let h = '<div class="g-pager-wrap"><div class="g-pager">' +
         Array.from({ length: shots }, (_, v) => '<div class="g-shot">' + cover(g, v) + '</div>').join('') +
         '</div><div class="g-dots">' +

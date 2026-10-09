@@ -1,13 +1,13 @@
 // 宅物（二次元周边策展）演示数据
-// 真实管线（2026-10 定案，另行实施）：muka.cool 后台新增宅物模块，直连淘宝联盟 API 取数 →
-// AI 加工（多模态看图筛图 / 标题提炼 / 展厅映射 / 真实价核实，LLM 走 B 机 127.0.0.1:11455）→
+// 真实管线（2026-10 定案）：muka.cool 后台宅物模块直连淘宝联盟 API 取数 →
+// AI 加工（多模态筛图选封面 / 标题提炼 / 展厅映射 / 真实价核实；模型为内网部署，不随原型公开）→
 // 输出 JSON feed 供 MoeApk App 调用。本文件为同数据结构的演示快照。
 //
 // 字段约定：
 //   title  提炼后的展品名（真实环境由 AI 从淘宝原始标题提炼，10~15 字）
 //   origin 淘宝原始标题（关键词堆砌原貌，详情页折叠展示，作透明度对照）
 //   note   陈列备注 / 策展短评（AI 生成 + 人工抽查，抽查可关）
-//   price  真实价（非引流最低价）；list 为淘宝划线价（可无）
+//   price  真实价（非引流最低价）；list 为淘宝划线价（可无）——feed 契约均为字符串，渲染端须兼容
 //   days   收录天数；tpwd 为预生成淘口令（真实环境由服务端 taobao.tbk.tpwd.create 预生成）
 //   图片一律 emoji + 色相（hue）渐变占位——原型不内嵌任何外部图片。
 window.DB = window.DB || {};
@@ -29,6 +29,25 @@ window.DB.GOODS_CATS = [
   { id: 'life',    name: '生活渗透', sub: '杯壶 · 雨伞 · 杂货',   emoji: '🥤', blurb: '二次元渗透进喝水和出门。' },
   { id: 'ita',     name: '痛文化',   sub: '痛包 · 展示 · 装饰',   emoji: '👜', blurb: '把喜欢挂在身上，理直气壮。' }
 ];
+
+// App 首页布局（对应 feed 的 home 对象；后台「展厅与首页」动态配置，此处为默认快照）：
+//   hero        首页大标题
+//   fresh_count 新入荷横滑条件数（0 = 隐藏该区块）
+//   mosaic      展厅墙槽位（顺序=显示顺序；span 为 6 列网格跨列数，height 卡片像素高）
+// 「换一批」不打乱布局，只在每个槽位的展厅内重抽封面展品。
+window.DB.GOODS_HOME = {
+  hero: '看看有什么好东西',
+  fresh_count: 8,
+  mosaic: [
+    { hall: 'badge',   span: 4, height: 148 }, { hall: 'acrylic', span: 2, height: 148 },
+    { hall: 'figure',  span: 2, height: 112 }, { hall: 'plamo',   span: 2, height: 124 },
+    { hall: 'action',  span: 2, height: 112 }, { hall: 'plush',   span: 3, height: 136 },
+    { hall: 'paper',   span: 3, height: 136 }, { hall: 'sticker', span: 2, height: 128 },
+    { hall: 'daki',    span: 4, height: 128 }, { hall: 'wear',    span: 3, height: 120 },
+    { hall: 'cos',     span: 3, height: 132 }, { hall: 'desk',    span: 2, height: 108 },
+    { hall: 'life',    span: 2, height: 120 }, { hall: 'ita',     span: 2, height: 108 }
+  ]
+};
 
 window.DB.GOODS = [
   // ---------- 小铁片 ----------
