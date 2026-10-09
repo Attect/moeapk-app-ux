@@ -2,7 +2,7 @@
 // 板块定案（2026-10）：策展式陈列，不是商城——
 //   · 主页与展厅卡片不出现价格红字；主页分类卡只图+名，列表页价格小字弱化；
 //   · 无销量、无促销、无"买"字：主按钮为「去淘宝看看」；
-//   · 详情页底部固定披露淘宝客推广关系（合规 + 坦诚路线）；
+//   · 来源披露压到最短：主页/详情页各一句小字（措辞略分工），列表页不放；
 //   · 陈列备注由 AI 生成 + 人工抽查（抽查可关）。
 // 对应（规划中）：ui/goods/GoodsHomeScreen.kt、GoodsCatScreen.kt、GoodsDetailScreen.kt
 (function () {
@@ -43,8 +43,12 @@
     }
     return '<div class="g-cover v' + vi + '" style="--gh:' + (g.hue == null ? 300 : g.hue) + '">' + ph + '</div>';
   }
+  // 来源披露统一为一句小字：主页与详情页措辞略有分工，列表页不放
   function legalLine() {
-    return '<div class="g-legal">展品来自淘宝客推广渠道，经链接成交后我们会获得少量佣金，用于维持服务器与开发开销。价格、评价、售后等信息以淘宝页面为准。</div>';
+    return '<div class="g-legal">数据来自淘宝推广渠道</div>';
+  }
+  function legalLineDetail() {
+    return '<div class="g-legal">信息来自淘宝推广渠道，此处仅作展示不进行交易</div>';
   }
 
   // ---------- 主页：杂志式错落分类墙 ----------
@@ -53,16 +57,7 @@
     render() {
       const seed = S.x.goodsSeed || 0;
       const rand = rng(seed * 1009 + 7);
-      const LINES = [
-        '今天也在整理散落各地的可爱',
-        '展柜每周重新摆放，常来看看',
-        '不收门票的陈列室',
-        '每一件都亲手挑过',
-        '先别问价，先看顺不顺眼'
-      ];
-      let h = '<div class="g-hero">' +
-        '<div class="g-hero-title">宅物陈列室</div>' +
-        '<div class="g-hero-sub">' + esc(LINES[Math.floor(rand() * LINES.length)]) + '</div></div>';
+      let h = '<div class="g-hero"><div class="g-hero-title">看看有什么好东西</div></div>';
 
       // 新入荷：收录最近的 8 件（卡片只署名不标价）
       const fresh = (DB.GOODS || []).slice().sort((a, b) => a.days - b.days).slice(0, 8);
@@ -99,10 +94,15 @@
     toast('陈列已重新摆放');
   });
 
-  // ---------- 展厅（分类页）：双列瀑布流，偏小红书 ----------
+  // ---------- 展厅（分类页）：无限双列瀑布流，偏小红书 ----------
+  // 滚动接近底部自动追加下一批（对应 App 侧 Paging 懒加载 + 服务端分页下发；
+  // 真机数据耗尽自然到底，没有"到底啦"提示，底部也不放任何说明文字）。
+  // 原型数据有限：批次循环复用本厅展品，批间换序换比例，避免机械重复感。
   const ARS = ['1/1', '4/5', '3/4', '4/3']; // 封面比例按 id 哈希错开，瀑布有高差
-  function fallCard(g) {
-    const ar = ARS[hashStr(g.id) % ARS.length];
+  const MAX_BATCH = 40; // 原型安全上限（防 DOM 无限增长），真机无此概念
+  function fallCard(g, batch) {
+    // 第 1 批比例按 id 固定（首屏稳定）；后续批次叠加批号盐，同件展品每批高差不同
+    const ar = ARS[(hashStr(g.id) + (batch > 1 ? batch * 7 : 0)) % ARS.length];
     const img = g.images && g.images.length ? g.images[0] : null;
     const inner = '<span>' + (g.emoji || '🎁') + '</span>' +
       (img ? '<img src="' + esc(img) + '" alt="" loading="lazy" onerror="this.remove()">' : '');
@@ -112,16 +112,26 @@
       '<div class="g-fall-meta"><span class="g-fall-price">' + fmtPrice(g.price) + '</span>' +
       '<span>' + g.days + ' 天前收录</span></div></div></div>';
   }
+  // 一批的 HTML：第 1 批按当前排序原样；第 2 批起按批号盐重洗
+  function fallBatch(cid, batch, sort) {
+    let items = goodsByCat(cid);
+    if (batch > 1) items = shuffle(items, rng(hashStr(cid) * 13 + batch * 7919));
+    else if (sort === 'rand') items = shuffle(items, rng((S.x.goodsSeed || 0) * 31 + hashStr(cid)));
+    else items = items.slice().sort((a, b) => a.days - b.days);
+    return items.map(g => fallCard(g, batch)).join('');
+  }
+  // 批次计数按展厅留存：切走再回来 / 同屏重渲染（回顶按钮显隐等）都不丢已加载长度
+  function batchesOf(cid) {
+    S.x.goodsBatches = S.x.goodsBatches || {};
+    return Math.min(MAX_BATCH, S.x.goodsBatches[cid] || 1);
+  }
   registerScreen('goods-cat', {
     title: arg => { const c = catById(arg); return c ? c.name : '展厅'; },
     render(arg) {
       const c = catById(arg);
       if (!c) return emptyHint('展厅不存在');
       const sort = S.x.goodsSort || 'new';
-      let items = goodsByCat(arg);
-      if (!items.length) return emptyHint('这个展厅还在布置中');
-      if (sort === 'rand') items = shuffle(items, rng((S.x.goodsSeed || 0) * 31 + hashStr(arg)));
-      else items = items.slice().sort((a, b) => a.days - b.days);
+      if (!goodsByCat(arg).length) return emptyHint('这个展厅还在布置中');
       let h = '<div class="g-cat-hero">' +
         '<div class="g-cat-emoji">' + c.emoji + '</div>' +
         '<div class="g-cat-titles"><div class="g-cat-name">' + esc(c.name) + '</div>' +
@@ -131,12 +141,29 @@
       h += '<div class="chip-row">' +
         chip('最近收录', sort === 'new', 'goods-sort', 'new') +
         chip('随手翻翻', sort === 'rand', 'goods-sort', 'rand') + '</div>';
-      h += '<div class="g-falls">' + items.map(fallCard).join('') + '</div>';
-      h += legalLine();
+      const nb = batchesOf(arg);
+      S.x.goodsBatches[arg] = nb;
+      h += '<div class="g-falls">' +
+        Array.from({ length: nb }, (_, i) => fallBatch(arg, i + 1, sort)).join('') + '</div>';
+      // 内容不足一屏时滚动事件不会触发：渲染后自检补批直至溢出（每次 render 重查，到顶自停）
+      setTimeout(() => {
+        const el = document.getElementById('content');
+        const cur = nav.current();
+        if (!el || !cur || cur.page !== 'goods-cat' || cur.arg !== arg) return;
+        if (el.scrollHeight < el.clientHeight + 400 && batchesOf(arg) < MAX_BATCH) {
+          S.x.goodsBatches[arg] = batchesOf(arg) + 1;
+          render();
+        }
+      }, 0);
       return h;
     }
   });
-  action('goods-sort', ds => { S.x.goodsSort = ds.arg; render(); });
+  action('goods-sort', ds => {
+    S.x.goodsSort = ds.arg;
+    const cur = nav.current(); // 排序一变旧位置无意义：批次归一从头看
+    if (cur && cur.page === 'goods-cat' && S.x.goodsBatches) S.x.goodsBatches[cur.arg] = 1;
+    render();
+  });
   action('goods-open-cat', ds => nav.push('goods-cat', ds.arg));
   action('goods-open', ds => nav.push('goods-detail', ds.arg));
 
@@ -180,8 +207,8 @@
             '<div class="g-fresh-name">' + esc(x.title) + '</div>' +
             '<div class="g-fresh-cat">' + fmtPrice(x.price) + '</div></div>').join('') + '</div>';
       }
-      // 披露（定案：固定于详情页底部，小字）
-      h += legalLine();
+      // 披露（定案：固定于详情页底部，一句小字）
+      h += legalLineDetail();
       // 底部 CTA：复制淘口令（次） + 去淘宝看看（主）
       h += '<div class="g-cta">' +
         '<button class="icbtn g-cta-copy" data-a="goods-tpwd" data-arg="' + g.id + '" title="复制淘口令">' + icon('content_copy') + '</button>' +
@@ -232,6 +259,20 @@
       else bad();
     } catch (e) { bad(); }
   }
+
+  // 无限瀑布流：接近底部（1.2 屏阈值，提前续上不露白）追加一批。
+  // 同屏重渲染由 scrollMem 保持滚动位置，已加载批次经 S.x.goodsBatches 还原
+  document.addEventListener('scroll', e => {
+    const t = e.target;
+    if (!t || t.id !== 'content') return;
+    if (t.scrollHeight - t.scrollTop - t.clientHeight > t.clientHeight * 1.2) return;
+    const cur = nav.current();
+    if (!cur || cur.page !== 'goods-cat') return;
+    const nb = batchesOf(cur.arg);
+    if (nb >= MAX_BATCH) return;
+    S.x.goodsBatches[cur.arg] = nb + 1;
+    render();
+  }, true);
 
   // pager 圆点跟随：直接改 DOM class，不触发 render（避免重建导致 pager 回滚）
   document.addEventListener('scroll', e => {
