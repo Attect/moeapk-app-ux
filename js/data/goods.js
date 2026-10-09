@@ -13,6 +13,7 @@
 //   fresh_days 数据年龄（距最近一次联盟核实的天数，服务端算出）：详情页落灰度文案依据
 //   focus  封面主体纵向位置 top/center/bottom（默认 center；AI 选封面时返回）：
 //          淘宝图基本 1:1 方形，非方形卡片 cover 裁剪时按它保商品主体；宽扁槽位改 contain 不切
+//   promos 促销条目（「店铺券 ¥3」「满 2 件 9 折」，≤3 条；券会过期/有门槛，详情页「可能存在的优惠」卡片）
 //   图片一律 emoji + 色相（hue）渐变占位——原型不内嵌任何外部图片。
 window.DB = window.DB || {};
 
@@ -55,7 +56,7 @@ window.DB.GOODS_HOME = {
 
 window.DB.GOODS = [
   // ---------- 小铁片 ----------
-  { id: 'g01', cat: 'badge', title: '「星轨巡旅」镭射吧唧六枚组', price: 25.9, list: 32, emoji: '✨', hue: 290, days: 2, fresh_days: 0,
+  { id: 'g01', cat: 'badge', title: '「星轨巡旅」镭射吧唧六枚组', price: 25.9, list: 32, emoji: '✨', hue: 290, days: 2, fresh_days: 0, promos: ['店铺券 ¥3'],
     note: '镭射底在光下会慢慢转色，别在帆布包肩带上正好。这家的边缘打磨得干净，不割手。',
     origin: '【正版授权】星轨巡旅吧唧徽章二次元周边谷子马口铁胸针58mm镭射闪底吧唧套装动漫挂件生日礼物送女友闺蜜',
     attrs: ['马口铁', '58mm', '6 枚装', '镭射闪底'], tpwd: '￥Xk72QpLm91￥' },
@@ -87,7 +88,7 @@ window.DB.GOODS = [
     attrs: ['亚克力', '8cm', '双挂链'], tpwd: '￥Hg93KpQw28￥' },
 
   // ---------- 塑料小人 ----------
-  { id: 'g08', cat: 'figure', title: '「庭院深深」1/7 完成品手办', price: 299, list: 358, emoji: '🎍', hue: 140, days: 3, stale: true,
+  { id: 'g08', cat: 'figure', title: '「庭院深深」1/7 完成品手办', price: 299, list: 358, emoji: '🎍', hue: 140, days: 3, stale: true, promos: ['满 2 件 9 折', '店铺券 ¥10'],
     note: '这个价位里少见的场景底座，苔藓和石灯都有细节。裙摆渐变涂装没翻车。',
     origin: '庭院深深1/7手办完成品二次元动漫周边模型摆件生日礼物收藏级正版授权',
     attrs: ['PVC 完成品', '1/7', '约 24cm'], tpwd: '￥Cv55NbMz74￥' },
@@ -111,7 +112,7 @@ window.DB.GOODS = [
     attrs: ['拼装模型', '含地台', '约 200 件'], tpwd: '￥Ws27EdRv52￥' },
 
   // ---------- 关节会动 ----------
-  { id: 'g13', cat: 'action', title: '粘土人·书店店员', price: 319, emoji: '📚', hue: 45, days: 5,
+  { id: 'g13', cat: 'action', title: '粘土人·书店店员', price: 319, emoji: '📚', hue: 45, days: 5, promos: ['店铺券 ¥30'],
     note: '三张替换脸加一摞小书配件，围裙的褶皱都捏出来了。粘土人就是贵得有道理。',
     origin: '粘土人书店店员可动手办Q版二次元周边正版模型摆件生日礼物收藏',
     attrs: ['可动', '约 10cm', '替换脸×3'], tpwd: '￥Nh60ZxCv18￥' },

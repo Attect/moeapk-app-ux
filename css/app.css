@@ -1259,6 +1259,14 @@ body, .card, .li, .topbar, .navbar, .chip, .btn, .tbtn, .field-input,
   font-size: 12px; line-height: 18px; color: var(--on-surface-variant);
 }
 
+/* 可能存在的优惠（坦诚区；虚线卡片弱化呈现，不催促） */
+.g-promo {
+  margin-top: 10px; padding: 10px 12px; border-radius: 12px;
+  border: 1px dashed var(--outline-variant); background: var(--surface-container);
+}
+.g-promo-label { font-size: 11px; color: var(--on-surface-variant); margin-bottom: 4px; }
+.g-promo-row { font-size: 12px; line-height: 20px; color: var(--on-surface); }
+
 /* 披露小字（详情页底部固定，合规 + 坦诚路线） */
 .g-legal { font-size: 11px; line-height: 17px; color: var(--on-surface-variant); padding: 16px 6px 4px; opacity: .85; }
 

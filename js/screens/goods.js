@@ -232,6 +232,11 @@
       // 坦诚区：原始标题直接展示（提炼对照，不再折叠）
       h += '<div class="g-org-label">它在淘宝的原始标题</div>' +
         '<div class="g-org-text">' + esc(g.origin) + '</div>';
+      // 可能存在的优惠（联盟促销条目；券会过期/有门槛，弱化呈现不催促）
+      if (g.promos && g.promos.length) {
+        h += '<div class="g-promo"><div class="g-promo-label">可能存在的优惠</div>' +
+          g.promos.map(p => '<div class="g-promo-row">' + esc(p) + '</div>').join('') + '</div>';
+      }
       // 同展厅还有
       const rel = goodsByCat(g.cat).filter(x => x.id !== g.id).slice(0, 5);
       if (rel.length) {
