@@ -238,12 +238,12 @@
           '<span><b>预售商品</b>——还在付定金阶段，价格含定金+尾款的预估，以淘宝页面为准。</span></div>';
       }
       // 可能存在的优惠（联盟促销条目；券会过期/有门槛，弱化呈现不催促）：
-      // 每条目一张小卡片 + SVG 图标示意（券=票券 / 折=百分号 / 减降补贴=降价标签 / 其它=通用优惠）
+      // 每条目一张小卡片 + SVG 图标示意（券=票券 / 折=百分号 / 减降补贴抵扣=降价标签 / 包邮等标签=通用优惠）
       if (g.promos && g.promos.length) {
         const pIcon = p => {
           if (p.includes('券')) return 'confirmation_number';
           if (p.includes('折')) return 'percent';
-          if (p.includes('减') || p.includes('降') || p.includes('补贴')) return 'sell';
+          if (p.includes('减') || p.includes('降') || p.includes('补贴') || p.includes('抵扣')) return 'sell';
           return 'local_offer';
         };
         h += '<div class="g-promo"><div class="g-promo-label">可能存在的优惠</div>' +
