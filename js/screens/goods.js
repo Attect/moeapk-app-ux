@@ -232,6 +232,11 @@
       // 坦诚区：原始标题直接展示（提炼对照，不再折叠）
       h += '<div class="g-org-label">它在淘宝的原始标题</div>' +
         '<div class="g-org-text">' + esc(g.origin) + '</div>';
+      // 预售提示（联盟 presale_info 判定）：付定金阶段到手价=定金+尾款预估，坦诚标注避免误导
+      if (g.presale) {
+        h += '<div class="g-presale">' + icon('info') +
+          '<span><b>预售商品</b>——还在付定金阶段，价格含定金+尾款的预估，以淘宝页面为准。</span></div>';
+      }
       // 可能存在的优惠（联盟促销条目；券会过期/有门槛，弱化呈现不催促）：
       // 每条目一张小卡片 + SVG 图标示意（券=票券 / 折=百分号 / 减降补贴=降价标签 / 其它=通用优惠）
       if (g.promos && g.promos.length) {

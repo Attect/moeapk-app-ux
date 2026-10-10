@@ -14,6 +14,8 @@
 //   focus  封面主体纵向位置 top/center/bottom（默认 center；AI 选封面时返回）：
 //          淘宝图基本 1:1 方形，非方形卡片 cover 裁剪时按它保商品主体；宽扁槽位改 contain 不切
 //   promos 促销条目（「店铺券 ¥3」「满 2 件 9 折」，≤3 条；券会过期/有门槛，详情页「可能存在的优惠」卡片）
+//   presale 预售标记（联盟 presale_info 判定）：预售付定金阶段到手价=定金+尾款预估，
+//           详情页标注「预售商品」避免误导
 //   图片一律 emoji + 色相（hue）渐变占位——原型不内嵌任何外部图片。
 window.DB = window.DB || {};
 
@@ -96,7 +98,7 @@ window.DB.GOODS = [
     note: '全 6 款随机，隐藏款是魔王打瞌睡。盒蛋的乐趣就是赌，量力而行。',
     origin: 'Q版魔王盒蛋盲盒手办二次元动漫周边桌面摆件随机款生日礼物',
     attrs: ['PVC', '约 8cm', '随机款'], tpwd: '￥Ty17WxQb66￥' },
-  { id: 'g10', cat: 'figure', title: '「自习室」坐姿手办', price: 199, emoji: '📖', hue: 230, days: 15,
+  { id: 'g10', cat: 'figure', title: '「自习室」坐姿手办', price: 199, emoji: '📖', hue: 230, days: 15, presale: true,
     note: '坐姿款的好处是可以摆在书架层板边上，脚垂下来。书本道具印了真的字。',
     origin: '自习室坐姿手办完成品二次元动漫周边模型摆件桌面装饰生日礼物',
     attrs: ['PVC 完成品', '约 14cm'], tpwd: '￥Uj88QaWs31￥' },

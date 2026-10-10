@@ -1276,14 +1276,15 @@ body, .card, .li, .topbar, .navbar, .chip, .btn, .tbtn, .field-input,
 /* 披露小字（详情页底部固定，合规 + 坦诚路线） */
 .g-legal { font-size: 11px; line-height: 17px; color: var(--on-surface-variant); padding: 16px 6px 4px; opacity: .85; }
 
-/* 可能已失效提示条（详情页，CTA 上方；保留展示 + 引导搜同款） */
-.g-stale {
+/* 可能已失效提示条（详情页，CTA 上方；保留展示 + 引导搜同款）；
+   预售提示条同款视觉（坦诚区中性虚线盒，非警告色） */
+.g-stale, .g-presale {
   display: flex; align-items: flex-start; gap: 8px;
   margin-top: 12px; padding: 10px 12px; border-radius: 12px;
   background: var(--surface-container); border: 1px dashed var(--outline-variant);
   font-size: 12px; line-height: 18px; color: var(--on-surface-variant);
 }
-.g-stale .ic { width: 16px; height: 16px; flex-shrink: 0; margin-top: 1px; }
+.g-stale .ic, .g-presale .ic { width: 16px; height: 16px; flex-shrink: 0; margin-top: 1px; }
 /* 瀑布卡失效淡标记 */
 .g-fall-stale { font-size: 10px; color: var(--on-surface-variant); border: 1px solid var(--outline-variant); border-radius: 6px; padding: 0 4px; margin-left: 6px; }
 /* 详情页数据落灰度已并入 meta 行（此物…前缀），不再单独占行 */
