@@ -5,19 +5,22 @@
   const A = () => S.x.ai = S.x.ai || {};
   const L = () => A().llm = A().llm || { sessions: [], cur: null, modelSel: 'bonsai-vl', attach: null };
   const curSess = () => { const l = L(); return l.sessions.find(s => s.id === l.cur) || null; };
-  const LLM_DEF = { ctxLen: 8192, seed: 42, temp: 0.7, device: 'npu', threads: 4, batch: 128, kv: 'Q8_0' };
+  const LLM_DEF = { ctxLen: 8192, seed: 42, temp: 0.7, device: 'npu', threads: 4, batch: 128, kv: 'Q8_0',
+    topK: 40, topP: 0.95, minP: 0.05, penalty: 1.1, spec: 'off', resident: 'always',
+    sysprompt: '你是 MoeApk 端侧 AI 助手，回答简洁友好。' };
   function cfgOf(id) {
     S.x.llmCfg = S.x.llmCfg || {};
     if (!S.x.llmCfg[id]) S.x.llmCfg[id] = Object.assign({}, LLM_DEF);
     return S.x.llmCfg[id];
   }
   // 可选对话模型：目录 LLM + 本地导入 + 多模态演示
+  // badges：GGUF 自检能力徽章（架构/量化/视觉/MTP 等）；think：支持深度思考开关（chat_template_kwargs）
   const LLM_MODELS = DB.AI.filter(m => m.type === 'model' && m.kind === 'llm').map(m => ({
     id: m.id, name: m.name, size: m.parts.reduce((s, p) => s + p.size, 0),
-    local: false, multiModal: false
+    local: false, multiModal: false, think: false, badges: ['Q1_0']
   })).concat([
-    { id: 'local-bonsai', name: 'Bonsai-1.7B-Local.gguf', size: 260000000, local: true, multiModal: false },
-    { id: 'bonsai-vl', name: 'Bonsai-VL 2B（多模态）', size: 1750000000, local: true, multiModal: true }
+    { id: 'local-bonsai', name: 'Bonsai-1.7B-Local.gguf', size: 260000000, local: true, multiModal: false, think: false, badges: ['Q4_K_M'] },
+    { id: 'bonsai-vl', name: 'Bonsai-VL 2B（多模态）', size: 1750000000, local: true, multiModal: true, think: true, badges: ['Q4_K_M', '视觉', 'MTP'] }
   ]);
 
   function jobBar(key, label) {
@@ -47,8 +50,9 @@
       const cur = l && l.sessions.find(s => s.id === l.cur);
       const d = S.x.ai && S.x.ai.diff;
       const t = S.x.ai && S.x.ai.tts;
-      // 横屏/平板（≥920px）：四个入口两列排布（css .ai-grid）；窄屏单列与旧版一致
-      const entry = it => '<div class="card tight" style="padding:0;margin-top:10px">' + listItem(it) + '</div>';
+      // 横屏/平板（≥920px）：五个入口两列排布（css .ai-grid）；窄屏单列与旧版一致
+      // 图标着色按 class（ai-ent-*）而非 :nth-child——入口卡增加后顺序不再可靠
+      const entry = (it, cls) => '<div class="card tight ai-ent-' + cls + '" style="padding:0;margin-top:10px">' + listItem(it) + '</div>';
       return '<div class="card tight" style="padding:0;margin-top:2px">' +
         listItem({
           icon: 'schedule', title: 'AI 任务队列',
@@ -57,24 +61,30 @@
           arrow: true, action: 'go-ai-queue'
         }) +
         (live && live.j ? '<div style="padding:0 16px 12px"><div class="dl-status">' + esc(live.title) + ' · ' + esc(live.j.phase || '进行中') + ' · ' + Math.round(live.j.p * 100) + '%</div>' + progress(live.j.p) + '</div>' : '') +
+        '<div class="ai-devline">推理设备：GPU（OpenCL）· 息屏保频 ' + (S.x.wakeFullSpeed === false ? '关' : '开') + ' · RAM 4.9/11.7 GB 空闲</div>' +
         '</div>' +
         '<div class="ai-grid">' +
-        entry({ icon: 'file_open', title: '模型管理', sub: '下载 / 导入 / 搜索模型', arrow: true, action: 'go-models' }) +
+        entry({ icon: 'file_open', title: '模型管理', sub: '下载 / 导入 / 搜索模型', arrow: true, action: 'go-models' }, 'models') +
         entry({
           icon: 'smart_toy', title: 'LLM 对话',
           sub: nSess ? nSess + ' 个会话' + (cur ? ' · 当前：' + cur.modelName : '') : '多会话 AI 助手，支持图片',
           arrow: true, action: 'go-llm'
-        }) +
+        }, 'llm') +
         entry({
           icon: 'image', title: '图片生成',
-          sub: d && d.history && d.history.length ? '已生成 ' + d.history.length + ' 张 · 文生图 / 图生图' : '文生图 / 图生图',
+          sub: d && d.history && d.history.length ? '已生成 ' + d.history.length + ' 张 · 文生图 / 图生图 / 局部重绘' : '文生图 / 图生图 / 局部重绘',
           arrow: true, action: 'go-diffusion'
-        }) +
+        }, 'diff') +
         entry({
           icon: 'play_arrow', title: '语音生成',
           sub: t && t.history && t.history.length ? '已合成 ' + t.history.length + ' 条 · ' + t.device.toUpperCase() : '语音合成 / 克隆音色',
           arrow: true, action: 'go-tts'
-        }) +
+        }, 'tts') +
+        entry({
+          icon: 'bookmark', title: '提示词库',
+          sub: (DB.PROMPTS || []).length + ' 条预设 · 标签补全 / 权重工具 / 图片反推',
+          arrow: true, action: 'go-prompts'
+        }, 'prompts') +
         '</div>' +
         '<div class="muted small center" style="padding:14px">AI 放大、扩图、3D 点云请在素材页对图片操作。</div>';
     }
@@ -84,6 +94,7 @@
   action('go-llm', () => nav.push('llm'));
   action('go-diffusion', () => nav.push('diffusion'));
   action('go-tts', () => nav.push('tts'));
+  action('go-prompts', () => nav.push('prompts'));
 
   // ---------- AI 任务队列（子页） ----------
   registerScreen('ai-queue', {

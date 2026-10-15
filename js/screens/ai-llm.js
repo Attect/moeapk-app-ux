@@ -45,6 +45,8 @@
             '<div class="msg-card ' + msg.role + '">' +
             (msg.img != null ? assetThumb({ hue: msg.img }, 'msg-img') : '') +
             (msg.text ? esc(msg.text) : '') + '</div></div>';
+          // L8：AI 消息用量（tokens / tps / 投机接受率）
+          if (msg.role === 'ai' && msg.meta) h += '<div class="msg-meta">' + esc(msg.meta) + '</div>';
           // F8 消息操作：AI 最后一条 → 复制/重新生成；用户最后一条 → 编辑重发
           const isLastAi = msg.role === 'ai' && mi === sess.messages.length - 1 && !sess.thinking;
           const isLastUser = msg.role === 'user' && mi === sess.messages.length - 1 && !sess.thinking;
@@ -55,7 +57,11 @@
             h += '<div class="msg-actions"><button data-a="llm-edit-last" title="编辑并重新发送">' + icon('edit') + '</button></div>';
           }
         });
-        if (sess.thinking) h += '<div class="msg-row"><img class="msg-mascot" src="assets/chara-head.webp" alt=""><div class="msg-card ai">' + esc(sess.partial || '') + '<span class="muted">▍</span></div></div>';
+        if (sess.thinking && sess.thinkPhase) {
+          h += '<div class="msg-row"><img class="msg-mascot" src="assets/chara-head.webp" alt=""><div class="msg-card ai think">深度思考中…<span class="muted">▍</span></div></div>';
+        } else if (sess.thinking) {
+          h += '<div class="msg-row"><img class="msg-mascot" src="assets/chara-head.webp" alt=""><div class="msg-card ai">' + esc(sess.partial || '') + '<span class="muted">▍</span></div></div>';
+        }
         h += '</div>';
       }
     }
@@ -76,6 +82,8 @@
     h += '<div class="composer">' +
       '<div class="composer-top">' +
       '<button class="chip model-chip" data-a="llm-pick">' + icon('smart_toy') + '<span>' + esc(m.name) + '</span>' + icon('expand_more') + '</button>' +
+      // L8：深度思考开关（仅模板支持的模型显示，chat_template_kwargs.enable_thinking）
+      (m.think ? '<button class="chip' + (l.think ? ' on' : '') + '" data-a="llm-think">' + icon('lightbulb') + '<span>思考</span></button>' : '') +
       '<div class="ctx"><span>' + Math.round(tokens) + ' / ' + cfg.ctxLen + '</span>' +
       '<div class="pbar"><div class="pbar-fill' + (pct > 80 ? ' hot' : '') + '" style="width:' + pct + '%"></div></div></div></div>' +
       '<div class="msg-row">' +
@@ -96,7 +104,8 @@
     const items = l.sessions.map(s =>
       '<div class="d-sess' + (l.cur === s.id ? ' on' : '') + '" data-a="llm-switch" data-arg="' + s.id + '">' +
       '<div class="d-body"><div class="d-title">' + esc(s.title) + '</div>' +
-      '<div class="d-sub">' + esc(s.modelName) + (s.loaded ? '' : ' · 加载中') + '</div></div>' +
+      '<div class="d-sub">' + esc(s.modelName) + (s.loaded ? '' : ' · 加载中') + (s.snapshot ? ' · ⚡' : '') + '</div></div>' +
+      '<button class="d-del" data-a="llm-snap" data-arg="' + s.id + '" title="' + (s.snapshot ? '快照管理' : '保存 KV 快照') + '">' + icon(s.snapshot ? 'bolt' : 'save') + '</button>' +
       '<button class="d-del" data-a="llm-del-sess" data-arg="' + s.id + '" title="删除">' + icon('close') + '</button></div>').join('');
     return '<div class="d-head"><span>对话</span><span class="muted small">' + l.sessions.length + ' 个</span></div>' +
       '<div style="padding:0 12px 10px">' + btn('＋ 新建对话', 'llm-new-chat', null, 'small block ghost') + '</div>' +
@@ -167,9 +176,19 @@
       }
     }, 300);
   }
-  // 流式回复（模型就绪后调用）
+  // 流式回复（模型就绪后调用）；开启深度思考时先展示思考阶段再输出正文
   function doReply(sess) {
     sess.thinking = true; sess.partial = '';
+    if (L().think) {
+      sess.thinkPhase = true;
+      render();
+      setTimeout(() => { if (sess.thinking) { sess.thinkPhase = false; startStream(sess); } }, 1200);
+    } else {
+      startStream(sess);
+    }
+  }
+  action('llm-think', () => { const l = L(); l.think = !l.think; render(); });
+  function startStream(sess) {
     render();
     const lastUser = [...sess.messages].reverse().find(x => x.role === 'user');
     const q = lastUser ? lastUser.text : '';
@@ -182,8 +201,12 @@
       sess.partial = reply.slice(0, i += 4);
       if (i >= reply.length) {
         clearInterval(t);
-        sess.messages.push({ role: 'ai', text: reply });
-        sess.tokens += reply.length / 2;
+        // L8：用量回传（tokens / tps）；L3：投机解码接受率
+        const spec = cfgOf(sess.modelId).spec;
+        const tokens = Math.round(reply.length / 2);
+        const tps = (14 + Math.random() * 8).toFixed(1);
+        sess.messages.push({ role: 'ai', text: reply, meta: tokens + ' tokens · ' + tps + ' t/s' + (spec === 'off' ? '' : ' · 接受率 ' + (spec === 'mtp' ? '62%' : '38%')) });
+        sess.tokens += tokens;
         sess.thinking = false;
       }
       render();
@@ -193,7 +216,7 @@
   action('llm-stop', () => {
     const sess = curSess();
     if (!sess) return;
-    sess.thinking = false;
+    sess.thinking = false; sess.thinkPhase = false;
     if (sess.partial) {
       sess.messages.push({ role: 'ai', text: sess.partial });
       sess.tokens += sess.partial.length / 2;
@@ -225,8 +248,7 @@
     // 移除末尾 user+ai 对，文本回填输入框重新编辑
     sess.messages.pop();
     if (sess.messages.length && sess.messages[sess.messages.length - 1].role === 'ai') sess.messages.pop();
-    S.x.keep = S.x.keep || {};
-    S.x.keep['llm-q'] = last.text || '';
+    keepSet('llm-q', last.text || '');
     if (sess.title !== '新对话' && sess.messages.filter(m => m.role === 'user').length === 0) sess.title = '新对话';
     render();
     toast('已载入上一条消息，修改后重新发送');
@@ -238,6 +260,50 @@
     if (l.cur === ds.arg) l.cur = (l.sessions[0] || {}).id || null;
     render();
   }, true));
+  // L2：会话 KV 快照——保存/恢复免 prefill（对应 native llama_state_seq_save/load_file）
+  action('llm-snap', ds => {
+    const l = L();
+    const s = l.sessions.find(x => x.id === ds.arg);
+    if (!s) return;
+    if (!s.snapshot) {
+      if (!s.loaded) { toast('模型加载后才能保存 KV 快照'); return; }
+      // 体积按上下文长度估算（KV Q8_0 约 48MB / 1024 tokens，演示口径）
+      const bytes = Math.round(cfgOf(s.modelId).ctxLen / 1024 * 48 * 1e6);
+      s.snapshot = { bytes, date: '10-12' };
+      toast('已保存 KV 快照（' + fmtSize(bytes) + '），恢复时跳过预填充');
+      render(); return;
+    }
+    showDialog({
+      title: 'KV 快照（' + fmtSize(s.snapshot.bytes) + '）',
+      body: '<div class="muted" style="font-size:13px">保存于 ' + s.snapshot.date + '。恢复快照直接还原 KV 缓存、跳过预填充；对话记录保留不变。</div>',
+      actions: [
+        {
+          label: '恢复快照（免重放）', style: 'filled', run: () => {
+            mock.resetJob('llm-' + s.id);
+            l.cur = s.id; s.loaded = true;
+            if (!s.restoredOnce) {
+              s.restoredOnce = true;
+              s.messages.push({ role: 'sys', text: '已从快照恢复，跳过预填充（约 ' + fmtSize(s.snapshot.bytes) + ' KV）' });
+            }
+            S.x.llmDrawer = false; render();
+          }
+        },
+        {
+          label: '删除快照', style: 'danger', run: () => {
+            const bak = s.snapshot; s.snapshot = null;
+            toast('已删除快照', { act: 'llm-snap-undo', arg: JSON.stringify({ id: s.id, snap: bak }), label: '撤销' });
+            render();
+          }
+        },
+        { label: '取消' }
+      ]
+    });
+  });
+  action('llm-snap-undo', ds => {
+    const dct = JSON.parse(ds.arg);
+    const s = L().sessions.find(x => x.id === dct.id);
+    if (s) { s.snapshot = dct.snap; render(); }
+  });
   action('llm-reload', ds => {
     const sess = L().sessions.find(s => s.id === ds.arg);
     if (sess) startSessJob(sess);
@@ -301,7 +367,7 @@
     if (sess.title === '新对话' && q) sess.title = q.slice(0, 12) + (q.length > 12 ? '…' : '');
     sess.tokens += q.length / 2 + (imgId ? 512 : 0); // 图片按固定 token 估算
     sess.attach = null; l.attach = null;
-    if (S.x.keep) S.x.keep['llm-q'] = '';
+    keepSet('llm-q', '');
     // 接近上下文上限时自动压缩
     const cfg = cfgOf(sess.modelId);
     if (sess.tokens > cfg.ctxLen * 0.8) {
@@ -325,34 +391,55 @@
         '<input type="range" min="' + min + '" max="' + max + '" step="' + step + '" value="' + cfg[k] + '" class="slider" data-live="lc-set" data-k="' + k + '"></label>';
       let h = '<div class="dl-status" style="padding:8px 2px 0">当前模型：' + esc(m.name) + '</div>';
       h += card(
+        // L8：系统提示词可编辑（原固定文案改为按模型可配）
+        '<label class="field"><span class="field-label">系统提示词</span>' +
+        '<textarea class="field-input" rows="3" data-live="lc-sysprompt">' + esc(cfg.sysprompt) + '</textarea></label>' +
         sl('上下文长度', 'ctxLen', 2048, 32768, 1024, v => v) +
         '<label class="field"><span class="field-label">种子（-1 为随机）</span>' +
         '<input class="field-input" type="number" value="' + cfg.seed + '" data-live="lc-seed"></label>' +
+        // L4：采样参数完整透出（top_k / top_p / min_p / 重复惩罚，每次请求即时生效）
         sl('推理强度（温度）', 'temp', 0, 1.5, 0.05, v => (+v).toFixed(2)) +
+        sl('top_k', 'topK', 0, 100, 1, v => v) +
+        sl('top_p', 'topP', 0, 1, 0.01, v => (+v).toFixed(2)) +
+        sl('min_p', 'minP', 0, 0.5, 0.01, v => (+v).toFixed(2)) +
+        sl('重复惩罚', 'penalty', 0.8, 1.5, 0.01, v => (+v).toFixed(2)) +
         '<div class="muted small" style="padding-top:6px">推理方式</div><div class="chip-row" style="padding-top:4px">' +
         ['cpu', 'gpu', 'npu'].map(d => chip(d.toUpperCase(), cfg.device === d, 'lc-device', d)).join('') + '</div>' +
         sl('线程数', 'threads', 1, 8, 1, v => v) +
         sl('批大小', 'batch', 8, 512, 8, v => v) +
+        '<div class="field-cap">批大小已透传引擎：影响 prefill 吞吐，过大可能内存不足。</div>' +
         '<div class="muted small" style="padding-top:6px">KV 缓存量化</div><div class="chip-row" style="padding-top:4px">' +
-        ['FP16', 'Q8_0', 'Q4_0'].map(kv => chip(kv, cfg.kv === kv, 'lc-kv', kv)).join('') + '</div>');
+        ['FP16', 'Q8_0', 'Q4_0'].map(kv => chip(kv, cfg.kv === kv, 'lc-kv', kv)).join('') + '</div>' +
+        // L3：投机解码（自投机零额外文件；MTP 需模型含 NextN 头）
+        '<div class="muted small" style="padding-top:6px">生成加速（投机解码）</div><div class="chip-row" style="padding-top:4px">' +
+        [['off', '关闭'], ['ngram', '自投机（推荐）'], ['mtp', 'MTP（需 NextN）']].map(x => chip(x[1], cfg.spec === x[0], 'lc-spec', x[0])).join('') + '</div>' +
+        '<div class="field-cap">自投机在已生成文本中找草稿，无需额外模型文件；MTP 需模型含 NextN 头（模型中心有徽章标识）。</div>' +
+        // L6：空闲自动卸载
+        '<div class="muted small" style="padding-top:6px">模型常驻</div><div class="chip-row" style="padding-top:4px">' +
+        [['always', '常驻'], ['3', '3 分钟'], ['10', '10 分钟'], ['30', '30 分钟']].map(x => chip(x[1], cfg.resident === x[0], 'lc-resident', x[0])).join('') + '</div>' +
+        '<div class="field-cap">超时未使用将卸载模型释放内存，下次对话自动重载。</div>');
       h += '<div style="margin-top:12px;display:flex;gap:8px">' +
         btn('恢复默认', 'lc-reset', null, 'ghost') + btn('完成', 'lc-done', null, 'flex') + '</div>';
-      h += '<div class="muted small center" style="padding:12px">配置按模型独立保存，切换模型互不影响。</div>';
+      h += '<div class="muted small center" style="padding:12px">采样参数与批大小在每次请求时即时生效，无需重载模型；配置按模型独立保存。</div>';
       return h;
     }
   });
+  const LC_FMT = { temp: v => (+v).toFixed(2), topP: v => (+v).toFixed(2), minP: v => (+v).toFixed(2), penalty: v => (+v).toFixed(2) };
   action('lc-set', (ds, el) => {
     const cfg = cfgOf(S.x.lcId); const k = ds.k;
     cfg[k] = +el.value;
     const lb = el.parentElement.querySelector('.li-title');
     if (lb) {
       const base = lb.textContent.replace(/ [\d.]+$/, '');
-      lb.textContent = base + ' ' + (k === 'temp' ? (+cfg[k]).toFixed(2) : cfg[k]);
+      lb.textContent = base + ' ' + ((LC_FMT[k] || (v => v))(cfg[k]));
     }
   });
   action('lc-seed', (ds, el) => { cfgOf(S.x.lcId).seed = +el.value; });
   action('lc-device', ds => { cfgOf(S.x.lcId).device = ds.arg; render(); });
   action('lc-kv', ds => { cfgOf(S.x.lcId).kv = ds.arg; render(); });
+  action('lc-spec', ds => { cfgOf(S.x.lcId).spec = ds.arg; render(); });
+  action('lc-resident', ds => { cfgOf(S.x.lcId).resident = ds.arg; render(); });
+  action('lc-sysprompt', (ds, el) => { cfgOf(S.x.lcId).sysprompt = el.value; });
   action('lc-reset', () => { S.x.llmCfg[S.x.lcId] = Object.assign({}, LLM_DEF); render(); });
   action('lc-done', () => nav.pop());
 })();

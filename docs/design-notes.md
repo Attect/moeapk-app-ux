@@ -32,6 +32,7 @@
 | `js/screens/ai-diffusion.js`（diffusion / diff-config 子页） | `ui/ai/DiffusionScreen.kt`、`DiffConfigScreen.kt` |
 | `js/screens/ai-tts.js`（tts / tts-voices 子页） | `ui/ai/TtsScreen.kt`、`TtsVoicesScreen.kt` |
 | `js/screens/ai-models.js`（models / model-search） | `ui/ai/ModelHubScreen.kt`、`ModelSearchScreen.kt` |
+| `js/screens/ai-prompt.js`（prompts 提示词库 / prompt-edit 提示词编辑） | （规划中）`ui/ai/PromptLibraryScreen.kt`、`PromptEditScreen.kt` |
 | `js/screens/download.js`（downloads 子页） | `ui/download/DownloadScreen.kt`（入口在 我的 → 下载任务） |
 | `js/screens/mine.js`（我的 + 当前壁纸管理入口） | `ui/mine/MineScreen.kt` |
 | `js/screens/pages-account.js`（login/register） | `ui/login/LoginScreen.kt`、`RegisterScreen.kt` |
@@ -47,6 +48,37 @@
 > **App 侧对齐状态（2026-09-18）**：上表所列全部页面已按原型落到 Compose（壳层/素材/AI/APK + 主题过渡）。原型仍是 UX 的唯一变更入口（见「工作约定」第 1 条）。
 
 ## 设计沿革
+
+### 第十八轮（2026-10-15，AI 功能改进：LLM 与生图）
+
+**起因**：吸收两个参考项目的可借鉴设计（nightmare-mobile 的交互细节与工程纪律、PocketOrca-LLM 的 LLM 能力面）。机主拍板范围：不做外部 AI API（局域网端点/云端 BYOK）、不做 AI 助手（Agent），聚焦 LLM 与生图的实际功能性改进，保留提示词库。
+
+**LLM 对话与配置**：
+- **会话 KV 快照**：抽屉会话项新增快照按钮（保存 / 恢复（免重放）/ 删除，⚡ 标记），恢复后顶部 sys 提示「已从快照恢复，跳过预填充」；模型中心存储卡把快照计入占用。对应 native 的 `llama_state_seq_save/load_file`。
+- **深度思考开关**：composer 仅对支持模型显示「思考」chip，开启后先展示「深度思考中…」气泡再输出正文。
+- **用量回传**：AI 消息末行显示 `tokens · t/s`（及投机解码接受率）。
+- **llm-config 扩充**：top_k / top_p / min_p / 重复惩罚四滑杆（每次请求即时生效）、生成加速（关闭 / 自投机 / MTP）、模型常驻（常驻 / 3 / 10 / 30 分钟空闲卸载）、系统提示词可编辑、批大小标注已透传。
+
+**图片生成**：
+- **局部重绘**：模式新增「局部重绘」，底图上 canvas 涂抹遮罩（画笔粗细 / 橡皮擦 / 撤销 / 清空），白=重绘区。
+- **高清修复一键管线**：composer 总开关 = 生成 → 放大 ×2 → UltraFix 一次完成，期间无过程预览（与 native 语义一致）。
+- **宽高比**：SDXL / Anima 专有 1:1 / 4:3 / 3:4 / 16:9 / 9:16，结果占位图按真实比例渲染。
+- **过程预览帧**：默认开（每 2 步更新，高清修复时自动关）。
+- **采样器扩展**：DPM++ 2M / Karras / SDE / SDE Karras / Euler / Euler Karras / Euler A / Euler A Karras / LCM 共 9 项。
+- **参数扫描（sweep）**：轴 = seed / steps / CFG / 重绘幅度 / 采样器，值语法 `1,2,3` / `1..8` / `1..10 by 3`，可第二轴成网格（≤100 张，附预计张数）；「跑完本张后停止」；历史按 batchId 聚合为组卡。
+- **结果即流程**：结果卡新增「以此为模板」「原样重跑」（完整参数回填）；收藏（星标）与删除独立（收藏项删除走二次确认）；分阶段耗时行。
+- **错误就地显示**：失败卡含阶段 + 原因 + 可行动建议 + 重试（生成设置里有 debug 模拟入口）。
+
+**提示词工具链**：
+- 新页面 `prompts` 提示词库（分类 / 收藏 / 搜索 / 编辑 / 插入生图页）+ 词库下载与翻译 CSV 入口。
+- 生图页提示词框：tag 工具栏（权重 ±0.1 / 删除 / 撤销重做）+ 补全 chip 行（前缀 > 包含 > 翻译，≤12 个）+ 图片反推（标签 / 短句 / 详细三档，本地分析，结果可一键填入）。
+- 书签入口直达提示词库选取对话框。
+
+**模型中心**：已安装引擎区（版本 / 大小 / 检查更新）、「反推」分类、GGUF 自检能力徽章（视觉 / MTP / MoE）、导入自检对话框（架构 / 量化 / 能力 / mmproj，未识别也允许导入）。
+
+**细节组（nightmare-mobile 借鉴）**：seed 锁 chip（锁定后仅改提示词做单变量对比）、换载成本提示（生成时演示卸载 LLM 释放内存 + RAM 余量）、分阶段耗时、字段 caption 人话说明、草稿自动保存（`keepSet` 写穿到 localStorage，刷新不丢）。
+
+**同步**：`icons.js` 新增 bookmark / bookmark_border / redo / brush / hd / aspect_ratio / lock / bolt / lightbulb；`js/data/prompts.js` 新增（PROMPTS / TAGS_DEMO / CAPTION_DEMO）；`js/data/ai.js` 增 caption 反推模型两条；`ai-prompt.js` 新增（对照表已登记为规划中 Compose 对应）；`ai-grid` 入口图标着色从 `:nth-child` 改为按 class（入口卡 4→5 不再受顺序影响）；`index.html` 资源版本号 v=51。走查截图 walk-*（无头 Chrome CDP 交互走查：遮罩涂抹 / 快照 / 扫描 / 错误卡 / 反推 / 草稿持久化，明/暗与横竖屏均验证）。
 
 ### 第十七轮（2026-10-07，「宅物」陈列室板块）
 

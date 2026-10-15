@@ -36,7 +36,13 @@ window.DB.AI = [
     "parts": [ { "name": "upscaler_qnn.zip", "size": 62914560 } ] },
   { "type": "engine", "id": "sharp-mnn", "name": "3D 点云重建 MNN 引擎", "kind": "sharp", "version": "1.0.0",
     "summary": "把照片重建为可环视的三维点云场景（MNN/Vulkan，通用机型）。",
-    "parts": [ { "name": "sharp-mnn-arm64-v8a.zip", "size": 890000000 } ] }
+    "parts": [ { "name": "sharp-mnn-arm64-v8a.zip", "size": 890000000 } ] },
+  { "type": "model", "id": "florence2-promptgen", "name": "图片反推·短句（Florence-2 PromptGen，ONNX）", "kind": "caption", "version": "2.0.0",
+    "summary": "为图片生成英文描述短句/详细句，可一键填入生图提示词（视觉编码器 FP32，避免量化幻觉）。", "engine": "onnxruntime",
+    "parts": [ { "name": "florence2_promptgen_fp32.onnx", "size": 1200000000 } ] },
+  { "type": "model", "id": "wd-vit-tagger-v3", "name": "图片反推·标签（WD ViT Tagger v3，ONNX）", "kind": "caption", "version": "3.0.0",
+    "summary": "输出 Danbooru 风格标签，适合二次元模型的提示词反推。", "engine": "onnxruntime",
+    "parts": [ { "name": "wd_vit_tagger_v3.onnx", "size": 460000000 } ] }
 ];
 // 模型搜索结果用的演示仓库（模拟 ModelScope / HF 镜像 / HuggingFace 返回）
 window.DB.MODEL_SEARCH_DEMO = [

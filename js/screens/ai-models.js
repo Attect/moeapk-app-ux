@@ -5,8 +5,8 @@
   const { jobBar } = window._aiShared;
 
   // 统一标签体系：kind → 用途标签；格式从引擎/文件名推断
-  const KIND_LABEL = { llm: '对话', diffusion: '生图', tts: '语音', 'tts-encoder': '语音', upscale: '放大', sharp: '点云' };
-  const CATS = [['all', '全部'], ['llm', '对话'], ['diffusion', '生图'], ['tts', '语音'], ['upscale', '放大'], ['sharp', '点云']];
+  const KIND_LABEL = { llm: '对话', diffusion: '生图', tts: '语音', 'tts-encoder': '语音', upscale: '放大', sharp: '点云', caption: '反推' };
+  const CATS = [['all', '全部'], ['llm', '对话'], ['diffusion', '生图'], ['tts', '语音'], ['upscale', '放大'], ['sharp', '点云'], ['caption', '反推'], ['engine', '引擎']];
   function fmtOfEngine(m) {
     const e = m.engine || '';
     if (e === 'llm-fork') return 'GGUF';
@@ -45,8 +45,12 @@
   }
   function matchCat(kindLabel, cat) {
     if (cat === 'all') return true;
-    const map = { '对话': 'llm', '生图': 'diffusion', '语音': 'tts', '放大': 'upscale', '点云': 'sharp' };
+    const map = { '对话': 'llm', '生图': 'diffusion', '语音': 'tts', '放大': 'upscale', '点云': 'sharp', '反推': 'caption' };
     return map[kindLabel] === cat;
+  }
+  // L7：GGUF 自检能力徽章（视觉 / MTP / MoE 等）
+  function capsHtml(caps) {
+    return (caps || []).map(c => '<span class="achip cap">' + esc(c) + '</span>').join('');
   }
 
   // ---------- 模型中心（子页；F11 存储占用视角） ----------
@@ -58,7 +62,11 @@
       const q = ((S.x.keep && S.x.keep['mdl-q']) || '').trim().toLowerCase();
       const sorted = S.x.mdlSort === 'size' ? local.slice().sort((a, b) => b.size - a.size)
         : S.x.mdlSort === 'name' ? local.slice().sort((a, b) => a.name.localeCompare(b.name)) : local;
-      const total = local.reduce((s, m) => s + m.size, 0);
+      // L2：KV 快照计入存储占用
+      const llmSess = (S.x.ai && S.x.ai.llm && S.x.ai.llm.sessions) || [];
+      const snapCount = llmSess.filter(x => x.snapshot).length;
+      const snapBytes = llmSess.reduce((s, x) => s + (x.snapshot ? x.snapshot.bytes : 0), 0);
+      const total = local.reduce((s, m) => s + m.size, 0) + snapBytes;
 
       // 分类 + 过滤
       const localFiltered = sorted.filter(m => {
@@ -77,7 +85,7 @@
       let h = '';
       // F11：存储占用卡（总大小 / 数量 / 清理入口）
       h += card('<div class="dl-row"><div style="flex:1"><div class="li-title">模型存储占用</div>' +
-        '<div class="li-sub">' + (local.length ? local.length + ' 个模型 · 共 ' + fmtSize(total) : '暂无本地模型') + '</div></div>' +
+        '<div class="li-sub">' + (local.length ? local.length + ' 个模型' + (snapCount ? ' + ' + snapCount + ' 份 KV 快照' : '') + ' · 共 ' + fmtSize(total) : '暂无本地模型') + '</div></div>' +
         (local.length ? textBtn('清理', 'models-clean') : '') + '</div>' +
         (local.length ? '<div style="margin-top:8px">' + progress(Math.min(1, total / 8e9)) + '<div class="muted" style="font-size:11px;margin-top:4px">约 ' + fmtSize(total) + ' / 建议预留 8 GB 模型分区</div></div>' : ''));
 
@@ -93,20 +101,34 @@
         chip('大小', S.x.mdlSort === 'size', 'mdl-sort', 'size') +
         chip('名称', S.x.mdlSort === 'name', 'mdl-sort', 'name') + '</div>');
 
-      // 我的模型（分类 + 标签）
+      // 已安装引擎（补原型引擎管理缺口；cat=all/engine 时显示）
+      if (cat === 'all' || cat === 'engine') {
+        const engines = DB.AI.filter(m => m.type === 'engine');
+        h += sectionTitle('已安装引擎' + (cat === 'engine' ? ' · ' + engines.length + ' 个' : ''));
+        h += '<div class="card tight" style="padding:0;margin-top:0">' + engines.map(m => {
+          const size = m.parts.reduce((s, p) => s + p.size, 0);
+          const j = mock.job('eng-check-' + m.id);
+          return '<div class="li"><div class="li-body"><div class="li-title" style="font-weight:400">' + esc(m.name) + '</div>' +
+            '<div class="li-sub">v' + esc(m.version) + ' · ' + fmtSize(size) + ' · ' + esc(KIND_LABEL[m.kind] || m.kind) + '</div></div>' +
+            (j && !j.done ? '<div style="width:84px">' + progress(j.p) + '</div>' : textBtn('检查更新', 'eng-check', m.id)) + '</div>';
+        }).join('') + '</div>';
+      }
+
+      // 我的模型（分类 + 标签 + 能力徽章）
+      if (cat !== 'engine') {
       h += sectionTitle('我的模型' + (q || cat !== 'all' ? ' · ' + localFiltered.length + ' 个' : ''));
       h += localFiltered.length ? '<div class="card tight" style="padding:0;margin-top:0">' + localFiltered.map((m) => {
         const idx = local.indexOf(m);
         const kl = kindOfLocal(m), fmt = m.fmt || fmtOfName(m.name);
         return '<div class="li"><div class="li-body"><div class="li-title" style="font-weight:400">' + esc(m.name) + '</div>' +
           '<div class="li-sub">' + fmtSize(m.size) + ' · ' + esc(m.src) + '</div>' +
-          '<div class="tag-row">' + tagsHtml(kl, fmt) + '</div></div>' +
+          '<div class="tag-row">' + tagsHtml(kl, fmt) + capsHtml(m.caps) + '</div></div>' +
           textBtn('删除', 'models-del', idx, 'danger') + '</div>';
       }).join('') + '</div>'
         : (local.length ? emptyHint('当前分类/过滤条件下没有模型') :
           card('<div class="muted small" style="padding:14px">还没有本地模型。下载推荐模型、从搜索页获取，或点「从手机导入」添加自己的模型文件。</div>'));
 
-      // 推荐模型（分类 + 标签）
+      // 推荐模型（分类 + 标签 + 能力徽章）
       h += sectionTitle('推荐模型' + (q || cat !== 'all' ? ' · ' + recFiltered.length + ' 个' : ''));
       h += recFiltered.length ? '<div class="card tight" style="padding:0;margin-top:0">' + recFiltered.map(m => {
         const size = m.parts.reduce((x, p) => x + p.size, 0);
@@ -118,8 +140,9 @@
         else trail = textBtn('下载', 'rec-dl', m.id);
         return '<div class="li"><div class="li-body"><div class="li-title" style="font-weight:400">' + esc(m.name) + '</div>' +
           '<div class="li-sub">' + esc(m.summary) + ' · ' + fmtSize(size) + '</div>' +
-          '<div class="tag-row">' + tagsHtml(KIND_LABEL[m.kind] || m.kind, fmtOfEngine(m)) + '</div></div>' + trail + '</div>';
+          '<div class="tag-row">' + tagsHtml(KIND_LABEL[m.kind] || m.kind, fmtOfEngine(m)) + capsHtml(m.caps) + '</div></div>' + trail + '</div>';
       }).join('') + '</div>' : emptyHint('当前分类/过滤条件下没有推荐模型');
+      }
 
       // 找模型：带关键词直达搜索页（替代原来难懂的"打开模型搜索"）
       const src = S.x.msrc || '全部';
@@ -135,6 +158,13 @@
     }
   });
   action('mdl-cat', ds => { S.x.mdlCat = ds.arg; render(); });
+  action('eng-check', ds => {
+    mock.startJob('eng-check-' + ds.arg, '检查引擎更新', 1200, ['查询目录']);
+    const t = setInterval(() => {
+      if (mock.isJobDone('eng-check-' + ds.arg)) { clearInterval(t); toast('已是最新版本'); render(); }
+    }, 300);
+    render();
+  });
   action('mdl-src', ds => { S.x.msrc = ds.arg; render(); });
   action('mdl-sort', ds => { S.x.mdlSort = ds.arg; render(); });
   // 输入即过滤（data-keep 写入后即时重渲染）
@@ -150,10 +180,40 @@
     if (q) setTimeout(() => { const ms = S.x.ms; ms.searching = false; render(); }, 900);
   });
   action('go-model-search', () => nav.push('model-search'));
+  // L7：导入前 GGUF/包自检（架构 / 量化 / 能力徽章 / mmproj 配套）；未识别也允许导入（给试不给藏）
+  const IMPORT_DEMO = [
+    { name: 'Bonsai-VL-2B-Q4_K_M.gguf', kind: '对话', fmt: 'GGUF', size: 1750000000,
+      arch: 'qwen35（多模态）', quant: 'Q4_K_M', caps: ['视觉', 'MTP'], mmproj: true },
+    { name: 'custom-sd15-pack.zip', kind: '生图', fmt: 'ZIP', size: 1150000000,
+      arch: 'SD1.5（local-dream 转换包）', quant: 'QNN', caps: [], mmproj: false },
+    { name: 'unknown-model.gguf', kind: '对话', fmt: 'GGUF', size: 260000000,
+      arch: null, quant: null, caps: [], mmproj: false }
+  ];
   action('models-import', () => {
-    const kinds = ['gguf', 'zip'];
-    S.x.localModels.push({ id: 'imported-' + Date.now(), name: 'imported-' + (S.x.localModels.length + 1) + '.' + kinds[S.x.localModels.length % 2], kind: '对话', fmt: kinds[S.x.localModels.length % 2] === 'gguf' ? 'GGUF' : 'ZIP', size: 180000000 + S.x.localModels.length * 70000000, src: '本地导入' });
-    toast('已导入（模拟 OpenDocument）'); render();
+    const idx = (S.x.importDemoIdx = ((S.x.importDemoIdx || 0) % IMPORT_DEMO.length));
+    const m = IMPORT_DEMO[idx];
+    const rows = m.arch ? (
+      '<div class="li"><div class="li-body"><div class="li-title" style="font-weight:400">架构</div><div class="li-sub">' + esc(m.arch) + '</div></div></div>' +
+      '<div class="li"><div class="li-body"><div class="li-title" style="font-weight:400">量化格式</div><div class="li-sub">' + esc(m.quant) + '</div></div></div>' +
+      '<div class="li"><div class="li-body"><div class="li-title" style="font-weight:400">能力</div><div class="li-sub">' +
+      (m.caps.length ? m.caps.join(' / ') : '无特殊能力') + '</div></div></div>' +
+      '<div class="li"><div class="li-body"><div class="li-title" style="font-weight:400">mmproj 视觉投影</div><div class="li-sub">' + (m.mmproj ? '同目录已发现，将自动加载' : '未发现') + '</div></div></div>'
+    ) : '<div class="muted" style="font-size:13px;padding:4px 0">未能识别该文件的架构与量化格式。<br><b>仍可按通用 GGUF 尝试加载</b>——识别失败不影响试用。</div>';
+    showDialog({
+      title: '导入模型 · 文件自检',
+      body: '<div class="dl-row" style="margin-bottom:6px"><div class="li-title" style="font-weight:400;word-break:break-all">' + esc(m.name) + '</div>' +
+        '<span class="badge soft">' + esc(m.fmt) + '</span></div>' + rows,
+      actions: [
+        { label: '取消' },
+        {
+          label: m.arch ? '确认导入' : '仍然导入', style: 'filled', run: () => {
+            S.x.importDemoIdx = (S.x.importDemoIdx || 0) + 1;
+            S.x.localModels.push({ id: 'imported-' + Date.now(), name: m.name, kind: m.kind, fmt: m.fmt, size: m.size, src: '本地导入', caps: m.caps });
+            toast('已导入（模拟 OpenDocument）');
+          }
+        }
+      ]
+    });
   });
   // F11 清理：删除"未使用"的本地模型（演示口径：非推荐模型来源的）
   action('models-clean', () => {

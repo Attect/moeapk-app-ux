@@ -76,6 +76,10 @@ function heroCopy() {
         sub: S.serviceRunning ? '常驻运行中：提供通行证 / 下载 / AI 能力' : '已停止',
         trailing: switchCtl(S.serviceRunning, 'mine-service')
       }) + '<div class="hr"></div>' + listItem({
+        icon: 'bolt', title: '息屏时保持全速推理',
+        sub: S.x.wakeFullSpeed === false ? '已关闭：息屏将大幅降速（省电）' : '推理期间保持 CPU 唤醒（默认开，对应 WakeLock）',
+        trailing: switchCtl(S.x.wakeFullSpeed !== false, 'mine-wake')
+      }) + '<div class="hr"></div>' + listItem({
         // 当前壁纸管理（第十四轮）：点云壁纸是独立槽位（素材+参数副本），
         // 从这里直接调整当前壁纸参数，不用回素材库翻源素材；未设置时给导流提示
         icon: 'wallpaper', title: '当前壁纸',
@@ -134,6 +138,11 @@ function heroCopy() {
     else toast('尚未设置点云壁纸：素材页打开点云素材 → 设为壁纸');
   });
   action('mine-battery', () => { S.batteryWhitelisted = !S.batteryWhitelisted; toast(S.batteryWhitelisted ? '已加入电池优化白名单（模拟）' : '已移除白名单（模拟）'); render(); });
+  action('mine-wake', () => {
+    S.x.wakeFullSpeed = S.x.wakeFullSpeed === false;
+    toast(S.x.wakeFullSpeed === false ? '已关闭：息屏推理将降速省电' : '已开启：推理期间保持 CPU 唤醒');
+    render();
+  });
   action('mine-src', ds => { S.srcPref = ds.arg; render(); });
   action('mine-clear-cache', () => { S.x.iconCache = { count: 0, bytes: 0, mem: 0, disk: 0, net: 0 }; toast('图标缓存已清理'); render(); });
   action('mine-server', () => {

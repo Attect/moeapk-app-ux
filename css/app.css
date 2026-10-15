@@ -1055,16 +1055,18 @@ body, .card, .li, .topbar, .navbar, .chip, .btn, .tbtn, .field-input,
   50% { transform: translateY(-6px); }
 }
 
-/* AI 枢纽入口图标着色（模型=紫藤 / 对话=樱粉 / 生图=抹茶 / 语音=天蓝） */
+/* AI 枢纽入口图标着色（按 ai-ent-* class，入口卡增减不受顺序影响） */
 .ai-grid .card .li-icon { padding: 9px; border-radius: 14px; }
-.ai-grid .card:nth-child(1) .li-icon { color: var(--c-violet); background: rgba(147,112,219,.14); }
-.ai-grid .card:nth-child(2) .li-icon { color: var(--c-pink); background: rgba(233,78,138,.13); }
-.ai-grid .card:nth-child(3) .li-icon { color: var(--c-mint); background: rgba(47,174,125,.14); }
-.ai-grid .card:nth-child(4) .li-icon { color: var(--c-sky); background: rgba(91,143,217,.14); }
-[data-theme="dark"] .ai-grid .card:nth-child(1) .li-icon { color: #B79CED; background: rgba(147,112,219,.20); }
-[data-theme="dark"] .ai-grid .card:nth-child(2) .li-icon { color: #FF9DBE; background: rgba(240,98,143,.20); }
-[data-theme="dark"] .ai-grid .card:nth-child(3) .li-icon { color: #7FDDB4; background: rgba(67,199,149,.18); }
-[data-theme="dark"] .ai-grid .card:nth-child(4) .li-icon { color: #8FB8EC; background: rgba(91,143,217,.20); }
+.ai-grid .ai-ent-models .li-icon { color: var(--c-violet); background: rgba(147,112,219,.14); }
+.ai-grid .ai-ent-llm .li-icon { color: var(--c-pink); background: rgba(233,78,138,.13); }
+.ai-grid .ai-ent-diff .li-icon { color: var(--c-mint); background: rgba(47,174,125,.14); }
+.ai-grid .ai-ent-tts .li-icon { color: var(--c-sky); background: rgba(91,143,217,.14); }
+.ai-grid .ai-ent-prompts .li-icon { color: #D9932B; background: rgba(217,147,43,.14); }
+[data-theme="dark"] .ai-grid .ai-ent-models .li-icon { color: #B79CED; background: rgba(147,112,219,.20); }
+[data-theme="dark"] .ai-grid .ai-ent-llm .li-icon { color: #FF9DBE; background: rgba(240,98,143,.20); }
+[data-theme="dark"] .ai-grid .ai-ent-diff .li-icon { color: #7FDDB4; background: rgba(67,199,149,.18); }
+[data-theme="dark"] .ai-grid .ai-ent-tts .li-icon { color: #8FB8EC; background: rgba(91,143,217,.20); }
+[data-theme="dark"] .ai-grid .ai-ent-prompts .li-icon { color: #F2C078; background: rgba(217,147,43,.20); }
 
 /* 减弱动态（无障碍 & 低端机）：停掉一切循环动画 */
 @media (prefers-reduced-motion: reduce) {
@@ -1369,3 +1371,62 @@ body, .card, .li, .topbar, .navbar, .chip, .btn, .tbtn, .field-input,
   /* 详情页 pager 不再满宽出血，收为圆角大图居中 */
   .g-pager-wrap { margin: 8px 0 0; border-radius: 20px; overflow: hidden; max-width: 640px; margin-left: auto; margin-right: auto; }
 }
+
+/* ============================================================
+ * AI 功能改进（2026-10 第十八轮：LLM / 生图 / 提示词库）
+ * ============================================================ */
+/* AI 枢纽设备状态摘要行（推理设备 / 息屏保频 / RAM 余量） */
+.ai-devline { padding: 0 16px 12px; font-size: 11px; color: var(--on-surface-variant); }
+/* AI 消息用量行（tokens / tps / 投机接受率） */
+.msg-meta { margin: 2px 4px 0 38px; font-size: 10px; color: var(--on-surface-variant); }
+/* 深度思考气泡（虚线弱化，与正文区分） */
+.msg-card.think { border-style: dashed; color: var(--on-surface-variant); font-style: italic; }
+/* 字段说明小字（nightmare 式 caption：一句话人话说明） */
+.field-cap { font-size: 11px; color: var(--on-surface-variant); margin-top: 2px; line-height: 16px; }
+/* seed 锁 chip（锁定后紫藤高亮） */
+.seed-chip.on { color: var(--c-violet); border-color: var(--c-violet); }
+/* GGUF 自检能力徽章（视觉 / MTP / MoE） */
+.achip.cap { background: rgba(147,112,219,.14); color: var(--c-violet); border-color: transparent; }
+[data-theme="dark"] .achip.cap { background: rgba(147,112,219,.20); color: #B79CED; }
+/* tag 工具栏（权重 / 删除 / 撤销重做 / 反推） */
+.tag-toolbar { display: flex; align-items: center; gap: 4px; margin-top: 4px; }
+.tag-toolbar .tbtn { font-size: 11px; padding: 4px 8px; }
+.tag-toolbar .icbtn { width: 28px; height: 28px; }
+.tag-toolbar .ic { width: 16px; height: 16px; }
+/* 补全 chip 行（横滑，最多 12 个） */
+.suggest-row { display: flex; gap: 6px; overflow-x: auto; padding: 6px 0 2px; scrollbar-width: none; }
+.suggest-row::-webkit-scrollbar { display: none; }
+.suggest-row .chip { flex: none; font-size: 11px; padding: 4px 10px; }
+.suggest-row .sug-cn { font-size: 10px; opacity: .65; margin-left: 4px; }
+/* 批量/扫描 chip 独立成行（拥挤时换行不裁切） */
+.chip-row.wrap { flex-wrap: wrap; overflow-x: visible; }
+/* 局部重绘遮罩涂抹层（canvas 覆盖在底图上） */
+.mask-wrap { position: relative; aspect-ratio: 1; border-radius: 12px; overflow: hidden; margin-top: 6px; }
+.mask-base { position: absolute; inset: 0; }
+.mask-canvas { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; cursor: crosshair; }
+.mask-toolbar { display: flex; align-items: center; gap: 4px; margin-top: 6px; }
+.mask-toolbar .slider-row { margin: 0; }
+/* 结果卡收藏角标 */
+.fav-corner {
+  position: absolute; top: 8px; right: 8px; width: 34px; height: 34px; border-radius: 50%;
+  background: rgba(255,255,255,.78); color: var(--c-pink); box-shadow: var(--shadow-card);
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+}
+.fav-corner .ic { width: 18px; height: 18px; }
+.fav-mark { color: var(--c-pink); display: inline-flex; }
+.fav-mark .ic { width: 14px; height: 14px; }
+/* 分阶段耗时 / 换载成本提示 */
+.timing-line { margin-top: 6px; font-size: 11px; color: var(--on-surface-variant); }
+.cost-note { margin-bottom: 8px; font-size: 11px; color: var(--on-surface-variant); }
+/* 错误卡（失败阶段 + 原因 + 可行动建议） */
+.err-card { border-left: 4px solid var(--error); }
+.err-title { display: flex; align-items: center; gap: 6px; color: var(--error); font-weight: 600; font-size: 14px; }
+.err-title .ic { width: 18px; height: 18px; }
+.err-body { margin-top: 6px; font-size: 13px; color: var(--on-surface); }
+.err-hint { margin-top: 4px; font-size: 12px; color: var(--on-surface-variant); }
+/* 反推结果文本框 */
+.caption-result { margin-top: 8px; padding: 10px 12px; border-radius: 12px; background: var(--surface-container); border: 1px solid var(--outline-variant); font-size: 13px; line-height: 20px; word-break: break-all; }
+/* 扫描组卡（聚合多次扫描结果） */
+.d-group .d-title { font-weight: 600; }
+/* textarea 输入（系统提示词 / 提示词编辑） */
+textarea.field-input { min-height: 84px; resize: vertical; font-family: inherit; line-height: 20px; padding-top: 12px; padding-bottom: 12px; }

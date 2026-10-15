@@ -239,7 +239,14 @@
   });
   document.addEventListener('input', e => {
     const k = e.target.dataset && e.target.dataset.keep;
-    if (k) { S.x.keep = S.x.keep || {}; S.x.keep[k] = e.target.value; }
+    if (k) {
+      S.x.keep = S.x.keep || {};
+      S.x.keep[k] = e.target.value;
+      // D9：草稿自动保存（提示词类输入框持久化到 localStorage，刷新/冷启动不丢）
+      if (DRAFT_KEYS.indexOf(k) >= 0) {
+        try { localStorage.setItem('proto-draft-' + k, e.target.value); } catch (err) { }
+      }
+    }
     const live = e.target.dataset && e.target.dataset.live;
     if (live && ACTIONS[live]) ACTIONS[live](e.target.dataset, e.target);
   });
@@ -315,6 +322,25 @@
   // 通用动作
   action('tab', ds => nav.goTab(ds.arg));
   action('back', () => { if (!nav.pop()) nav.goTab(S.tab); });
+  // D9：草稿自动保存的白名单（LLM 消息 / 生图提示词 / 负向词），启动时恢复
+  const DRAFT_KEYS = ['llm-q', 'diff-prompt', 'diff-neg'];
+  // 统一赋值入口：所有程序化写入 keep 的地方都经此函数，确保草稿落盘
+  window.keepSet = (k, v) => {
+    S.x.keep = S.x.keep || {};
+    S.x.keep[k] = v;
+    if (DRAFT_KEYS.indexOf(k) >= 0) {
+      try { localStorage.setItem('proto-draft-' + k, v); } catch (e) { }
+    }
+  };
+  try {
+    DRAFT_KEYS.forEach(k => {
+      const v = localStorage.getItem('proto-draft-' + k);
+      if (v != null && v !== '') {
+        S.x.keep = S.x.keep || {};
+        if (S.x.keep[k] == null || S.x.keep[k] === '') S.x.keep[k] = v;
+      }
+    });
+  } catch (e) { }
   action('dialog-mask', (ds, el) => { if (el.classList.contains('dlg-mask') && !(S.dialog && S.dialog.sticky)) closeDialog(); });
   action('theme-toggle', () => { theme.toggle(); });
 
