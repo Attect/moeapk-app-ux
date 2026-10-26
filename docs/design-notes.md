@@ -25,7 +25,7 @@
 | 原型 | Compose 源 |
 |---|---|
 | `js/screens/apk.js`（tab:apk + apk-search 搜索子页 + 详情 + favorites 收藏子页） | `ui/apk/ApkScreen.kt`、`ApkHomeScreen.kt`、`CatalogScreens.kt`、`OpenScreens.kt`、`ApkSearchScreen.kt`、`ApkRepo.kt`；收藏 `ui/favorites/FavoritesScreen.kt` + `FavoriteRepo.kt` + `:core FavoritesPref` |
-| `js/screens/goods.js`（tab:goods 宅物陈列室 + goods-cat 展厅 + goods-detail 展品卡） | （规划中）`ui/goods/GoodsHomeScreen.kt`、`GoodsCatScreen.kt`、`GoodsDetailScreen.kt` + `GoodsRepo.kt`（数据由 muka.cool 后台宅物模块经淘宝联盟 API 取数 + AI 加工后输出） |
+| `js/screens/goods.js`（tab:goods 宅物陈列室 + goods-cat 展厅 + goods-detail 展品卡 + goods-ip 实体页） | （规划中）`ui/goods/GoodsHomeScreen.kt`、`GoodsCatScreen.kt`、`GoodsDetailScreen.kt`、`GoodsIpScreen.kt` + `GoodsRepo.kt`（数据由 muka.cool 后台宅物模块经淘宝联盟 API 取数 + AI 加工后输出） |
 | `js/screens/assets.js`（tab:assets 素材网格 + asset 查看器 + pcwall 点云壁纸设置页） | `ui/assets/AssetsScreen.kt`、`AssetViewerScreen.kt`、`AssetDialogs.kt`、`AssetOps.kt`、`ui/wallpaper/PointCloudPreviewScreen.kt`（点云查看器舞台）、`PointCloudSetupScreen.kt`（设为壁纸/壁纸管理页）+ `:assets`（`AssetStore`/`AssetImporter`/`AssetThumbnails`/`AssetMigrator`） |
 | `js/screens/ai.js`（tab:ai 入口枢纽 + ai-queue 任务队列子页） | `ui/ai/AiHubScreen.kt`、`AiQueueScreen.kt` + `:ai InferenceHub`/`InferenceQueue` |
 | `js/screens/ai-llm.js`（llm / llm-config 子页） | `ui/ai/LlmScreen.kt`、`LlmConfigScreen.kt` |
@@ -48,6 +48,22 @@
 > **App 侧对齐状态（2026-09-18）**：上表所列全部页面已按原型落到 Compose（壳层/素材/AI/APK + 主题过渡）。原型仍是 UX 的唯一变更入口（见「工作约定」第 1 条）。
 
 ## 设计沿革
+
+### 第十九轮（2026-10-26，宅物 IP 关联）
+
+**起因**：二次元 IP 数据库（ipdb）与 Muka.cool 宅物管理已打通，需要让 App 用户能沿作品/角色发现展品，而不只按吧唧、手办等物品形态浏览。
+
+**定案**：
+
+1. **展厅与 IP 正交**：展厅表示物品形态，IP 表示作品/角色等内容实体；一件展品可关联多个实体，不能把一个 IP 硬塞成新展厅。无明确 IP 的展品不强行打标。
+2. **详情页 IP 标签**：放在规格芯片之后，以「作品·」「角色·」等前缀区分于尺寸/材质属性；点击进实体页。原「同展厅还有」之前新增独立「同 IP 还有」，用于跨展厅发现同一实体的展品。
+3. **双向交叉筛选**：展厅页只列本厅实际有展品的 IP chips；实体页只列该实体实际有展品的展厅 chips。IP 筛选变化时瀑布流批次归一，后续追加批次也只能使用当前筛选结果，不能混入其它实体。
+4. **实体页形态**：名称 + 类型/年份 + 可选短简介 + 相关展品，不依赖 ipdb 图片；封面仍用现有展品图。首期不做系列/franchise 主档，不把 `related` 关系图当作同 IP。
+5. **feed 契约**：顶层新增 `ip_entities`（本次在线展品实际引用的实体快照），单品新增 `ip_ids`。真实首版实体字段为 `id/kind/name/year`；原型另有可选 `summary` 仅作演示。仅人工确认的关联进入 App，`person` 仅作后台证据，suggested/rejected 均不下发。
+
+**原型同步**：`js/data/goods.js` 新增 `GOODS_IP_ENTITIES` 与部分 `ip_ids`（星轨巡旅跨 badge/ita、猫耳女仆跨 badge/acrylic）；
+`js/screens/goods.js` 新增详情 IP 标签、同 IP 推荐、展厅 IP 过滤、`goods-ip` 实体页及展厅过滤；`css/app.css` 新增对应样式；`index.html` 资源版本号 v=52。
+Compose 对照增加规划中的 `ui/goods/GoodsIpScreen.kt`。走查截图 `shot-57~60`：实体页、详情标签、展厅过滤、横屏暗色；同时验证筛选后的无限滚动、窄屏与 `file://` 无网络请求。
 
 ### 第十八轮（2026-10-15，AI 功能改进：LLM 与生图）
 

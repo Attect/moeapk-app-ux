@@ -9,6 +9,18 @@
   const catById = id => (DB.GOODS_CATS || []).find(c => c.id === id);
   const goodById = id => (DB.GOODS || []).find(g => g.id === id);
   const goodsByCat = cid => (DB.GOODS || []).filter(g => g.cat === cid);
+  const ipById = id => (DB.GOODS_IP_ENTITIES || []).find(e => e.id === Number(id));
+  const ipKindLabel = kind => ({ work: '作品', character: '角色', gijinka: '拟人化', vtuber: 'VTuber', mascot: '吉祥物', group: '团体', other: '其他' })[kind] || '其他';
+  const goodsByIp = id => (DB.GOODS || []).filter(g => (g.ip_ids || []).includes(Number(id)));
+  function goodsByCatFiltered(cid) {
+    const selected = S.x.goodsCatIp && S.x.goodsCatIp[cid];
+    return goodsByCat(cid).filter(g => !selected || (g.ip_ids || []).includes(Number(selected)));
+  }
+  function ipOptionsForCat(cid) {
+    const ids = new Set();
+    goodsByCat(cid).forEach(g => (g.ip_ids || []).forEach(id => ids.add(id)));
+    return [...ids].map(ipById).filter(Boolean);
+  }
   // feed 契约中价格为字符串（"25.9"），演示数据是数字——两种都兼容
   const fmtPrice = p => {
     const n = typeof p === 'number' ? p : parseFloat(p);
@@ -149,7 +161,7 @@
   }
   // 一批的 HTML：第 1 批按当前排序原样；第 2 批起按批号盐重洗
   function fallBatch(cid, batch, sort) {
-    let items = goodsByCat(cid);
+    let items = goodsByCatFiltered(cid);
     if (batch > 1) items = shuffle(items, rng(hashStr(cid) * 13 + batch * 7919));
     else if (sort === 'rand') items = shuffle(items, rng((S.x.goodsSeed || 0) * 31 + hashStr(cid)));
     else items = items.slice().sort((a, b) => a.days - b.days);
@@ -166,6 +178,8 @@
       const c = catById(arg);
       if (!c) return emptyHint('展厅不存在');
       const sort = S.x.goodsSort || 'new';
+      const selectedIp = (S.x.goodsCatIp && S.x.goodsCatIp[arg]) || '';
+      const ipOptions = ipOptionsForCat(arg);
       if (!goodsByCat(arg).length) return emptyHint('这个展厅还在布置中');
       let h = '<div class="g-cat-hero">' +
         '<div class="g-cat-emoji">' + c.emoji + '</div>' +
@@ -176,6 +190,14 @@
       h += '<div class="chip-row">' +
         chip('最近收录', sort === 'new', 'goods-sort', 'new') +
         chip('随手翻翻', sort === 'rand', 'goods-sort', 'rand') + '</div>';
+      if (ipOptions.length) {
+        h += '<div class="chip-row g-ip-filter">' +
+          chip('全部 IP', !selectedIp, 'goods-cat-ip', arg + ':') +
+          ipOptions.map(e => chip(e.name, selectedIp === String(e.id), 'goods-cat-ip', arg + ':' + e.id)).join('') + '</div>';
+      }
+      if (!goodsByCatFiltered(arg).length) {
+        return h + emptyHint('这个 IP 在本展厅还没有展品，换一个看看');
+      }
       const nb = batchesOf(arg);
       S.x.goodsBatches[arg] = nb;
       h += '<div class="g-falls">' +
@@ -197,6 +219,13 @@
     S.x.goodsSort = ds.arg;
     const cur = nav.current(); // 排序一变旧位置无意义：批次归一从头看
     if (cur && cur.page === 'goods-cat' && S.x.goodsBatches) S.x.goodsBatches[cur.arg] = 1;
+    render();
+  });
+  action('goods-cat-ip', ds => {
+    const [hall, id] = ds.arg.split(':');
+    S.x.goodsCatIp = S.x.goodsCatIp || {};
+    S.x.goodsCatIp[hall] = id;
+    if (S.x.goodsBatches) S.x.goodsBatches[hall] = 1;
     render();
   });
   action('goods-open-cat', ds => nav.push('goods-cat', ds.arg));
@@ -228,6 +257,11 @@
         (g.stale ? '' : ' · ' + freshText(g)) + '</div>';
       // 策展区：陈列备注（AI 生成 + 人工抽查，抽查可关）+ 规格芯片
       h += '<div class="g-note"><div class="g-note-label">✦ 陈列备注</div>' + esc(g.note) + '</div>';
+      const ipLinks = (g.ip_ids || []).map(ipById).filter(Boolean);
+      if (ipLinks.length) {
+        h += '<div class="chip-row g-ip-tags">' + ipLinks.map(e =>
+          chip(ipKindLabel(e.kind) + '·' + e.name, false, 'goods-open-ip', e.id)).join('') + '</div>';
+      }
       h += '<div class="chip-row g-attrs">' + g.attrs.map(assistChip).join('') + '</div>';
       // 坦诚区：原始标题直接展示（提炼对照，不再折叠）
       h += '<div class="g-org-label">它在淘宝的原始标题</div>' +
@@ -250,6 +284,17 @@
           '<div class="g-promo-list">' +
           g.promos.map(p => '<div class="g-promo-card">' + icon(pIcon(p)) + '<span>' + esc(p) + '</span></div>').join('') +
           '</div></div>';
+      }
+      // 同 IP 还有（跨展厅）：与物品形态分类正交，只在确有同实体展品时显示
+      const sameIp = (DB.GOODS || []).filter(x => x.id !== g.id &&
+        (g.ip_ids || []).some(id => (x.ip_ids || []).includes(id))).slice(0, 5);
+      if (sameIp.length) {
+        h += '<div class="sec-head"><span class="sec-title">同 IP 还有</span></div>' +
+          '<div class="g-fresh">' + sameIp.map(x =>
+            '<div class="g-fresh-card" data-a="goods-open" data-arg="' + x.id + '">' +
+            cover(x) +
+            '<div class="g-fresh-name">' + esc(x.title) + '</div>' +
+            '<div class="g-fresh-cat">' + esc((catById(x.cat) || {}).name || '') + ' · ' + fmtPrice(x.price) + '</div></div>').join('') + '</div>';
       }
       // 同展厅还有
       const rel = goodsByCat(g.cat).filter(x => x.id !== g.id).slice(0, 5);
@@ -277,6 +322,36 @@
         '</div>';
       return h;
     }
+  });
+
+  // ---------- IP 实体页：实体摘要 + 展厅交叉筛选 ----------
+  registerScreen('goods-ip', {
+    title: arg => { const e = ipById(arg); return e ? e.name : 'IP 展品'; },
+    render(arg) {
+      const e = ipById(arg);
+      if (!e) return emptyHint('这个 IP 还没有展品');
+      const selectedHall = (S.x.goodsIpHall && S.x.goodsIpHall[arg]) || '';
+      const allItems = goodsByIp(arg);
+      const hallIds = [...new Set(allItems.map(g => g.cat))];
+      const items = allItems.filter(g => !selectedHall || g.cat === selectedHall);
+      let h = '<div class="g-ip-hero"><div class="g-ip-kind">' + esc(ipKindLabel(e.kind)) +
+        (e.year ? ' · ' + e.year : '') + '</div><div class="g-ip-name">' + esc(e.name) + '</div>' +
+        (e.summary ? '<div class="g-ip-summary">' + esc(e.summary) + '</div>' : '') + '</div>';
+      h += '<div class="chip-row g-ip-filter">' +
+        chip('全部展厅', !selectedHall, 'goods-ip-hall', arg + ':') +
+        hallIds.map(id => chip((catById(id) || {}).name || id, selectedHall === id, 'goods-ip-hall', arg + ':' + id)).join('') + '</div>';
+      if (!items.length) return h + emptyHint('这个展厅还没有该 IP 的展品，换一个看看');
+      h += '<div class="g-ip-count">' + items.length + ' 件相关展品</div>' +
+        '<div class="g-falls">' + items.map(g => fallCard(g, 1)).join('') + '</div>';
+      return h;
+    }
+  });
+  action('goods-open-ip', ds => nav.push('goods-ip', ds.arg));
+  action('goods-ip-hall', ds => {
+    const [ip, hall] = ds.arg.split(':');
+    S.x.goodsIpHall = S.x.goodsIpHall || {};
+    S.x.goodsIpHall[ip] = hall;
+    render();
   });
 
   // 跳转淘宝（原型固定模拟失败结局）。

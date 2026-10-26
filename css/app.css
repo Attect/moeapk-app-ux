@@ -1253,6 +1253,19 @@ body, .card, .li, .topbar, .navbar, .chip, .btn, .tbtn, .field-input,
 }
 .g-note-label { font-size: 11px; font-weight: 700; color: var(--primary); margin-bottom: 4px; letter-spacing: .3px; }
 .g-attrs { padding-bottom: 2px; }
+/* IP 标签与实体页：与规格芯片/展厅分类区分，沿既有 chip 与 surface 令牌 */
+.g-ip-tags { padding-top: 6px; }
+.g-ip-tags .chip { color: var(--primary); }
+.g-ip-filter { align-items: center; }
+.g-ip-hero {
+  margin-top: 10px; padding: 14px 16px; border-radius: 18px;
+  background: var(--grad-soft), var(--surface-low);
+  border: 1px solid var(--glass-brd); box-shadow: var(--shadow-card);
+}
+.g-ip-kind { font-size: 11px; color: var(--on-surface-variant); }
+.g-ip-name { font-size: 20px; font-weight: 700; margin-top: 3px; }
+.g-ip-summary { font-size: 12px; line-height: 19px; color: var(--on-surface-variant); margin-top: 6px; }
+.g-ip-count { margin: 8px 2px 4px; font-size: 12px; color: var(--on-surface-variant); }
 
 /* 原始标题直展（坦诚区；提炼对照） */
 .g-org-text {
