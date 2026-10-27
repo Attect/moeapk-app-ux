@@ -25,7 +25,7 @@
 | 原型 | Compose 源 |
 |---|---|
 | `js/screens/apk.js`（tab:apk + apk-search 搜索子页 + 详情 + favorites 收藏子页） | `ui/apk/ApkScreen.kt`、`ApkHomeScreen.kt`、`CatalogScreens.kt`、`OpenScreens.kt`、`ApkSearchScreen.kt`、`ApkRepo.kt`；收藏 `ui/favorites/FavoritesScreen.kt` + `FavoriteRepo.kt` + `:core FavoritesPref` |
-| `js/screens/goods.js`（tab:goods 宅物陈列室 + goods-cat 展厅 + goods-detail 展品卡 + goods-ip 实体页） | （规划中）`ui/goods/GoodsHomeScreen.kt`、`GoodsCatScreen.kt`、`GoodsDetailScreen.kt`、`GoodsIpScreen.kt` + `GoodsRepo.kt`（数据由 muka.cool 后台宅物模块经淘宝联盟 API 取数 + AI 加工后输出） |
+| `js/screens/goods.js`（tab:goods 宅物陈列室 + goods-cat 物品形态展厅 + goods-detail 展品卡 + goods-ip 统一 IP 页：策展展品 / 角色关系 / 联盟发现） | （规划中）`ui/goods/GoodsHomeScreen.kt`、`GoodsCatScreen.kt`、`GoodsDetailScreen.kt`、`GoodsIpScreen.kt` + `GoodsRepo.kt`（数据由 muka.cool 后台宅物模块经淘宝联盟 API 取数 + AI 加工后输出；关系图与联盟直接搜索为独立只读契约） |
 | `js/screens/assets.js`（tab:assets 素材网格 + asset 查看器 + pcwall 点云壁纸设置页） | `ui/assets/AssetsScreen.kt`、`AssetViewerScreen.kt`、`AssetDialogs.kt`、`AssetOps.kt`、`ui/wallpaper/PointCloudPreviewScreen.kt`（点云查看器舞台）、`PointCloudSetupScreen.kt`（设为壁纸/壁纸管理页）+ `:assets`（`AssetStore`/`AssetImporter`/`AssetThumbnails`/`AssetMigrator`） |
 | `js/screens/ai.js`（tab:ai 入口枢纽 + ai-queue 任务队列子页） | `ui/ai/AiHubScreen.kt`、`AiQueueScreen.kt` + `:ai InferenceHub`/`InferenceQueue` |
 | `js/screens/ai-llm.js`（llm / llm-config 子页） | `ui/ai/LlmScreen.kt`、`LlmConfigScreen.kt` |
@@ -48,6 +48,30 @@
 > **App 侧对齐状态（2026-09-18）**：上表所列全部页面已按原型落到 Compose（壳层/素材/AI/APK + 主题过渡）。原型仍是 UX 的唯一变更入口（见「工作约定」第 1 条）。
 
 ## 设计沿革
+
+### 第二十轮（2026-10-27，宅物 IP 展厅与 appears_in 关系网）
+
+**起因**：物品形态分类解决“吧唧 / 立牌 / 手办”怎么逛，但还缺少作品与角色各自的策展入口；同时，IP 实体关系与联盟直接搜索若混进展品列表，会让用户误以为它们也经过 AI 与人工策展。本轮把四种发现路径放在同一套导航里，但明确分开数据与视觉语义。
+
+**定案**：
+
+1. **四种边界**：首页保留“物品形态展厅”墙；新增“IP 展厅”横滑卡（作品策展 / 精确角色）；统一 `goods-ip` 页提供“策展展品 / 角色关系 / 联盟发现”三个标签。联盟原始结果不使用策展展品卡、策展计数或 `ip_halls`。
+2. **feed `ip_halls`**：每项为 `{id,title,emoji,blurb,item_count,character_count,subject:{id,kind,name,year}}`，单品新增 `ip_hall_ids:[hallId]`。作品厅 ID 如 `work-1001`，只按 `ip_hall_ids` 收录策展确认成员；角色厅 ID 如 `character-2001`，除 hallId 外还要求 `ip_ids` 精确包含该角色 ID，**不按名称猜测，也不把同作品其它角色混入**。
+3. **策展交叉筛选**：统一 IP 页沿用物品形态 chips；首页 IP 卡、展品详情 IP/角色标签都进入同一页面。原 `goods-cat` 的 IP 过滤、无限瀑布流批次和滚动记忆不改。
+4. **仅 `appears_in` 关系**：静态查询模拟 `{root,mode:'work'|'character',relation:'appears_in',works,characters,work_total,character_total,offset,limit}`，不输出 `related`。作品根分页显示全部角色；角色根显示相关作品；从角色进入作品后显示该作品全部角色，并保留入口角色高亮。原型为在整页 render 后恢复已加载内容，用扩大 `limit` 重放；Android 请求下一页应以 `offset=已加载数` 追加。
+5. **原生关系图**：HTML 按钮承载作品/角色节点，SVG 只画分层连线，无力导向库。节点点击使用 `nav.push`；标签切换只更新 `S.x` 页内状态，返回时恢复原实体、标签、分页与高亮。
+6. **联盟直接搜索**：从当前作品/角色直接进入“联盟发现”，按实体 ID 读取独立的原始演示快照；固定醒目披露“**联盟原始结果 / 未经 AI 与人工策展**”，保留原始标题、店铺、价格与促销，明示重复、噪声、失效和价格变化可能。它不等于策展收录，也不参与 `item_count`。
+7. **演示口径**：星轨巡旅、猫耳女仆等实体、全部 `appears_in` 边与联盟结果均为虚构演示，页面与设计文档都不得把它们描述为真实 ipdb 资料或实时联盟返回。
+
+**原型同步**：`js/data/goods.js` 扩为 36 件展品、10 个 IP 展厅、10 条 `appears_in` 演示边和 5 组联盟原始快照；新增 `ip_hall_ids` 与策展计数。`js/screens/goods.js` 新增首页 IP 卡、统一三视图、原生关系图、分页与高亮、原始结果列表；展品原图保存不再使用 `fetch`。`css/app.css` 增加三视图、关系节点和横竖屏/明暗样式；`index.html` 全部资源版本号 v=53。
+
+**走查**：全程 `file://`，无头 Chrome 实际点击 37 项断言通过：展厅成员与角色精确匹配、形态筛选、第二页契约、全部角色加载、角色→作品导航与返回、原角色高亮、详情 IP 标签往返、作品/角色直接查看联盟原始结果、联盟隔离、横竖屏、360px 窄窗口、既有无限滚动批次与滚动位置恢复；外部网络请求、页面异常、浏览器错误日志均为 0。逐张查看 `shot-61~69`：61 首页竖屏明亮、62 作品策展、63 作品全部角色、64 暗色入口角色高亮、65 联盟原始结果、66 暗色角色精确策展、67 横屏暗色关系图、68 横屏明亮首页、69 窄窗口角色关系图。
+
+**Android 同步注意**：
+
+- `ip_halls`、`ip_entities`、`items.ip_hall_ids`、关系查询和联盟直接搜索是不同契约；不要用客户端名称匹配代替服务端成员/关系确认，也不要把原始搜索塞进 Paging 策展列表。
+- 作品根角色分页需保存已加载页；角色→作品使用导航参数栈并传入口角色 ID，返回时恢复。三个标签与每实体的形态筛选、分页、高亮按实体保存。
+- Compose 可用分层 `Box` + `Canvas` 连线实现同等布局，无需引入图库；窄屏优先保证节点可点与文案不溢出。联盟披露的“原始 / 未经 AI 与人工策展”必须在首屏可见，不能藏进说明页。
 
 ### 第十九轮（2026-10-26，宅物 IP 关联）
 

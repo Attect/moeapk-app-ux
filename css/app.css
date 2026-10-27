@@ -1267,6 +1267,137 @@ body, .card, .li, .topbar, .navbar, .chip, .btn, .tbtn, .field-input,
 .g-ip-summary { font-size: 12px; line-height: 19px; color: var(--on-surface-variant); margin-top: 6px; }
 .g-ip-count { margin: 8px 2px 4px; font-size: 12px; color: var(--on-surface-variant); }
 
+/* 首页 IP 展厅：作品策展与精确角色并列，和下方物品形态墙明确分区 */
+.g-sec-note { font-size: 10px; color: var(--on-surface-variant); }
+.g-ip-halls {
+  display: flex; gap: 10px; overflow-x: auto; scrollbar-width: none;
+  margin: 2px -16px 0; padding: 6px 16px 10px;
+}
+.g-ip-halls::-webkit-scrollbar { display: none; }
+.g-ip-hall-card {
+  --ih-accent: var(--primary);
+  flex: none; width: 218px; min-height: 154px; padding: 13px 14px;
+  display: flex; flex-direction: column; text-align: left; font: inherit; color: var(--on-surface);
+  border: 1px solid var(--glass-brd); border-top: 3px solid var(--ih-accent); border-radius: 18px;
+  background: var(--surface-low); box-shadow: var(--shadow-card); cursor: pointer;
+  transition: transform .15s, background-color .22s ease, border-color .22s ease;
+}
+.g-ip-hall-card.character { --ih-accent: var(--c-sky); }
+.g-ip-hall-card:active { transform: scale(.97); }
+.g-ip-hall-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.g-ip-hall-emoji { font-size: 28px; line-height: 32px; }
+.g-ip-hall-kind {
+  padding: 2px 7px; border: 1px solid var(--outline-variant); border-radius: 999px;
+  color: var(--ih-accent); font-size: 10px; font-weight: 600;
+}
+.g-ip-hall-title { margin-top: 8px; font-size: 15px; font-weight: 700; line-height: 21px; }
+.g-ip-hall-blurb {
+  margin-top: 3px; min-height: 34px; font-size: 11px; line-height: 17px; color: var(--on-surface-variant);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.g-ip-hall-meta { margin-top: auto; padding-top: 9px; font-size: 10px; color: var(--on-surface-variant); }
+
+/* 统一 IP 页三视图 */
+.g-ip-tabs {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px;
+  margin: 12px 0; padding: 4px; border: 1px solid var(--outline-variant); border-radius: 16px;
+  background: var(--surface-container);
+}
+.g-ip-tab {
+  min-width: 0; min-height: 42px; padding: 6px 4px; border: 0; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center; gap: 4px;
+  background: transparent; color: var(--on-surface-variant); font: inherit; font-size: 12px; cursor: pointer;
+}
+.g-ip-tab .ic { width: 17px; height: 17px; flex: none; }
+.g-ip-tab.on { color: var(--primary); background: var(--surface-highest); box-shadow: var(--shadow-card); font-weight: 600; }
+.g-ip-curation {
+  margin-top: 10px; padding: 12px 14px; border: 1px solid var(--glass-brd); border-radius: 16px;
+  background: var(--grad-soft), var(--surface-low); box-shadow: var(--shadow-card);
+}
+.g-ip-curation-head { display: flex; align-items: center; gap: 11px; }
+.g-ip-curation-emoji { flex: none; font-size: 30px; }
+.g-ip-curation-title { font-size: 14px; font-weight: 700; }
+.g-ip-curation-blurb { margin-top: 2px; font-size: 11px; line-height: 17px; color: var(--on-surface-variant); }
+.g-ip-curation-rule {
+  display: flex; align-items: center; gap: 5px; margin-top: 10px; padding-top: 8px;
+  border-top: 1px dashed var(--outline-variant); color: var(--primary); font-size: 11px;
+}
+.g-ip-curation-rule .ic { width: 15px; height: 15px; }
+
+/* appears_in 分层关系图：SVG 只画线，原生按钮承载节点与点击 */
+.g-graph-legend {
+  display: flex; align-items: flex-start; gap: 8px; margin-top: 10px; padding: 10px 12px;
+  border: 1px dashed var(--outline-variant); border-radius: 14px; background: var(--surface-container);
+  color: var(--on-surface-variant); font-size: 12px; line-height: 18px;
+}
+.g-graph-legend > .ic { flex: none; width: 17px; height: 17px; margin-top: 1px; color: var(--c-violet); }
+.g-graph-legend span { min-width: 0; }
+.g-graph-legend b { color: var(--on-surface); }
+.g-graph-legend small { display: block; margin-top: 2px; font-size: 10px; }
+.g-graph-caption { margin: 12px 2px 6px; font-size: 11px; color: var(--on-surface-variant); }
+.g-graph-stage {
+  position: relative; max-width: 760px; margin: 0 auto; overflow: hidden;
+  border: 1px solid var(--glass-brd); border-radius: 18px; background: var(--surface-container);
+}
+.g-graph-svg { position: absolute; inset: 0; z-index: 0; width: 100%; height: 100%; }
+.g-graph-line { stroke: var(--outline); stroke-width: 1.5; opacity: .65; }
+.g-graph-line.highlight { stroke: var(--primary); stroke-width: 2.5; opacity: 1; }
+.g-graph-node {
+  position: absolute; z-index: 1; transform: translate(-50%, -50%); width: 36%; min-height: 66px;
+  padding: 8px 9px; border: 1px solid var(--outline-variant); border-top: 2px solid var(--primary);
+  border-radius: 14px; background: var(--surface-highest); color: var(--on-surface); box-shadow: var(--shadow-card);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;
+  font: inherit; cursor: pointer; transition: transform .15s, border-color .2s, box-shadow .2s;
+}
+.g-graph-node.character { border-top-color: var(--c-sky); }
+.g-graph-node.root { cursor: default; background: var(--grad-soft), var(--surface-highest); }
+.g-graph-node.highlight { border: 2px solid var(--primary); box-shadow: var(--ring-focus), var(--shadow-card); }
+.g-graph-node:not(.root):active { transform: translate(-50%, -50%) scale(.96); }
+.g-graph-node-kind { font-size: 9px; line-height: 13px; color: var(--on-surface-variant); }
+.g-graph-node strong { max-width: 100%; margin: 2px 0; font-size: 12px; line-height: 17px; }
+.g-graph-node small { font-size: 9px; line-height: 12px; color: var(--on-surface-variant); }
+.g-graph-progress { margin-top: 8px; text-align: center; font-size: 11px; color: var(--on-surface-variant); }
+.g-graph-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin: 10px 0 2px; }
+.g-graph-actions .btn { max-width: 100%; }
+.g-graph-raw { flex-basis: 100%; }
+.g-graph-raw .ic { width: 15px; height: 15px; vertical-align: -3px; }
+
+/* 联盟发现：独立原始结果，醒目的未策展披露，不沿用策展展品卡 */
+.g-raw-warning {
+  display: flex; align-items: flex-start; gap: 10px; margin-top: 10px; padding: 12px 14px;
+  border: 1px solid var(--error); border-radius: 16px;
+  background: var(--error-container); color: var(--on-error-container);
+}
+.g-raw-warning > .ic { flex: none; width: 22px; height: 22px; }
+.g-raw-warning-title { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; font-size: 13px; }
+.g-raw-warning-title span { opacity: .65; }
+.g-raw-warning p { margin-top: 5px; font-size: 11px; line-height: 17px; }
+.g-raw-query {
+  display: flex; align-items: center; gap: 12px; margin-top: 10px; padding: 12px 14px;
+  border: 1px solid var(--glass-brd); border-radius: 16px; background: var(--surface-low);
+}
+.g-raw-query > .ic { flex: none; width: 22px; height: 22px; color: var(--primary); }
+.g-raw-query div { display: flex; flex-direction: column; min-width: 0; }
+.g-raw-query span { font-size: 11px; color: var(--on-surface-variant); }
+.g-raw-query strong { margin: 2px 0; font-size: 15px; }
+.g-raw-query small { font-size: 10px; color: var(--on-surface-variant); }
+.g-raw-count { margin: 12px 2px 6px; font-size: 11px; color: var(--on-surface-variant); }
+.g-raw-list { display: grid; gap: 10px; }
+.g-raw-card {
+  min-width: 0; padding: 12px 14px; border: 1px solid var(--glass-brd); border-radius: 16px;
+  background: var(--surface-low); box-shadow: var(--shadow-card);
+}
+.g-raw-card-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 10px; color: var(--on-surface-variant); }
+.g-raw-card-top b { padding: 2px 6px; border-radius: 6px; background: var(--error-container); color: var(--on-error-container); font-size: 9px; }
+.g-raw-title { margin: 8px 0; font-size: 13px; font-weight: 600; line-height: 19px; }
+.g-raw-meta { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; font-size: 11px; color: var(--on-surface-variant); }
+.g-raw-meta strong { color: var(--on-surface); font-size: 15px; }
+.g-raw-promo {
+  display: inline-block; margin-top: 8px; padding: 3px 7px; border: 1px dashed var(--outline-variant);
+  border-radius: 8px; font-size: 10px; color: var(--on-surface-variant);
+}
+.g-raw-foot { padding: 12px 4px 2px; font-size: 10px; line-height: 16px; color: var(--on-surface-variant); }
+
 /* 原始标题直展（坦诚区；提炼对照） */
 .g-org-text {
   margin-top: 6px; padding: 10px 12px; border-radius: 12px;
@@ -1373,8 +1504,22 @@ body, .card, .li, .topbar, .navbar, .chip, .btn, .tbtn, .field-input,
 }
 
 /* 主题切换过渡补入宅物卡片 */
-.g-fall-card, .g-mos-card, .g-cover, .g-note, .g-hero, .g-cat-emoji {
+.g-fall-card, .g-mos-card, .g-cover, .g-note, .g-hero, .g-cat-emoji,
+.g-ip-hall-card, .g-ip-curation, .g-graph-stage, .g-graph-node, .g-raw-card {
   transition: background-color .22s ease, color .22s ease, border-color .22s ease;
+}
+
+/* 窄移动窗口：三标签与关系节点保持可点、文字不溢出 */
+@container (max-width: 359px) {
+  .g-ip-tab { gap: 2px; font-size: 11px; }
+  .g-ip-tab .ic { width: 15px; height: 15px; }
+  .g-ip-hall-card { width: 202px; }
+  .g-graph-node { padding-left: 6px; padding-right: 6px; }
+}
+@container (min-width: 720px) {
+  .g-ip-tabs { max-width: 560px; margin-left: auto; margin-right: auto; }
+  .g-raw-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .g-ip-hall-card { width: 236px; }
 }
 
 /* ---------- 宅物 · 横屏 / 平板 ---------- */

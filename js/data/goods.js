@@ -17,7 +17,9 @@
 //           ≤3 条；券会过期/有门槛，详情页「可能存在的优惠」卡片弱化呈现）
 //   presale 预售标记（联盟 presale_info 判定）：预售付定金阶段到手价=定金+尾款预估，
 //           详情页标注「预售商品」避免误导
+//   ip_hall_ids 策展展厅成员 ID（只有确认进入展厅的展品才带对应 hallId；与 ip_ids 的实体关联不是同一层）。
 //   图片一律 emoji + 色相（hue）渐变占位——原型不内嵌任何外部图片。
+// 所有 IP 实体、appears_in 关系与联盟原始结果均为虚构演示，不代表真实作品资料或实时联盟返回。
 window.DB = window.DB || {};
 
 // 展厅（分类）：俏皮主名 name + 标准词副名 sub + 策展语 blurb
@@ -68,34 +70,109 @@ window.DB.GOODS_IP_ENTITIES = [
   { id: 1006, kind: 'work', name: '电波系', year: 2024, summary: '在噪声和霓虹之间接收同频信号。' },
   { id: 2001, kind: 'character', name: '猫耳女仆', year: 2023, summary: '猫耳、女仆装和一点不服输的小脾气。' },
   { id: 2002, kind: 'character', name: 'Q版魔王', year: 2022, summary: '看起来凶巴巴的，实际很在意每天吃什么。' },
-  { id: 2003, kind: 'character', name: '见习魔女', year: 2021, summary: '帽子总要歪一点，咒语还记不熟的新人魔女。' }
+  { id: 2003, kind: 'character', name: '见习魔女', year: 2021, summary: '帽子总要歪一点，咒语还记不熟的新人魔女。' },
+  { id: 2004, kind: 'character', name: '星图领航员', year: 2024, summary: '能把残缺星图读成路线，却总忘记给自己留返航标记。' },
+  { id: 2005, kind: 'character', name: '拾星旅人', year: 2024, summary: '沿途收集黯淡星屑，相信每一点微光都有来处。' },
+  { id: 2006, kind: 'character', name: '轨道维修师', year: 2024, summary: '带着扳手巡查旧轨道，工具包里总少一颗螺丝。' },
+  { id: 2007, kind: 'character', name: '邮差水母', year: 2024, summary: '乘着潮汐送信，透明伞盖里藏着未寄出的地址。' },
+  { id: 2008, kind: 'character', name: '天文部书记', year: 2022, summary: '把每次观测都写得一丝不苟，书签却总会夹错页。' }
 ];
+
+// feed 顶层 ip_halls：作品厅与角色厅共用结构，但成员语义不同。
+// 作品厅只认单品 ip_hall_ids 中的策展确认成员；角色厅还要求 ip_ids 精确包含角色 id。
+// item_count / character_count 是策展侧统计，不包含任何联盟原始结果。
+window.DB.GOODS_IP_HALLS = [
+  { id: 'work-1001', title: '星轨巡旅·作品厅', emoji: '🌌', blurb: '沿旧星图，收藏确认参展的旅途碎片。', item_count: 3, character_count: 5,
+    subject: { id: 1001, kind: 'work', name: '星轨巡旅', year: 2024 } },
+  { id: 'character-2001', title: '猫耳女仆·角色厅', emoji: '🐱', blurb: '只陈列这位角色，不用相似名字凑数。', item_count: 3, character_count: 1,
+    subject: { id: 2001, kind: 'character', name: '猫耳女仆', year: 2023 } },
+  { id: 'work-1003', title: '放学后的天文部', emoji: '🔭', blurb: '把放学后仍亮着的观测灯收进展厅。', item_count: 1, character_count: 2,
+    subject: { id: 1003, kind: 'work', name: '放学后的天文部', year: 2022 } },
+  { id: 'character-2003', title: '见习魔女·角色厅', emoji: '🧹', blurb: '歪帽子与不熟练咒语，都属于这位新人魔女。', item_count: 1, character_count: 1,
+    subject: { id: 2003, kind: 'character', name: '见习魔女', year: 2021 } },
+  { id: 'work-1002', title: '深海邮局·作品厅', emoji: '📮', blurb: '在潮汐之间，收好那些无法寄出的信。', item_count: 1, character_count: 1,
+    subject: { id: 1002, kind: 'work', name: '深海邮局', year: 2023 } },
+  { id: 'character-2004', title: '星图领航员·角色厅', emoji: '🧭', blurb: '只看领航员本人，返航标记也请记得带上。', item_count: 1, character_count: 1,
+    subject: { id: 2004, kind: 'character', name: '星图领航员', year: 2024 } },
+  { id: 'character-2002', title: 'Q版魔王·角色厅', emoji: '😈', blurb: '凶巴巴的表情和认真吃饭的样子都收录。', item_count: 1, character_count: 1,
+    subject: { id: 2002, kind: 'character', name: 'Q版魔王', year: 2022 } },
+  { id: 'work-1005', title: '像素勇者·作品厅', emoji: '👾', blurb: '一格一格，把冒险地图重新陈列。', item_count: 1, character_count: 1,
+    subject: { id: 1005, kind: 'work', name: '像素勇者', year: 2020 } },
+  { id: 'work-1006', title: '电波系·作品厅', emoji: '📡', blurb: '在噪声与霓虹之间，接收同频展品。', item_count: 1, character_count: 1,
+    subject: { id: 1006, kind: 'work', name: '电波系', year: 2024 } },
+  { id: 'work-1004', title: '庭院深深·作品厅', emoji: '🎍', blurb: '苔石、流水与一方庭院里的展品。', item_count: 1, character_count: 0,
+    subject: { id: 1004, kind: 'work', name: '庭院深深', year: 2021 } }
+];
+
+// 唯一关系类型：appears_in（角色出现于作品）。没有 related、推荐相似或名称推测。
+// 这些边只是用于验证图布局、分页与原角色高亮的虚构演示关系。
+window.DB.GOODS_IP_RELATIONS = [
+  { work_id: 1001, character_id: 2001, relation: 'appears_in' },
+  { work_id: 1001, character_id: 2003, relation: 'appears_in' },
+  { work_id: 1001, character_id: 2004, relation: 'appears_in' },
+  { work_id: 1001, character_id: 2005, relation: 'appears_in' },
+  { work_id: 1001, character_id: 2006, relation: 'appears_in' },
+  { work_id: 1002, character_id: 2007, relation: 'appears_in' },
+  { work_id: 1003, character_id: 2001, relation: 'appears_in' },
+  { work_id: 1003, character_id: 2008, relation: 'appears_in' },
+  { work_id: 1005, character_id: 2002, relation: 'appears_in' },
+  { work_id: 1006, character_id: 2001, relation: 'appears_in' }
+];
+
+// 联盟直接搜索的原始演示快照，按当前实体 id 读取；不进入 GOODS、ip_halls 或策展计数。
+// 原始标题保留关键词堆砌与重复/噪声，UI 不做 AI 提炼、人工筛选或同名猜测。
+window.DB.GOODS_ALLIANCE_RAW = {
+  1001: { query: '星轨巡旅', results: [
+    { id: 'raw-1001-1', title: '星轨巡旅吧唧徽章58mm镭射闪底马口铁胸针六枚套装动漫周边', price: '25.90', shop: '星轨周边社', promo: '店铺券 ¥3' },
+    { id: 'raw-1001-2', title: '星轨巡旅星图领航员亚克力立牌彩窗桌面摆件原创周边', price: '32.00', shop: '轨道小铺', promo: '包邮' },
+    { id: 'raw-1001-3', title: '星轨巡旅同款周边福袋吧唧立牌随机动漫谷子生日礼物', price: '19.90', shop: '次元杂货集', promo: '满 2 件 9 折' },
+    { id: 'raw-1001-4', title: '星空轨道旅行主题贴纸手账装饰行李箱防水贴40枚', price: '9.90', shop: '纸岛文具', promo: '' }
+  ] },
+  2001: { query: '猫耳女仆', results: [
+    { id: 'raw-2001-1', title: '猫耳女仆吧唧闪底徽章动漫周边马口铁胸针书包挂件', price: '15.80', shop: '喵港周边', promo: '单件包邮' },
+    { id: 'raw-2001-2', title: '猫耳女仆亚克力立牌双插桌面摆件可爱萌系生日礼物', price: '45.00', shop: '女仆研究室', promo: '' },
+    { id: 'raw-2001-3', title: '可爱猫耳女仆装发箍头饰cos配件黑白蕾丝漫展表演', price: '12.90', shop: '漫展装备库', promo: '店铺券 ¥2' }
+  ] },
+  1003: { query: '放学后的天文部', results: [
+    { id: 'raw-1003-1', title: '放学后的天文部亚克力立牌原创动漫周边桌面摆件含底座', price: '32.00', shop: '天文台小卖部', promo: '包邮' },
+    { id: 'raw-1003-2', title: '天文部星空观测手账贴纸学生文具笔记本装饰贴画', price: '8.80', shop: '夜间文具社', promo: '' }
+  ] },
+  2003: { query: '见习魔女', results: [
+    { id: 'raw-2003-1', title: '见习魔女cosplay服装全套女巫帽子漫展表演服现货', price: '259.00', shop: '魔女衣橱', promo: '店铺券 ¥10' },
+    { id: 'raw-2003-2', title: '见习魔女魔法帽发夹迷你帽子头饰动漫周边cos道具', price: '18.90', shop: '咒语配件铺', promo: '' }
+  ] },
+  2004: { query: '星图领航员', results: [
+    { id: 'raw-2004-1', title: '星图领航员彩窗亚克力立牌星轨巡旅桌面摆件含底座', price: '32.00', shop: '轨道小铺', promo: '包邮' },
+    { id: 'raw-2004-2', title: '星图领航员徽章钥匙扣挂件套装动漫周边谷子', price: '21.80', shop: '星图补给站', promo: '' }
+  ] }
+};
+
 
 window.DB.GOODS = [
   // ---------- 小铁片 ----------
-  { id: 'g01', cat: 'badge', ip_ids: [1001], title: '「星轨巡旅」镭射吧唧六枚组', price: 25.9, list: 32, emoji: '✨', hue: 290, days: 2, fresh_days: 0, promos: ['店铺券 ¥3', '包邮'],
+  { id: 'g01', cat: 'badge', ip_ids: [1001], ip_hall_ids: ['work-1001'], title: '「星轨巡旅」镭射吧唧六枚组', price: 25.9, list: 32, emoji: '✨', hue: 290, days: 2, fresh_days: 0, promos: ['店铺券 ¥3', '包邮'],
     note: '镭射底在光下会慢慢转色，别在帆布包肩带上正好。这家的边缘打磨得干净，不割手。',
     origin: '【正版授权】星轨巡旅吧唧徽章二次元周边谷子马口铁胸针58mm镭射闪底吧唧套装动漫挂件生日礼物送女友闺蜜',
     attrs: ['马口铁', '58mm', '6 枚装', '镭射闪底'], tpwd: '￥Xk72QpLm91￥' },
-  { id: 'g02', cat: 'badge', ip_ids: [2001], title: '猫耳女仆·闪底吧唧', price: 15.8, emoji: '🐱', hue: 340, days: 5, fresh_days: 2,
+  { id: 'g02', cat: 'badge', ip_ids: [2001], ip_hall_ids: ['character-2001'], title: '猫耳女仆·闪底吧唧', price: 15.8, emoji: '🐱', hue: 340, days: 5, fresh_days: 2,
     note: '细闪底不浮夸，女仆猫的表情画得很欠揍（褒义）。单枚包邮，凑包友好。',
     origin: '二次元猫耳女仆吧唧徽章动漫周边谷子闪底马口铁胸针学生书包挂件装饰可爱萌系生日礼物',
     attrs: ['马口铁', '58mm', '单枚'], tpwd: '￥Ab39TzWq20￥' },
-  { id: 'g03', cat: 'badge', ip_ids: [1002], title: '「深海邮局」烫金徽章', price: 19.9, emoji: '📮', hue: 210, days: 9, fresh_days: 5,
+  { id: 'g03', cat: 'badge', ip_ids: [1002], ip_hall_ids: ['work-1002'], title: '「深海邮局」烫金徽章', price: 19.9, emoji: '📮', hue: 210, days: 9, fresh_days: 5,
     note: '烫金线条在深色底上很出效果，别在牛仔外套上比别包上更合适。',
     origin: '深海邮局烫金徽章原创二次元周边金属质感胸针文艺复古挂件配饰学生礼物',
     attrs: ['马口铁', '烫金工艺', '44mm'], tpwd: '￥Qw81LmZx55￥' },
-  { id: 'g04', cat: 'badge', ip_ids: [1005], title: '像素勇者·迷你吧唧四枚套', price: 22, emoji: '👾', hue: 120, days: 12,
+  { id: 'g04', cat: 'badge', ip_ids: [1005], ip_hall_ids: ['work-1005'], title: '像素勇者·迷你吧唧四枚套', price: 22, emoji: '👾', hue: 120, days: 12,
     note: '32mm 小尺寸，一串别在笔袋拉链上刚好。像素风印得很锐利，没有糊边。',
     origin: '像素风勇者吧唧迷你徽章套装二次元游戏周边谷子胸针挂件复古游戏玩家礼物',
     attrs: ['马口铁', '32mm', '4 枚装'], tpwd: '￥Mn54KpWq83￥' },
 
   // ---------- 塑料片 ----------
-  { id: 'g05', cat: 'acrylic', ip_ids: [1003], title: '「放学后的天文部」立牌', price: 32, emoji: '🔭', hue: 250, days: 1, fresh_days: 10,
+  { id: 'g05', cat: 'acrylic', ip_ids: [1003], ip_hall_ids: ['work-1003'], title: '「放学后的天文部」立牌', price: 32, emoji: '🔭', hue: 250, days: 1, fresh_days: 10,
     note: '彩窗式印刷，逆光摆在窗台上效果最好。底座咬合紧，不会松松垮垮。',
     origin: '放学后的天文部亚克力立牌二次元动漫周边原创谷子桌面摆件学生生日礼物收藏',
     attrs: ['亚克力', '15cm', '含底座'], tpwd: '￥Zx20VbNm47￥' },
-  { id: 'g06', cat: 'acrylic', ip_ids: [2001], title: '女仆猫·双插立牌', price: 45, emoji: '🐾', hue: 330, days: 4,
+  { id: 'g06', cat: 'acrylic', ip_ids: [2001], ip_hall_ids: ['character-2001'], title: '女仆猫·双插立牌', price: 45, emoji: '🐾', hue: 330, days: 4,
     note: '前后双插设计，景深比一般立牌强。印刷在夹层里，指甲刮不到图。',
     origin: '猫耳女仆亚克力立牌双插二次元周边谷子桌面摆件可爱萌系生日礼物送女友',
     attrs: ['亚克力', '双插', '18cm'], tpwd: '￥Pl66FdSa10￥' },
@@ -103,13 +180,17 @@ window.DB.GOODS = [
     note: '整块透明渐变，挂钥匙上像一小片彩色玻璃。附两种挂链，自己换着用。',
     origin: '透明怪兽亚克力挂件彩窗渐变二次元周边钥匙扣包包挂饰可爱创意礼物',
     attrs: ['亚克力', '8cm', '双挂链'], tpwd: '￥Hg93KpQw28￥' },
+  { id: 'g35', cat: 'acrylic', ip_ids: [1001, 2004], ip_hall_ids: ['work-1001', 'character-2004'], title: '「星轨巡旅」领航员彩窗立牌', price: 32, emoji: '🧭', hue: 225, days: 1, fresh_days: 0,
+    note: '领航员身后的星图做了半透明叠层，侧光看像一条展开的旧航路。底座不大，适合摆在屏幕旁。',
+    origin: '星轨巡旅星图领航员彩窗亚克力立牌原创动漫周边桌面摆件含底座生日礼物',
+    attrs: ['亚克力', '彩窗叠层', '16cm', '含底座'], tpwd: '￥St35IpHall￥' },
 
   // ---------- 塑料小人 ----------
-  { id: 'g08', cat: 'figure', ip_ids: [1004], title: '「庭院深深」1/7 完成品手办', price: 299, list: 358, emoji: '🎍', hue: 140, days: 3, stale: true, promos: ['满 2 件 9 折', '店铺券 ¥10'],
+  { id: 'g08', cat: 'figure', ip_ids: [1004], ip_hall_ids: ['work-1004'], title: '「庭院深深」1/7 完成品手办', price: 299, list: 358, emoji: '🎍', hue: 140, days: 3, stale: true, promos: ['满 2 件 9 折', '店铺券 ¥10'],
     note: '这个价位里少见的场景底座，苔藓和石灯都有细节。裙摆渐变涂装没翻车。',
     origin: '庭院深深1/7手办完成品二次元动漫周边模型摆件生日礼物收藏级正版授权',
     attrs: ['PVC 完成品', '1/7', '约 24cm'], tpwd: '￥Cv55NbMz74￥' },
-  { id: 'g09', cat: 'figure', ip_ids: [2002], title: 'Q版魔王·盒蛋随机款', price: 59, emoji: '😈', hue: 270, days: 6, fresh_days: 20,
+  { id: 'g09', cat: 'figure', ip_ids: [2002], ip_hall_ids: ['character-2002'], title: 'Q版魔王·盒蛋随机款', price: 59, emoji: '😈', hue: 270, days: 6, fresh_days: 20,
     promos: ['淘金币频道专享', '淘金币频道抵扣0.24元', '包邮'],
     note: '全 6 款随机，隐藏款是魔王打瞌睡。盒蛋的乐趣就是赌，量力而行。',
     origin: 'Q版魔王盒蛋盲盒手办二次元动漫周边桌面摆件随机款生日礼物',
@@ -172,6 +253,10 @@ window.DB.GOODS = [
     note: '奶油苏打和布丁的循环柄，贴手帐边一级合适。粘性适中，撕下来不留胶。',
     origin: '昭和喫茶和纸胶带手帐贴纸二次元周边复古可爱装饰贴画学生礼物',
     attrs: ['和纸', '15mm×7m'], tpwd: '￥Yt73HgFd50￥' },
+  { id: 'g36', cat: 'sticker', ip_ids: [2001], ip_hall_ids: ['character-2001'], title: '猫耳女仆·手账贴纸包', price: 13.9, emoji: '🎀', hue: 350, days: 2, fresh_days: 1,
+    note: '十二种小表情，连围裙褶皱都画清楚了。和纸材质好撕贴，适合把观测记录贴得热闹一点。',
+    origin: '猫耳女仆手账贴纸包可爱动漫周边和纸贴纸学生笔记本装饰贴画生日礼物',
+    attrs: ['和纸', '12 款', '防水覆膜'], tpwd: '￥Ne36IpHall￥' },
 
   // ---------- 等身抱枕 ----------
   { id: 'g22', cat: 'daki', title: '「月光茶会」等身抱枕套', price: 139, list: 169, emoji: '🌙', hue: 255, days: 6, focus: 'top',
@@ -184,7 +269,7 @@ window.DB.GOODS = [
     attrs: ['短绒', '60cm', '可机洗'], tpwd: '￥Ra69SdFg24￥' },
 
   // ---------- 穿上身 ----------
-  { id: 'g24', cat: 'wear', ip_ids: [1006], title: '「电波系」oversize T恤', price: 79, emoji: '📡', hue: 215, days: 5,
+  { id: 'g24', cat: 'wear', ip_ids: [1006], ip_hall_ids: ['work-1006'], title: '「电波系」oversize T恤', price: 79, emoji: '📡', hue: 215, days: 5,
     note: '图案只在后背，正面素色，日常穿完全不显眼。240g 面料，夏天单穿不透。',
     origin: '电波系oversize短袖T恤二次元周边动漫印花宽松男女同款夏季衣服',
     attrs: ['240g 棉', 'oversize', 'S~XXL'], tpwd: '￥Df31GhJk76￥' },
@@ -194,7 +279,7 @@ window.DB.GOODS = [
     attrs: ['加绒', '刺绣工艺', 'S~XL'], tpwd: '￥Hj57KlPz08￥' },
 
   // ---------- 变身装备 ----------
-  { id: 'g26', cat: 'cos', ip_ids: [2003], title: '见习魔女·全套C服（含帽）', price: 259, emoji: '🧹', hue: 275, days: 14,
+  { id: 'g26', cat: 'cos', ip_ids: [2003], ip_hall_ids: ['character-2003'], title: '见习魔女·全套C服（含帽）', price: 259, emoji: '🧹', hue: 275, days: 14,
     note: '帽子内置定型丝，不会塌成饼。裙摆三层纱，转圈效果不错。尺码偏小一码。',
     origin: '见习魔女cosplay服装全套二次元动漫cos服女巫帽子漫展表演服现货',
     attrs: ['全套含帽', '涤纶', '尺码偏小'], tpwd: '￥Cx22VbNm63￥' },
@@ -228,7 +313,7 @@ window.DB.GOODS = [
     attrs: ['8 骨', '伞下直径 96cm'], tpwd: '￥Ty65GhJk02￥' },
 
   // ---------- 痛文化 ----------
-  { id: 'g33', cat: 'ita', ip_ids: [1001], title: '痛包·透明层双肩包', price: 109, emoji: '👜', hue: 320, days: 6,
+  { id: 'g33', cat: 'ita', ip_ids: [1001], ip_hall_ids: ['work-1001'], title: '痛包·透明层双肩包', price: 109, emoji: '👜', hue: 320, days: 6,
     note: '透明层够深，吧唧立牌混摆不挤。自重轻，逛展一天肩膀不抗议。',
     origin: '痛包透明层双肩包二次元周边吧唧展示背包漫展谷子收纳包学生书包',
     attrs: ['透明展示层', '20L', '可立牌'], tpwd: '￥Sd29FgHj84￥' },

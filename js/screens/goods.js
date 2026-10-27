@@ -10,8 +10,15 @@
   const goodById = id => (DB.GOODS || []).find(g => g.id === id);
   const goodsByCat = cid => (DB.GOODS || []).filter(g => g.cat === cid);
   const ipById = id => (DB.GOODS_IP_ENTITIES || []).find(e => e.id === Number(id));
+  const ipHallById = id => (DB.GOODS_IP_HALLS || []).find(h => h.id === id);
+  const ipHallForEntity = id => (DB.GOODS_IP_HALLS || []).find(h => h.subject.id === Number(id));
   const ipKindLabel = kind => ({ work: '作品', character: '角色', gijinka: '拟人化', vtuber: 'VTuber', mascot: '吉祥物', group: '团体', other: '其他' })[kind] || '其他';
-  const goodsByIp = id => (DB.GOODS || []).filter(g => (g.ip_ids || []).includes(Number(id)));
+  // 作品厅：hallId 本身就是策展确认成员凭证，不能用 ip_ids 或名称替代。
+  // 角色厅：除了 hallId，还必须精确包含该角色实体 ID，避免把同作品其它角色混入。
+  function goodsByIpHall(hall) {
+    return (DB.GOODS || []).filter(g => (g.ip_hall_ids || []).includes(hall.id) &&
+      (hall.subject.kind !== 'character' || (g.ip_ids || []).includes(Number(hall.subject.id))));
+  }
   function goodsByCatFiltered(cid) {
     const selected = S.x.goodsCatIp && S.x.goodsCatIp[cid];
     return goodsByCat(cid).filter(g => !selected || (g.ip_ids || []).includes(Number(selected)));
@@ -89,6 +96,16 @@
   function legalLineDetail() {
     return '<div class="g-legal">信息来自淘宝推广渠道，此处仅作展示不进行交易</div>';
   }
+  function ipHallCard(hall) {
+    const work = hall.subject.kind === 'work';
+    return '<button type="button" class="g-ip-hall-card ' + (work ? 'work' : 'character') + '" data-a="goods-open-ip-hall" data-arg="' + esc(hall.id) + '">' +
+      '<span class="g-ip-hall-top"><span class="g-ip-hall-emoji">' + hall.emoji + '</span>' +
+      '<span class="g-ip-hall-kind">' + (work ? '作品策展' : '精确角色') + '</span></span>' +
+      '<span class="g-ip-hall-title">' + esc(hall.title) + '</span>' +
+      '<span class="g-ip-hall-blurb">' + esc(hall.blurb) + '</span>' +
+      '<span class="g-ip-hall-meta">' + hall.item_count + ' 件策展展品 · ' +
+      (work ? hall.character_count + ' 位角色' : '仅此角色') + '</span></button>';
+  }
 
   // ---------- 主页：杂志式错落分类墙 ----------
   registerScreen('tab:goods', {
@@ -99,6 +116,12 @@
       // 首页布局来自数据层（对应 feed 的 home 对象；后台「展厅与首页」动态配置）
       const home = DB.GOODS_HOME || { hero: '看看有什么好东西', fresh_count: 8, mosaic: [] };
       let h = '<div class="g-hero"><div class="g-hero-title">' + esc(home.hero) + '</div></div>';
+
+      // IP 展厅与物品形态展厅是两套正交入口：作品=确认成员策展，角色=精确实体。
+      // 卡片只使用 feed ip_halls 的策展统计，不读取联盟原始结果。
+      h += '<div class="sec-head"><span class="sec-title">IP 展厅</span>' +
+        '<span class="g-sec-note">作品策展 / 精确角色</span></div>' +
+        '<div class="g-ip-halls">' + (DB.GOODS_IP_HALLS || []).map(ipHallCard).join('') + '</div>';
 
       // 新入荷：收录最近的 N 件（卡片只署名不标价；fresh_count=0 隐藏整个区块）
       if (home.fresh_count > 0) {
@@ -118,7 +141,7 @@
       // 宽扁槽（宽高比 >1.25，如 span4×128）方形图 cover 会只剩中间一条横带——
       // 改 contain 完整呈现、两侧露渐变底（与 emoji 占位同一设计语言）。
       const SPAN_W = { 2: 126, 3: 194, 4: 262, 6: 398 }; // 6 列网格各跨列的代表宽度（430 视口估算）
-      h += '<div class="sec-head"><span class="sec-title">展厅</span>' + textBtn('换一批', 'goods-reshuffle') + '</div>';
+      h += '<div class="sec-head"><span class="sec-title">物品形态展厅</span>' + textBtn('换一批', 'goods-reshuffle') + '</div>';
       h += '<div class="g-mosaic">';
       (home.mosaic || []).forEach(slot => {
         const c = catById(slot.hall);
@@ -324,34 +347,170 @@
     }
   });
 
-  // ---------- IP 实体页：实体摘要 + 展厅交叉筛选 ----------
+  // ---------- 统一 IP 页：策展展品 / 角色关系 / 联盟发现 ----------
+  // 静态模拟后端关系查询。响应只含 appears_in；作品根分页返回全部角色，
+  // 角色根返回相关作品。offset/limit 与真实契约一致，方便走查分页恢复。
+  function graphResponse(root, offset, limit) {
+    const start = Math.max(0, Number(offset) || 0);
+    const size = Math.max(1, Number(limit) || 3);
+    const edges = (DB.GOODS_IP_RELATIONS || []).filter(r => r.relation === 'appears_in');
+    if (root.kind === 'work') {
+      const ids = [...new Set(edges.filter(r => r.work_id === root.id).map(r => r.character_id))];
+      return {
+        root: root, mode: 'work', relation: 'appears_in', works: [root],
+        characters: ids.slice(start, start + size).map(ipById).filter(Boolean),
+        work_total: 1, character_total: ids.length, offset: start, limit: size
+      };
+    }
+    const ids = [...new Set(edges.filter(r => r.character_id === root.id).map(r => r.work_id))];
+    return {
+      root: root, mode: 'character', relation: 'appears_in',
+      works: ids.map(ipById).filter(Boolean), characters: [root],
+      work_total: ids.length, character_total: 1, offset: start, limit: size
+    };
+  }
+  DB.goodsIpGraph = graphResponse; // 静态契约探针：不发起网络请求
+
+  function renderIpCurated(e) {
+    const hall = ipHallForEntity(e.id);
+    if (!hall) return emptyHint('这个实体还没有策展展厅');
+    const selectedCat = (S.x.goodsIpCat && S.x.goodsIpCat[e.id]) || '';
+    const allItems = goodsByIpHall(hall);
+    const catIds = [...new Set(allItems.map(g => g.cat))];
+    const items = allItems.filter(g => !selectedCat || g.cat === selectedCat);
+    const work = hall.subject.kind === 'work';
+    let h = '<div class="g-ip-curation"><div class="g-ip-curation-head">' +
+      '<span class="g-ip-curation-emoji">' + hall.emoji + '</span><div>' +
+      '<div class="g-ip-curation-title">' + esc(hall.title) + '</div>' +
+      '<div class="g-ip-curation-blurb">' + esc(hall.blurb) + '</div></div></div>' +
+      '<div class="g-ip-curation-rule">' + icon('verified') +
+      (work ? '仅策展确认成员 · 按展厅成员 ID 收录' : '精确角色 ID 匹配 · 不按名称猜测') + '</div></div>';
+    h += '<div class="chip-row g-ip-filter" aria-label="按物品形态筛选">' +
+      chip('全部物品形态', !selectedCat, 'goods-ip-cat', e.id + ':') +
+      catIds.map(id => chip((catById(id) || {}).name || id, selectedCat === id, 'goods-ip-cat', e.id + ':' + id)).join('') + '</div>';
+    if (!items.length) return h + emptyHint('这个物品形态还没有该展厅的策展展品');
+    h += '<div class="g-ip-count">' + items.length + ' / ' + allItems.length + ' 件策展展品</div>' +
+      '<div class="g-falls">' + items.map(g => fallCard(g, 1)).join('') + '</div>';
+    return h;
+  }
+
+  function renderIpGraph(e) {
+    if (e.kind !== 'work' && e.kind !== 'character') {
+      return '<div class="g-graph-legend">' + icon('info') + '仅作品与角色支持 appears_in</div>' + emptyHint('这个实体没有演示关系');
+    }
+    const work = e.kind === 'work';
+    const limit = (S.x.goodsIpGraphLimit && S.x.goodsIpGraphLimit[e.id]) || 3;
+    const graph = graphResponse(e, 0, limit);
+    const children = work ? graph.characters : graph.works;
+    const total = work ? graph.character_total : graph.work_total;
+    const highlight = Number(S.x.goodsIpGraphHighlight && S.x.goodsIpGraphHighlight[e.id]);
+    let h = '<div class="g-graph-legend">' + icon('share') + '<span><b>仅 appears_in</b> · ' +
+      (work ? '作品根显示全部角色' : '角色根显示相关作品') + '<small>虚构演示关系，非真实作品资料</small></span></div>';
+    if (!children.length) {
+      h += emptyHint('当前实体暂无 appears_in 演示关系');
+    } else {
+      const height = Math.max(250, 74 + children.length * 84);
+      const rootY = height / 2;
+      const childY = i => (height - (children.length - 1) * 84) / 2 + i * 84;
+      h += '<div class="g-graph-caption">' + (work ? '作品根 · 角色分页加载' : '角色根 · 进入作品可查看其全部角色') + '</div>';
+      h += '<div class="g-graph-stage" style="height:' + height + 'px">' +
+        '<svg class="g-graph-svg" viewBox="0 0 1000 ' + height + '" preserveAspectRatio="none" aria-hidden="true">' +
+        children.map((child, i) => '<line class="g-graph-line' + (work && child.id === highlight ? ' highlight' : '') +
+          '" x1="370" y1="' + rootY + '" x2="630" y2="' + childY(i) + '" vector-effect="non-scaling-stroke"/>').join('') +
+        '</svg>';
+      h += '<div class="g-graph-node root ' + e.kind + '" style="left:19%;top:' + rootY + 'px">' +
+        '<span class="g-graph-node-kind">当前' + ipKindLabel(e.kind) + '</span><strong>' + esc(e.name) + '</strong>' +
+        (e.year ? '<small>' + e.year + '</small>' : '') + '</div>';
+      h += children.map((child, i) => {
+        const on = work && child.id === highlight;
+        return '<button type="button" class="g-graph-node ' + child.kind + (on ? ' highlight' : '') + '"' +
+          ' data-a="goods-ip-open-node" data-arg="' + e.id + ':' + child.id + '" style="left:81%;top:' + childY(i) + 'px">' +
+          '<span class="g-graph-node-kind">' + ipKindLabel(child.kind) + (on ? ' · 入口角色' : '') + '</span>' +
+          '<strong>' + esc(child.name) + '</strong><small>' + (child.year || '进入') + '</small></button>';
+      }).join('');
+      h += '</div><div class="g-graph-progress">已加载 ' + children.length + ' / ' + total + (work ? ' 位角色' : ' 部作品') + '</div>';
+    }
+    h += '<div class="g-graph-actions">';
+    if (work && children.length < total) h += btn('加载更多角色', 'goods-ip-graph-more', e.id, 'small ghost');
+    h += btn(icon('search') + ' 查看当前' + ipKindLabel(e.kind) + '的联盟原始结果', 'goods-ip-show-raw', e.id, 'small ghost g-graph-raw') + '</div>';
+    return h;
+  }
+
+  function renderIpRaw(e) {
+    const raw = (DB.GOODS_ALLIANCE_RAW || {})[e.id];
+    const results = raw ? raw.results : [];
+    let h = '<div class="g-raw-warning" role="note">' + icon('warning') + '<div>' +
+      '<div class="g-raw-warning-title"><strong>联盟原始结果</strong><span>/</span><b>未经 AI 与人工策展</b></div>' +
+      '<p>直接保留原始返回，可能包含重复、无关、失效或价格变化；不会计入任何策展展厅。</p></div></div>';
+    h += '<div class="g-raw-query">' + icon('search') + '<div><span>当前' + ipKindLabel(e.kind) + '直接搜索</span>' +
+      '<strong>' + esc(raw ? raw.query : e.name) + '</strong><small>静态演示 · 无网络请求</small></div></div>';
+    if (!results.length) return h + emptyHint('当前实体暂无联盟原始演示结果');
+    h += '<div class="g-raw-count">原始返回 ' + results.length + ' 条 · 未筛选</div>' +
+      '<div class="g-raw-list">' + results.map((r, i) => '<article class="g-raw-card">' +
+        '<div class="g-raw-card-top"><span>原始第 ' + (i + 1) + ' 条</span><b>未筛选</b></div>' +
+        '<div class="g-raw-title">' + esc(r.title) + '</div>' +
+        '<div class="g-raw-meta"><span>' + esc(r.shop) + '</span><strong>' + fmtPrice(r.price) + '</strong></div>' +
+        (r.promo ? '<div class="g-raw-promo">原始促销：' + esc(r.promo) + '</div>' : '') +
+        '</article>').join('') + '</div>';
+    h += '<div class="g-raw-foot">原始结果不等于策展收录；价格与有效性以淘宝页面为准。</div>';
+    return h;
+  }
+
   registerScreen('goods-ip', {
-    title: arg => { const e = ipById(arg); return e ? e.name : 'IP 展品'; },
+    title: arg => { const e = ipById(arg); return e ? e.name : 'IP 展厅'; },
     render(arg) {
       const e = ipById(arg);
-      if (!e) return emptyHint('这个 IP 还没有展品');
-      const selectedHall = (S.x.goodsIpHall && S.x.goodsIpHall[arg]) || '';
-      const allItems = goodsByIp(arg);
-      const hallIds = [...new Set(allItems.map(g => g.cat))];
-      const items = allItems.filter(g => !selectedHall || g.cat === selectedHall);
+      if (!e) return emptyHint('这个 IP 实体不存在');
+      const view = (S.x.goodsIpView && S.x.goodsIpView[arg]) || 'curated';
       let h = '<div class="g-ip-hero"><div class="g-ip-kind">' + esc(ipKindLabel(e.kind)) +
-        (e.year ? ' · ' + e.year : '') + '</div><div class="g-ip-name">' + esc(e.name) + '</div>' +
+        (e.year ? ' · ' + e.year : '') + ' · 虚构演示实体</div><div class="g-ip-name">' + esc(e.name) + '</div>' +
         (e.summary ? '<div class="g-ip-summary">' + esc(e.summary) + '</div>' : '') + '</div>';
-      h += '<div class="chip-row g-ip-filter">' +
-        chip('全部展厅', !selectedHall, 'goods-ip-hall', arg + ':') +
-        hallIds.map(id => chip((catById(id) || {}).name || id, selectedHall === id, 'goods-ip-hall', arg + ':' + id)).join('') + '</div>';
-      if (!items.length) return h + emptyHint('这个展厅还没有该 IP 的展品，换一个看看');
-      h += '<div class="g-ip-count">' + items.length + ' 件相关展品</div>' +
-        '<div class="g-falls">' + items.map(g => fallCard(g, 1)).join('') + '</div>';
+      const tabs = [['curated', 'redeem', '策展展品'], ['graph', 'share', '角色关系'], ['raw', 'search', '联盟发现']];
+      h += '<div class="g-ip-tabs" role="tablist" aria-label="IP 页面视图">' + tabs.map(t =>
+        '<button type="button" role="tab" aria-selected="' + (view === t[0]) + '" class="g-ip-tab' + (view === t[0] ? ' on' : '') +
+        '" data-a="goods-ip-tab" data-arg="' + arg + ':' + t[0] + '">' + icon(t[1]) + '<span>' + t[2] + '</span></button>').join('') + '</div>';
+      h += view === 'graph' ? renderIpGraph(e) : view === 'raw' ? renderIpRaw(e) : renderIpCurated(e);
       return h;
     }
   });
-  action('goods-open-ip', ds => nav.push('goods-ip', ds.arg));
-  action('goods-ip-hall', ds => {
-    const [ip, hall] = ds.arg.split(':');
-    S.x.goodsIpHall = S.x.goodsIpHall || {};
-    S.x.goodsIpHall[ip] = hall;
+  function setIpView(id, view) {
+    S.x.goodsIpView = S.x.goodsIpView || {};
+    S.x.goodsIpView[id] = view;
+  }
+  action('goods-open-ip', ds => { setIpView(ds.arg, 'curated'); nav.push('goods-ip', ds.arg); });
+  action('goods-open-ip-hall', ds => {
+    const hall = ipHallById(ds.arg);
+    if (!hall) return;
+    setIpView(hall.subject.id, 'curated');
+    nav.push('goods-ip', String(hall.subject.id));
+  });
+  action('goods-ip-tab', ds => {
+    const [id, view] = ds.arg.split(':');
+    setIpView(id, view);
     render();
+  });
+  action('goods-ip-show-raw', ds => { setIpView(ds.arg, 'raw'); render(); });
+  action('goods-ip-cat', ds => {
+    const [ip, cat] = ds.arg.split(':');
+    S.x.goodsIpCat = S.x.goodsIpCat || {};
+    S.x.goodsIpCat[ip] = cat;
+    render();
+  });
+  action('goods-ip-graph-more', ds => {
+    S.x.goodsIpGraphLimit = S.x.goodsIpGraphLimit || {};
+    S.x.goodsIpGraphLimit[ds.arg] = (S.x.goodsIpGraphLimit[ds.arg] || 3) + 3;
+    render();
+  });
+  action('goods-ip-open-node', ds => {
+    const [fromId, toId] = ds.arg.split(':');
+    const from = ipById(fromId), to = ipById(toId);
+    if (!to) return;
+    if (from && from.kind === 'character' && to.kind === 'work') {
+      S.x.goodsIpGraphHighlight = S.x.goodsIpGraphHighlight || {};
+      S.x.goodsIpGraphHighlight[to.id] = from.id;
+    }
+    setIpView(to.id, 'graph');
+    nav.push('goods-ip', String(to.id));
   });
 
   // 跳转淘宝（原型固定模拟失败结局）。
@@ -567,15 +726,14 @@
   function viewerSavePhoto(g, idx) {
     const url = g.images && g.images[idx];
     if (!url) { toast('演示占位图没有可保存的图片'); return; }
-    // 真实图：尽力走浏览器下载（跨域受 CORS 限制，失败回落打开原图）；App 侧为 MediaStore
-    fetch(url).then(r => r.blob()).then(b => {
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(b);
-      a.download = (g.title || 'goods') + '.jpg';
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(a.href), 5000);
-      toast('已开始下载保存');
-    }).catch(() => window.open(url, '_blank'));
+    // 原型禁止 fetch：真实图只交给浏览器原图下载/打开；App 侧仍由 MediaStore 保存。
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = (g.title || 'goods') + '.jpg';
+    a.target = '_blank';
+    a.rel = 'noopener';
+    a.click();
+    toast('已尝试下载原图；浏览器未下载时可长按另存');
   }
   function viewerSaveAsset(g) {
     const p = n => (n < 10 ? '0' : '') + n;
