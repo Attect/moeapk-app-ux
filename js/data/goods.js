@@ -19,7 +19,7 @@
 //           详情页标注「预售商品」避免误导
 //   ip_hall_ids 策展展厅成员 ID（只有确认进入展厅的展品才带对应 hallId；与 ip_ids 的实体关联不是同一层）。
 //   图片一律 emoji + 色相（hue）渐变占位——原型不内嵌任何外部图片。
-// 所有 IP 实体、appears_in 关系与联盟原始结果均为虚构演示，不代表真实作品资料或实时联盟返回。
+// 原创实体、关系与联盟原始结果均为虚构演示；米哈游 / 原神等名称仅作静态层级演示，不代表完整或实时资料。
 window.DB = window.DB || {};
 
 // 展厅（分类）：俏皮主名 name + 标准词副名 sub + 策展语 blurb
@@ -59,8 +59,8 @@ window.DB.GOODS_HOME = {
   ]
 };
 
-// IP 实体快照（对应 feed 顶层 ip_entities）：只包含本次在线展品实际引用的实体。
-// 与展厅（物品形态）正交：一件展品可有多个 ip_ids；无明确 IP 的展品不输出该字段或为空数组。
+// IP 实体快照：前段对应 feed 顶层 ip_entities（在线展品实际引用）；末尾第二十一轮公司 / 系列 / 媒介条目仅供静态层级走查。
+// 与展厅（物品形态）正交：一件展品可有多个 ip_ids；无明确 IP 的展品不输出该字段或为空数组，层级演示条目不进入 ip_halls。
 window.DB.GOODS_IP_ENTITIES = [
   { id: 1001, kind: 'work', name: '星轨巡旅', year: 2024, summary: '一支沿着旧星图寻找归途的原创小队。' },
   { id: 1002, kind: 'work', name: '深海邮局', year: 2023, summary: '在潮汐之间投递无法寄出的信件。' },
@@ -75,7 +75,24 @@ window.DB.GOODS_IP_ENTITIES = [
   { id: 2005, kind: 'character', name: '拾星旅人', year: 2024, summary: '沿途收集黯淡星屑，相信每一点微光都有来处。' },
   { id: 2006, kind: 'character', name: '轨道维修师', year: 2024, summary: '带着扳手巡查旧轨道，工具包里总少一颗螺丝。' },
   { id: 2007, kind: 'character', name: '邮差水母', year: 2024, summary: '乘着潮汐送信，透明伞盖里藏着未寄出的地址。' },
-  { id: 2008, kind: 'character', name: '天文部书记', year: 2022, summary: '把每次观测都写得一丝不苟，书签却总会夹错页。' }
+  { id: 2008, kind: 'character', name: '天文部书记', year: 2022, summary: '把每次观测都写得一丝不苟，书签却总会夹错页。' },
+  // 第二十一轮静态层级演示：公司 / 系列 / 各媒介作品 / 角色均有独立 ID。
+  // 真实品牌与作品名只用于验证层级浏览；简介与关系不是完整或实时资料，也不进入策展展厅。
+  { id: 9001, kind: 'group', group_type: 'company', name: '米哈游', summary: '公司根演示：沿 belongs_to 进入旗下独立系列 / IP。' },
+  { id: 9101, kind: 'group', group_type: 'franchise', name: '原神', summary: '系列根演示：游戏、动画、漫画、音乐保留各自条目。' },
+  { id: 9102, kind: 'group', group_type: 'franchise', name: '星穹铁道', summary: '另一系列根，用于验证公司层分页与返回栈。' },
+  { id: 1101, kind: 'work', media_type: 'game', name: '原神（游戏）', year: 2020, summary: '原神 IP 的游戏媒介独立演示条目。' },
+  { id: 1102, kind: 'work', media_type: 'anime', name: '原神（动画）', summary: '动画媒介独立演示条目，不与游戏资料合并。' },
+  { id: 1103, kind: 'work', media_type: 'manga', name: '原神（漫画）', summary: '漫画媒介独立演示条目，不与其它媒介合并。' },
+  { id: 1104, kind: 'work', media_type: 'music', name: '原神（音乐）', summary: '音乐媒介独立演示条目，角色仍按本作品的 appears_in 返回。' },
+  { id: 1201, kind: 'work', media_type: 'game', name: '崩坏：星穹铁道（游戏）', year: 2023, summary: '星穹铁道系列下的游戏媒介独立演示条目。' },
+  { id: 2101, kind: 'character', name: '旅行者', summary: '沿 appears_in 进入各媒介作品，再查看同作品的其他角色。' },
+  { id: 2102, kind: 'character', name: '派蒙' },
+  { id: 2103, kind: 'character', name: '琴' },
+  { id: 2104, kind: 'character', name: '温迪' },
+  { id: 2105, kind: 'character', name: '钟离' },
+  { id: 2111, kind: 'character', name: '开拓者' },
+  { id: 2112, kind: 'character', name: '三月七' }
 ];
 
 // feed 顶层 ip_halls：作品厅与角色厅共用结构，但成员语义不同。
@@ -104,8 +121,9 @@ window.DB.GOODS_IP_HALLS = [
     subject: { id: 1004, kind: 'work', name: '庭院深深', year: 2021 } }
 ];
 
-// 唯一关系类型：appears_in（角色出现于作品）。没有 related、推荐相似或名称推测。
-// 这些边只是用于验证图布局、分页与原角色高亮的虚构演示关系。
+// 关系只允许 appears_in（角色出现于作品）、belongs_to（系列属于公司）、part_of（媒介作品属于系列）。
+// 没有 related、推荐相似或名称推测；parent_id / child_id 仅用于公司 / 系列层级，work_id / character_id 仅用于角色边。
+// 这些边只是用于验证图布局、独立媒介、分页与原角色高亮的静态演示关系。
 window.DB.GOODS_IP_RELATIONS = [
   { work_id: 1001, character_id: 2001, relation: 'appears_in' },
   { work_id: 1001, character_id: 2003, relation: 'appears_in' },
@@ -116,7 +134,29 @@ window.DB.GOODS_IP_RELATIONS = [
   { work_id: 1003, character_id: 2001, relation: 'appears_in' },
   { work_id: 1003, character_id: 2008, relation: 'appears_in' },
   { work_id: 1005, character_id: 2002, relation: 'appears_in' },
-  { work_id: 1006, character_id: 2001, relation: 'appears_in' }
+  { work_id: 1006, character_id: 2001, relation: 'appears_in' },
+  { work_id: 1101, character_id: 2101, relation: 'appears_in' },
+  { work_id: 1101, character_id: 2102, relation: 'appears_in' },
+  { work_id: 1101, character_id: 2103, relation: 'appears_in' },
+  { work_id: 1101, character_id: 2104, relation: 'appears_in' },
+  { work_id: 1101, character_id: 2105, relation: 'appears_in' },
+  { work_id: 1102, character_id: 2101, relation: 'appears_in' },
+  { work_id: 1102, character_id: 2102, relation: 'appears_in' },
+  { work_id: 1102, character_id: 2103, relation: 'appears_in' },
+  { work_id: 1103, character_id: 2101, relation: 'appears_in' },
+  { work_id: 1103, character_id: 2102, relation: 'appears_in' },
+  { work_id: 1103, character_id: 2104, relation: 'appears_in' },
+  { work_id: 1104, character_id: 2101, relation: 'appears_in' },
+  { work_id: 1104, character_id: 2102, relation: 'appears_in' },
+  { work_id: 1201, character_id: 2111, relation: 'appears_in' },
+  { work_id: 1201, character_id: 2112, relation: 'appears_in' },
+  { parent_id: 9001, child_id: 9101, relation: 'belongs_to' },
+  { parent_id: 9001, child_id: 9102, relation: 'belongs_to' },
+  { parent_id: 9101, child_id: 1101, relation: 'part_of' },
+  { parent_id: 9101, child_id: 1102, relation: 'part_of' },
+  { parent_id: 9101, child_id: 1103, relation: 'part_of' },
+  { parent_id: 9101, child_id: 1104, relation: 'part_of' },
+  { parent_id: 9102, child_id: 1201, relation: 'part_of' }
 ];
 
 // 联盟直接搜索的原始演示快照，按当前实体 id 读取；不进入 GOODS、ip_halls 或策展计数。

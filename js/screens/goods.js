@@ -12,7 +12,12 @@
   const ipById = id => (DB.GOODS_IP_ENTITIES || []).find(e => e.id === Number(id));
   const ipHallById = id => (DB.GOODS_IP_HALLS || []).find(h => h.id === id);
   const ipHallForEntity = id => (DB.GOODS_IP_HALLS || []).find(h => h.subject.id === Number(id));
-  const ipKindLabel = kind => ({ work: '作品', character: '角色', gijinka: '拟人化', vtuber: 'VTuber', mascot: '吉祥物', group: '团体', other: '其他' })[kind] || '其他';
+  const ipKindLabel = (kind, groupType) => ({
+    work: '作品', character: '角色', gijinka: '拟人化', vtuber: 'VTuber', mascot: '吉祥物',
+    group: groupType === 'company' ? '公司' : groupType === 'franchise' ? '系列 / IP' : '团体', other: '其他'
+  })[kind] || '其他';
+  const ipMediaLabel = e => ({ game: '游戏', anime: '动画', manga: '漫画', music: '音乐' })[e.media_type] || '媒介';
+  const ipTypeLabel = e => e.kind === 'work' && e.media_type ? ipMediaLabel(e) + '作品' : ipKindLabel(e.kind, e.group_type);
   // 作品厅：hallId 本身就是策展确认成员凭证，不能用 ip_ids 或名称替代。
   // 角色厅：除了 hallId，还必须精确包含该角色实体 ID，避免把同作品其它角色混入。
   function goodsByIpHall(hall) {
@@ -121,6 +126,12 @@
       // 卡片只使用 feed ip_halls 的策展统计，不读取联盟原始结果。
       h += '<div class="sec-head"><span class="sec-title">IP 展厅</span>' +
         '<span class="g-sec-note">作品策展 / 精确角色</span></div>' +
+        '<button type="button" class="g-ip-tree-entry" data-a="goods-open-ip-tree" data-arg="9001">' +
+        '<span class="g-ip-tree-icon">' + icon('share') + '</span><span class="g-ip-tree-copy">' +
+        '<strong>品牌 / 系列 / 媒介层级</strong>' +
+        '<span>米哈游 → 原神 / 星穹铁道 → 游戏 / 动画 / 漫画 / 音乐</span>' +
+        '<small>只沿 belongs_to / part_of / appears_in 浏览，独立条目不合并</small></span>' +
+        icon('keyboard_arrow_right') + '</button>' +
         '<div class="g-ip-halls">' + (DB.GOODS_IP_HALLS || []).map(ipHallCard).join('') + '</div>';
 
       // 新入荷：收录最近的 N 件（卡片只署名不标价；fresh_count=0 隐藏整个区块）
@@ -348,32 +359,91 @@
   });
 
   // ---------- 统一 IP 页：策展展品 / 角色关系 / 联盟发现 ----------
-  // 静态模拟后端关系查询。响应只含 appears_in；作品根分页返回全部角色，
-  // 角色根返回相关作品。offset/limit 与真实契约一致，方便走查分页恢复。
+  // 静态模拟固定后端契约，不发起网络请求。公司 / 系列只沿显式 belongs_to / part_of
+  // 进入 children；作品根的 media 来自同一系列的显式 part_of 兄弟条目，角色只沿 appears_in。
+  // 不按 related、名称或相似度推断，也不把不同媒介合并成一份资料。
+  function groupChildEdges(root) {
+    return (DB.GOODS_IP_RELATIONS || []).filter(r =>
+      (r.relation === 'belongs_to' || r.relation === 'part_of') && r.parent_id === root.id);
+  }
+  function groupChildren(root) {
+    const seen = new Set();
+    return groupChildEdges(root).map(r => ipById(r.child_id)).filter(e => {
+      if (!e || seen.has(e.id)) return false;
+      seen.add(e.id);
+      return true;
+    });
+  }
+  function mediaForWork(root) {
+    const edges = (DB.GOODS_IP_RELATIONS || []).filter(r => r.relation === 'part_of');
+    const parents = new Set(edges.filter(r => r.child_id === root.id).map(r => r.parent_id));
+    const seen = new Set();
+    return edges.filter(r => parents.has(r.parent_id) && r.child_id !== root.id)
+      .map(r => ipById(r.child_id)).filter(e => {
+        if (!e || e.kind !== 'work' || seen.has(e.id)) return false;
+        seen.add(e.id);
+        return true;
+      });
+  }
   function graphResponse(root, offset, limit) {
     const start = Math.max(0, Number(offset) || 0);
     const size = Math.max(1, Number(limit) || 3);
+    if (root.kind === 'group') {
+      const edges = groupChildEdges(root);
+      const all = groupChildren(root);
+      return {
+        root: root, mode: 'group',
+        relation: (edges[0] && edges[0].relation) || (root.group_type === 'company' ? 'belongs_to' : 'part_of'),
+        works: [], characters: [], children: all.slice(start, start + size),
+        work_total: all.filter(e => e.kind === 'work').length, character_total: 0,
+        group_type: root.group_type, offset: start, limit: size
+      };
+    }
     const edges = (DB.GOODS_IP_RELATIONS || []).filter(r => r.relation === 'appears_in');
     if (root.kind === 'work') {
       const ids = [...new Set(edges.filter(r => r.work_id === root.id).map(r => r.character_id))];
+      const media = mediaForWork(root);
       return {
         root: root, mode: 'work', relation: 'appears_in', works: [root],
         characters: ids.slice(start, start + size).map(ipById).filter(Boolean),
-        work_total: 1, character_total: ids.length, offset: start, limit: size
+        work_total: 1, character_total: ids.length,
+        media: media.slice(start, start + size), media_total: media.length,
+        media_relation: 'part_of', offset: start, limit: size
       };
     }
     const ids = [...new Set(edges.filter(r => r.character_id === root.id).map(r => r.work_id))];
     return {
       root: root, mode: 'character', relation: 'appears_in',
-      works: ids.map(ipById).filter(Boolean), characters: [root],
+      works: ids.slice(start, start + size).map(ipById).filter(Boolean), characters: [root],
       work_total: ids.length, character_total: 1, offset: start, limit: size
     };
   }
   DB.goodsIpGraph = graphResponse; // 静态契约探针：不发起网络请求
 
+  // 公司 / 系列 / 作品的面包屑只回溯显式层级边；角色可能属于多作品，不猜唯一父级。
+  function ipLineage(e) {
+    if (e.kind !== 'group' && e.kind !== 'work') return [];
+    const chain = [e];
+    const seen = new Set([e.id]);
+    let cur = e;
+    while (cur) {
+      const edge = (DB.GOODS_IP_RELATIONS || []).find(r =>
+        (r.relation === 'belongs_to' || r.relation === 'part_of') && r.child_id === cur.id);
+      const parent = edge && ipById(edge.parent_id);
+      if (!parent || seen.has(parent.id)) break;
+      chain.unshift(parent); seen.add(parent.id); cur = parent;
+    }
+    return chain;
+  }
+
   function renderIpCurated(e) {
+    if (e.kind === 'group') {
+      return '<div class="g-ip-curation"><div class="g-ip-curation-rule">' + icon('info') +
+        '公司 / 系列只提供层级导航，不合并下设媒介的资料或策展展品</div></div>' +
+        emptyHint('请在「角色关系」进入具体作品或角色展厅');
+    }
     const hall = ipHallForEntity(e.id);
-    if (!hall) return emptyHint('这个实体还没有策展展厅');
+    if (!hall) return emptyHint(e.kind === 'work' && e.media_type ? '这个媒介作品还没有策展展厅' : '这个实体还没有策展展厅');
     const selectedCat = (S.x.goodsIpCat && S.x.goodsIpCat[e.id]) || '';
     const allItems = goodsByIpHall(hall);
     const catIds = [...new Set(allItems.map(g => g.cat))];
@@ -394,45 +464,113 @@
     return h;
   }
 
-  function renderIpGraph(e) {
-    if (e.kind !== 'work' && e.kind !== 'character') {
-      return '<div class="g-graph-legend">' + icon('info') + '仅作品与角色支持 appears_in</div>' + emptyHint('这个实体没有演示关系');
-    }
-    const work = e.kind === 'work';
-    const limit = (S.x.goodsIpGraphLimit && S.x.goodsIpGraphLimit[e.id]) || 3;
-    const graph = graphResponse(e, 0, limit);
-    const children = work ? graph.characters : graph.works;
-    const total = work ? graph.character_total : graph.work_total;
+  function renderWorkDualGraph(e) {
+    const mediaLimit = (S.x.goodsIpMediaLimit && S.x.goodsIpMediaLimit[e.id]) || 2;
+    const characterLimit = (S.x.goodsIpGraphLimit && S.x.goodsIpGraphLimit[e.id]) || 3;
+    const graph = graphResponse(e, 0, Math.max(mediaLimit, characterLimit));
+    // 同一 limit 的后端响应在原型中按两条独立 lane 重放，互不把另一 lane 的加载量带走。
+    const media = graph.media.slice(0, mediaLimit);
+    const characters = graph.characters.slice(0, characterLimit);
     const highlight = Number(S.x.goodsIpGraphHighlight && S.x.goodsIpGraphHighlight[e.id]);
-    let h = '<div class="g-graph-legend">' + icon('share') + '<span><b>仅 appears_in</b> · ' +
-      (work ? '作品根显示全部角色' : '角色根显示相关作品') + '<small>虚构演示关系，非真实作品资料</small></span></div>';
+    const rows = Math.max(1, media.length, characters.length);
+    const height = Math.max(310, 192 + rows * 84);
+    const childY = i => 172 + i * 84;
+    let h = '<div class="g-graph-legend">' + icon('share') + '<span>' +
+      '<b>part_of</b> · 同 IP 媒介（独立条目）<br><b>appears_in</b> · 同作品角色' +
+      '<small>游戏 / 动画 / 漫画 / 音乐不合并资料；角色关系也不跨媒介猜测</small></span></div>';
+    h += '<div class="g-graph-caption">作品根 · 媒介与角色同时展示、分别分页</div>';
+    h += '<div class="g-graph-stage dual" style="height:' + height + 'px">' +
+      '<svg class="g-graph-svg" viewBox="0 0 1000 ' + height + '" preserveAspectRatio="none" aria-hidden="true">' +
+      media.map((child, i) => '<line class="g-graph-line media" x1="460" y1="82" x2="300" y2="' + (childY(i) - 31) + '" vector-effect="non-scaling-stroke"/>').join('') +
+      characters.map((child, i) => '<line class="g-graph-line character' + (child.id === highlight ? ' highlight' : '') +
+        '" x1="540" y1="82" x2="700" y2="' + (childY(i) - 31) + '" vector-effect="non-scaling-stroke"/>').join('') + '</svg>';
+    h += '<div class="g-graph-node root work" style="left:50%;top:52px">' +
+      '<span class="g-graph-node-kind">当前' + esc(ipTypeLabel(e)) + '</span><strong>' + esc(e.name) + '</strong>' +
+      '<small>独立作品根</small></div>';
+    h += '<div class="g-graph-lane-label media" style="left:26%;top:108px">同 IP 媒介 · part_of</div>' +
+      '<div class="g-graph-lane-label character" style="left:74%;top:108px">同作品角色 · appears_in</div>';
+    h += media.map((child, i) => '<button type="button" class="g-graph-node work media"' +
+      ' data-a="goods-ip-open-node" data-arg="' + e.id + ':' + child.id + '" style="left:26%;top:' + childY(i) + 'px">' +
+      '<span class="g-graph-node-kind">' + esc(ipMediaLabel(child)) + ' · part_of</span><strong>' + esc(child.name) + '</strong>' +
+      '<small>同 IP 独立条目 · 进入</small></button>').join('');
+    h += characters.map((child, i) => {
+      const on = child.id === highlight;
+      return '<button type="button" class="g-graph-node character' + (on ? ' highlight' : '') + '"' +
+        ' data-a="goods-ip-open-node" data-arg="' + e.id + ':' + child.id + '" style="left:74%;top:' + childY(i) + 'px">' +
+        '<span class="g-graph-node-kind">角色 · appears_in' + (on ? ' · 入口角色' : '') + '</span><strong>' + esc(child.name) + '</strong>' +
+        '<small>' + (on ? '入口高亮' : '同作品角色 · 进入') + '</small></button>';
+    }).join('');
+    if (!characters.length) h += '<div class="g-graph-empty" style="left:74%;top:172px">本作品暂无 appears_in 角色</div>';
+    h += '</div><div class="g-graph-progress dual-progress">' +
+      '<span data-progress="media">同 IP 媒介 ' + media.length + ' / ' + graph.media_total + ' 部独立作品</span>' +
+      '<span data-progress="characters">同作品角色 ' + characters.length + ' / ' + graph.character_total + ' 位</span></div>';
+    h += '<div class="g-graph-actions">';
+    if (media.length < graph.media_total) h += btn('加载更多同 IP 媒介', 'goods-ip-media-more', e.id, 'small ghost');
+    if (characters.length < graph.character_total) h += btn('加载更多同作品角色', 'goods-ip-graph-more', e.id, 'small ghost');
+    h += btn(icon('search') + ' 查看当前' + ipTypeLabel(e) + '的联盟原始结果', 'goods-ip-show-raw', e.id, 'small ghost g-graph-raw') + '</div>';
+    return h;
+  }
+
+  function renderIpGraph(e) {
+    if (e.kind !== 'group' && e.kind !== 'work' && e.kind !== 'character') {
+      return '<div class="g-graph-legend">' + icon('info') + '仅公司、系列、作品与角色支持显式关系</div>' + emptyHint('这个实体没有演示关系');
+    }
+    if (e.kind === 'work' && mediaForWork(e).length) return renderWorkDualGraph(e);
+    const group = e.kind === 'group', work = e.kind === 'work';
+    const limit = group
+      ? ((S.x.goodsIpGroupLimit && S.x.goodsIpGroupLimit[e.id]) || 3)
+      : ((S.x.goodsIpGraphLimit && S.x.goodsIpGraphLimit[e.id]) || 3);
+    const graph = graphResponse(e, 0, limit);
+    const children = group ? graph.children : work ? graph.characters : graph.works;
+    const total = group ? groupChildren(e).length : work ? graph.character_total : graph.work_total;
+    const highlight = Number(S.x.goodsIpGraphHighlight && S.x.goodsIpGraphHighlight[e.id]);
+    let legend;
+    if (group) {
+      legend = '<b>' + graph.relation + '</b> · ' + (e.group_type === 'company' ? '公司 → 旗下系列 / IP' : '系列 / IP → 独立媒介作品') +
+        '<small>children 保留下一层独立条目；group_type: ' + esc(graph.group_type) + '，不按 related 或名称推断</small>';
+    } else if (work) {
+      legend = '<b>appears_in</b> · 当前作品 → 同作品角色<small>当前作品没有同 IP 媒介演示；不会从角色反推或合并其它媒介</small>';
+    } else {
+      legend = '<b>appears_in</b> · 角色 → 出现的媒介作品<small>进入作品可查看同作品其他角色，入口角色会继续高亮</small>';
+    }
+    let h = '<div class="g-graph-legend">' + icon('share') + '<span>' + legend + '</span></div>';
     if (!children.length) {
-      h += emptyHint('当前实体暂无 appears_in 演示关系');
+      h += emptyHint(group ? '当前层级暂无 children 演示关系' : '当前实体暂无 appears_in 演示关系');
     } else {
       const height = Math.max(250, 74 + children.length * 84);
       const rootY = height / 2;
       const childY = i => (height - (children.length - 1) * 84) / 2 + i * 84;
-      h += '<div class="g-graph-caption">' + (work ? '作品根 · 角色分页加载' : '角色根 · 进入作品可查看其全部角色') + '</div>';
+      const caption = group
+        ? (e.group_type === 'company' ? '公司根 · children=franchise · belongs_to' : '系列根 · children=work · part_of')
+        : work ? '作品根 · appears_in 同作品角色分页' : '角色根 · appears_in 媒介作品分页，进入作品看其他角色';
+      h += '<div class="g-graph-caption">' + caption + '</div>';
       h += '<div class="g-graph-stage" style="height:' + height + 'px">' +
         '<svg class="g-graph-svg" viewBox="0 0 1000 ' + height + '" preserveAspectRatio="none" aria-hidden="true">' +
         children.map((child, i) => '<line class="g-graph-line' + (work && child.id === highlight ? ' highlight' : '') +
           '" x1="370" y1="' + rootY + '" x2="630" y2="' + childY(i) + '" vector-effect="non-scaling-stroke"/>').join('') +
         '</svg>';
       h += '<div class="g-graph-node root ' + e.kind + '" style="left:19%;top:' + rootY + 'px">' +
-        '<span class="g-graph-node-kind">当前' + ipKindLabel(e.kind) + '</span><strong>' + esc(e.name) + '</strong>' +
-        (e.year ? '<small>' + e.year + '</small>' : '') + '</div>';
+        '<span class="g-graph-node-kind">当前' + esc(ipTypeLabel(e)) + '</span><strong>' + esc(e.name) + '</strong>' +
+        '<small>' + esc(e.year || (group ? 'group_type: ' + e.group_type : graph.relation)) + '</small></div>';
       h += children.map((child, i) => {
         const on = work && child.id === highlight;
-        return '<button type="button" class="g-graph-node ' + child.kind + (on ? ' highlight' : '') + '"' +
+        const kind = ipTypeLabel(child) + (group ? ' · ' + graph.relation : '') + (on ? ' · 入口角色' : '');
+        const sub = group ? 'children · 进入下一层' : work ? 'appears_in · ' + (on ? '入口高亮' : '进入') :
+          (child.media_type ? ipMediaLabel(child) + ' · appears_in' : (child.year || 'appears_in · 进入'));
+        return '<button type="button" class="g-graph-node ' + child.kind + (child.media_type ? ' media' : '') + (on ? ' highlight' : '') + '"' +
           ' data-a="goods-ip-open-node" data-arg="' + e.id + ':' + child.id + '" style="left:81%;top:' + childY(i) + 'px">' +
-          '<span class="g-graph-node-kind">' + ipKindLabel(child.kind) + (on ? ' · 入口角色' : '') + '</span>' +
-          '<strong>' + esc(child.name) + '</strong><small>' + (child.year || '进入') + '</small></button>';
+          '<span class="g-graph-node-kind">' + esc(kind) + '</span><strong>' + esc(child.name) + '</strong><small>' + esc(sub) + '</small></button>';
       }).join('');
-      h += '</div><div class="g-graph-progress">已加载 ' + children.length + ' / ' + total + (work ? ' 位角色' : ' 部作品') + '</div>';
+      h += '</div><div class="g-graph-progress">' + (group ? '下一层条目 ' : work ? '同作品角色 ' : '媒介作品 ') +
+        children.length + ' / ' + total + (group ? ' 个' : work ? ' 位' : ' 部') + '</div>';
     }
     h += '<div class="g-graph-actions">';
-    if (work && children.length < total) h += btn('加载更多角色', 'goods-ip-graph-more', e.id, 'small ghost');
-    h += btn(icon('search') + ' 查看当前' + ipKindLabel(e.kind) + '的联盟原始结果', 'goods-ip-show-raw', e.id, 'small ghost g-graph-raw') + '</div>';
+    if (children.length < total) {
+      const moreAct = group ? 'goods-ip-group-more' : 'goods-ip-graph-more';
+      const moreLabel = group ? (e.group_type === 'company' ? '加载更多系列 / IP' : '加载更多媒介作品') : work ? '加载更多同作品角色' : '加载更多媒介作品';
+      h += btn(moreLabel, moreAct, e.id, 'small ghost');
+    }
+    h += btn(icon('search') + ' 查看当前' + ipTypeLabel(e) + '的联盟原始结果', 'goods-ip-show-raw', e.id, 'small ghost g-graph-raw') + '</div>';
     return h;
   }
 
@@ -442,7 +580,7 @@
     let h = '<div class="g-raw-warning" role="note">' + icon('warning') + '<div>' +
       '<div class="g-raw-warning-title"><strong>联盟原始结果</strong><span>/</span><b>未经 AI 与人工策展</b></div>' +
       '<p>直接保留原始返回，可能包含重复、无关、失效或价格变化；不会计入任何策展展厅。</p></div></div>';
-    h += '<div class="g-raw-query">' + icon('search') + '<div><span>当前' + ipKindLabel(e.kind) + '直接搜索</span>' +
+    h += '<div class="g-raw-query">' + icon('search') + '<div><span>当前' + esc(ipTypeLabel(e)) + '直接搜索</span>' +
       '<strong>' + esc(raw ? raw.query : e.name) + '</strong><small>静态演示 · 无网络请求</small></div></div>';
     if (!results.length) return h + emptyHint('当前实体暂无联盟原始演示结果');
     h += '<div class="g-raw-count">原始返回 ' + results.length + ' 条 · 未筛选</div>' +
@@ -462,8 +600,12 @@
       const e = ipById(arg);
       if (!e) return emptyHint('这个 IP 实体不存在');
       const view = (S.x.goodsIpView && S.x.goodsIpView[arg]) || 'curated';
-      let h = '<div class="g-ip-hero"><div class="g-ip-kind">' + esc(ipKindLabel(e.kind)) +
-        (e.year ? ' · ' + e.year : '') + ' · 虚构演示实体</div><div class="g-ip-name">' + esc(e.name) + '</div>' +
+      const lineage = ipLineage(e);
+      const typeLine = ipTypeLabel(e) + (e.group_type ? ' · group_type: ' + e.group_type : '');
+      let h = '<div class="g-ip-hero"><div class="g-ip-kind">' + esc(typeLine) +
+        (e.year ? ' · ' + e.year : '') + ' · 静态演示实体</div><div class="g-ip-name">' + esc(e.name) + '</div>' +
+        (lineage.length > 1 ? '<div class="g-ip-lineage" aria-label="显式 IP 层级">' + lineage.map((x, i) =>
+          '<span' + (i === lineage.length - 1 ? ' class="current"' : '') + '>' + esc(x.name) + '</span>').join('<i>›</i>') + '</div>' : '') +
         (e.summary ? '<div class="g-ip-summary">' + esc(e.summary) + '</div>' : '') + '</div>';
       const tabs = [['curated', 'redeem', '策展展品'], ['graph', 'share', '角色关系'], ['raw', 'search', '联盟发现']];
       h += '<div class="g-ip-tabs" role="tablist" aria-label="IP 页面视图">' + tabs.map(t =>
@@ -478,6 +620,7 @@
     S.x.goodsIpView[id] = view;
   }
   action('goods-open-ip', ds => { setIpView(ds.arg, 'curated'); nav.push('goods-ip', ds.arg); });
+  action('goods-open-ip-tree', ds => { setIpView(ds.arg, 'graph'); nav.push('goods-ip', ds.arg); });
   action('goods-open-ip-hall', ds => {
     const hall = ipHallById(ds.arg);
     if (!hall) return;
@@ -499,6 +642,16 @@
   action('goods-ip-graph-more', ds => {
     S.x.goodsIpGraphLimit = S.x.goodsIpGraphLimit || {};
     S.x.goodsIpGraphLimit[ds.arg] = (S.x.goodsIpGraphLimit[ds.arg] || 3) + 3;
+    render();
+  });
+  action('goods-ip-media-more', ds => {
+    S.x.goodsIpMediaLimit = S.x.goodsIpMediaLimit || {};
+    S.x.goodsIpMediaLimit[ds.arg] = (S.x.goodsIpMediaLimit[ds.arg] || 2) + 2;
+    render();
+  });
+  action('goods-ip-group-more', ds => {
+    S.x.goodsIpGroupLimit = S.x.goodsIpGroupLimit || {};
+    S.x.goodsIpGroupLimit[ds.arg] = (S.x.goodsIpGroupLimit[ds.arg] || 3) + 3;
     render();
   });
   action('goods-ip-open-node', ds => {
