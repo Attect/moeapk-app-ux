@@ -18,7 +18,7 @@
 //   presale 预售标记（联盟 presale_info 判定）：预售付定金阶段到手价=定金+尾款预估，
 //           详情页标注「预售商品」避免误导
 //   ip_hall_ids 策展展厅成员 ID（只有确认进入展厅的展品才带对应 hallId；与 ip_ids 的实体关联不是同一层）。
-//   图片一律 emoji + 色相（hue）渐变占位——原型不内嵌任何外部图片。
+//   展品图片一律 emoji + 色相（hue）渐变占位——原型不内嵌任何外部商品图片。
 // 原创实体、关系与联盟原始结果均为虚构演示；米哈游 / 原神等名称仅作静态层级演示，不代表完整或实时资料。
 window.DB = window.DB || {};
 
@@ -98,8 +98,12 @@ window.DB.GOODS_IP_ENTITIES = [
 // feed 顶层 ip_halls：作品厅与角色厅共用结构，但成员语义不同。
 // 作品厅只认单品 ip_hall_ids 中的策展确认成员；角色厅还要求 ip_ids 精确包含角色 id。
 // item_count / character_count 是策展侧统计，不包含任何联盟原始结果。
+// image 为可选展厅封面，真实 feed 只下发绝对 HTTPS 资源地址；emoji 始终保留作缺图/加载失败降级。
+// 防盗链：正式 App 请求 /goods-media/ 封面必须带与 feed 相同的 X-App-Token，令牌不得写入 URL/query；
+// muka.cool 后台预览通过合法本站 Referer 访问。原型不请求真实接口，也不模拟这些请求头。
+// 演示 URL 指向本仓库发布后的同名素材，渲染层映射到本地 SVG，保证 file:// 直开不请求外部图片。
 window.DB.GOODS_IP_HALLS = [
-  { id: 'work-1001', title: '星轨巡旅·作品厅', emoji: '🌌', blurb: '沿旧星图，收藏确认参展的旅途碎片。', item_count: 3, character_count: 5,
+  { id: 'work-1001', title: '星轨巡旅·作品厅', emoji: '🌌', image: 'https://attect.github.io/moeapk-app-ux/assets/goods-ip-star-trail.svg', blurb: '沿旧星图，收藏确认参展的旅途碎片。', item_count: 3, character_count: 5,
     subject: { id: 1001, kind: 'work', name: '星轨巡旅', year: 2024 } },
   { id: 'character-2001', title: '猫耳女仆·角色厅', emoji: '🐱', blurb: '只陈列这位角色，不用相似名字凑数。', item_count: 3, character_count: 1,
     subject: { id: 2001, kind: 'character', name: '猫耳女仆', year: 2023 } },

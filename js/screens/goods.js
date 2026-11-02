@@ -94,6 +94,19 @@
     }
     return '<div class="' + cls + '"' + df + ' style="' + style + '">' + ph + '</div>';
   }
+  // IP 展厅封面：真实 feed 的 image 是绝对 HTTPS URL；emoji 永远先渲染，图片失败只移除自身。
+  // 原型不请求真实 /goods-media/，也不模拟 X-App-Token / Referer 防盗链头；仅做静态 URL 渲染。
+  // 本仓库发布地址下的演示封面映射到同名本地素材，保证 file:// 直开不请求外部图片。
+  const IP_HALL_DEMO_IMAGES = {
+    'https://attect.github.io/moeapk-app-ux/assets/goods-ip-star-trail.svg': 'assets/goods-ip-star-trail.svg'
+  };
+  function ipHallCover(hall, cls) {
+    const raw = typeof hall.image === 'string' ? hall.image.trim() : '';
+    const img = IP_HALL_DEMO_IMAGES[raw] || (/^https:\/\//i.test(raw) ? raw : '');
+    const ph = '<span class="g-ip-hall-emoji" aria-hidden="true">' + esc(hall.emoji || '🖼️') + '</span>';
+    return '<span class="g-ip-hall-visual ' + cls + '">' + ph +
+      (img ? '<img src="' + esc(img) + '" alt="" loading="lazy" decoding="async" onerror="this.remove()">' : '') + '</span>';
+  }
   // 来源披露统一为一句小字：主页与详情页措辞略有分工，列表页不放
   function legalLine() {
     return '<div class="g-legal">数据来自淘宝推广渠道</div>';
@@ -104,8 +117,8 @@
   function ipHallCard(hall) {
     const work = hall.subject.kind === 'work';
     return '<button type="button" class="g-ip-hall-card ' + (work ? 'work' : 'character') + '" data-a="goods-open-ip-hall" data-arg="' + esc(hall.id) + '">' +
-      '<span class="g-ip-hall-top"><span class="g-ip-hall-emoji">' + hall.emoji + '</span>' +
-      '<span class="g-ip-hall-kind">' + (work ? '作品策展' : '精确角色') + '</span></span>' +
+      ipHallCover(hall, 'g-ip-hall-cover') +
+      '<span class="g-ip-hall-kind">' + (work ? '作品策展' : '精确角色') + '</span>' +
       '<span class="g-ip-hall-title">' + esc(hall.title) + '</span>' +
       '<span class="g-ip-hall-blurb">' + esc(hall.blurb) + '</span>' +
       '<span class="g-ip-hall-meta">' + hall.item_count + ' 件策展展品 · ' +
@@ -450,7 +463,7 @@
     const items = allItems.filter(g => !selectedCat || g.cat === selectedCat);
     const work = hall.subject.kind === 'work';
     let h = '<div class="g-ip-curation"><div class="g-ip-curation-head">' +
-      '<span class="g-ip-curation-emoji">' + hall.emoji + '</span><div>' +
+      ipHallCover(hall, 'g-ip-curation-cover') + '<div class="g-ip-curation-copy">' +
       '<div class="g-ip-curation-title">' + esc(hall.title) + '</div>' +
       '<div class="g-ip-curation-blurb">' + esc(hall.blurb) + '</div></div></div>' +
       '<div class="g-ip-curation-rule">' + icon('verified') +

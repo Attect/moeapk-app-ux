@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 400">
+  <title>星轨巡旅：旧星图与归途</title>
+  <desc>深蓝星空中的轨道、星图标记和一颗被光环围绕的行星。</desc>
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#171A3A"/>
+      <stop offset=".52" stop-color="#34356B"/>
+      <stop offset="1" stop-color="#785478"/>
+    </linearGradient>
+    <radialGradient id="planet" cx="35%" cy="28%" r="75%">
+      <stop offset="0" stop-color="#FFF1C7"/>
+      <stop offset=".48" stop-color="#E9B6A8"/>
+      <stop offset="1" stop-color="#9A6A91"/>
+    </radialGradient>
+    <linearGradient id="ring" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#8ED8E8" stop-opacity=".1"/>
+      <stop offset=".5" stop-color="#EAF9FF"/>
+      <stop offset="1" stop-color="#F6C8DD" stop-opacity=".15"/>
+    </linearGradient>
+  </defs>
+  <rect width="640" height="400" fill="url(#sky)"/>
+  <circle cx="110" cy="60" r="120" fill="#797AC6" opacity=".08"/>
+  <circle cx="568" cy="350" r="170" fill="#F0A8C2" opacity=".08"/>
+  <g fill="#FFF8E9">
+    <circle cx="72" cy="82" r="2.4"/><circle cx="142" cy="154" r="3.2"/>
+    <circle cx="214" cy="66" r="2"/><circle cx="270" cy="126" r="2.8"/>
+    <circle cx="389" cy="58" r="2.5"/><circle cx="475" cy="122" r="2"/>
+    <circle cx="554" cy="70" r="3"/><circle cx="590" cy="190" r="2.3"/>
+    <circle cx="84" cy="290" r="2"/><circle cx="198" cy="336" r="2.7"/>
+    <circle cx="444" cy="328" r="2.8"/><circle cx="548" cy="296" r="2"/>
+  </g>
+  <g fill="none" stroke="#C7DDF4" stroke-width="1.5" opacity=".42">
+    <path d="M72 82 142 154 214 66 270 126 389 58 475 122 554 70"/>
+    <path d="M84 290 142 154M198 336 270 126M444 328 475 122M548 296 590 190" stroke-dasharray="4 8"/>
+  </g>
+  <g fill="none" stroke="#D8E9FA" opacity=".24">
+    <ellipse cx="325" cy="220" rx="242" ry="98" transform="rotate(-12 325 220)"/>
+    <ellipse cx="325" cy="220" rx="194" ry="142" transform="rotate(22 325 220)"/>
+    <ellipse cx="325" cy="220" rx="130" ry="174" transform="rotate(48 325 220)"/>
+  </g>
+  <path d="M52 340C160 268 200 336 284 262S442 142 596 96" fill="none" stroke="#FFE6A7" stroke-width="3" stroke-linecap="round" stroke-dasharray="2 12"/>
+  <circle cx="326" cy="218" r="75" fill="#11152F" opacity=".22" transform="translate(8 12)"/>
+  <circle cx="326" cy="218" r="72" fill="url(#planet)"/>
+  <path d="M279 187c25 9 61 8 94-4M271 230c35 14 77 15 111 3M295 267c20 5 43 5 63 0" fill="none" stroke="#875C88" stroke-width="8" stroke-linecap="round" opacity=".28"/>
+  <ellipse cx="326" cy="224" rx="126" ry="32" transform="rotate(-13 326 224)" fill="none" stroke="url(#ring)" stroke-width="12"/>
+  <path d="M208 252c32 22 107 19 176-10 38-16 67-36 76-51" fill="none" stroke="#EFFAFF" stroke-width="5" stroke-linecap="round" opacity=".85"/>
+  <g fill="#FFF4C9">
+    <path d="m112 222 4 11 11 4-11 4-4 11-4-11-11-4 11-4Z"/>
+    <path d="m514 232 3 8 8 3-8 3-3 8-3-8-8-3 8-3Z"/>
+    <path d="m410 330 3 8 8 3-8 3-3 8-3-8-8-3 8-3Z"/>
+  </g>
+</svg>

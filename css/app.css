@@ -1294,7 +1294,8 @@ body, .card, .li, .topbar, .navbar, .chip, .btn, .tbtn, .field-input,
 .g-ip-halls::-webkit-scrollbar { display: none; }
 .g-ip-hall-card {
   --ih-accent: var(--primary);
-  flex: none; width: 218px; min-height: 154px; padding: 13px 14px;
+  position: relative; overflow: hidden;
+  flex: none; width: 218px; min-height: 232px; padding: 0 0 13px;
   display: flex; flex-direction: column; text-align: left; font: inherit; color: var(--on-surface);
   border: 1px solid var(--glass-brd); border-top: 3px solid var(--ih-accent); border-radius: 18px;
   background: var(--surface-low); box-shadow: var(--shadow-card); cursor: pointer;
@@ -1302,18 +1303,25 @@ body, .card, .li, .topbar, .navbar, .chip, .btn, .tbtn, .field-input,
 }
 .g-ip-hall-card.character { --ih-accent: var(--c-sky); }
 .g-ip-hall-card:active { transform: scale(.97); }
-.g-ip-hall-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.g-ip-hall-emoji { font-size: 28px; line-height: 32px; }
+.g-ip-hall-visual {
+  position: relative; display: flex; align-items: center; justify-content: center;
+  flex: none; overflow: hidden; background: var(--grad-soft), var(--surface-high);
+}
+.g-ip-hall-visual img { position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%; object-fit: cover; }
+.g-ip-hall-emoji { font-size: 36px; line-height: 1; }
+.g-ip-hall-cover { width: 100%; height: 88px; border-bottom: 1px solid var(--glass-brd); }
 .g-ip-hall-kind {
+  position: absolute; z-index: 2; top: 10px; right: 10px;
   padding: 2px 7px; border: 1px solid var(--outline-variant); border-radius: 999px;
+  background: var(--glass-chrome); backdrop-filter: var(--blur-chrome); -webkit-backdrop-filter: var(--blur-chrome);
   color: var(--ih-accent); font-size: 10px; font-weight: 600;
 }
-.g-ip-hall-title { margin-top: 8px; font-size: 15px; font-weight: 700; line-height: 21px; }
+.g-ip-hall-title { margin: 10px 14px 0; font-size: 15px; font-weight: 700; line-height: 21px; }
 .g-ip-hall-blurb {
-  margin-top: 3px; min-height: 34px; font-size: 11px; line-height: 17px; color: var(--on-surface-variant);
+  margin: 3px 14px 0; min-height: 34px; font-size: 11px; line-height: 17px; color: var(--on-surface-variant);
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
-.g-ip-hall-meta { margin-top: auto; padding-top: 9px; font-size: 10px; color: var(--on-surface-variant); }
+.g-ip-hall-meta { margin: auto 14px 0; padding-top: 9px; font-size: 10px; color: var(--on-surface-variant); }
 
 /* 统一 IP 页三视图 */
 .g-ip-tabs {
@@ -1333,7 +1341,9 @@ body, .card, .li, .topbar, .navbar, .chip, .btn, .tbtn, .field-input,
   background: var(--grad-soft), var(--surface-low); box-shadow: var(--shadow-card);
 }
 .g-ip-curation-head { display: flex; align-items: center; gap: 11px; }
-.g-ip-curation-emoji { flex: none; font-size: 30px; }
+.g-ip-curation-cover { width: 58px; height: 58px; border-radius: 15px; border: 1px solid var(--glass-brd); }
+.g-ip-curation-cover .g-ip-hall-emoji { font-size: 30px; }
+.g-ip-curation-copy { min-width: 0; }
 .g-ip-curation-title { font-size: 14px; font-weight: 700; }
 .g-ip-curation-blurb { margin-top: 2px; font-size: 11px; line-height: 17px; color: var(--on-surface-variant); }
 .g-ip-curation-rule {
@@ -1542,7 +1552,7 @@ body, .card, .li, .topbar, .navbar, .chip, .btn, .tbtn, .field-input,
 
 /* 主题切换过渡补入宅物卡片 */
 .g-fall-card, .g-mos-card, .g-cover, .g-note, .g-hero, .g-cat-emoji,
-.g-ip-hall-card, .g-ip-curation, .g-ip-tree-entry, .g-graph-stage, .g-graph-node, .g-raw-card {
+.g-ip-hall-card, .g-ip-hall-visual, .g-ip-curation, .g-ip-tree-entry, .g-graph-stage, .g-graph-node, .g-raw-card {
   transition: background-color .22s ease, color .22s ease, border-color .22s ease;
 }
 

@@ -49,6 +49,18 @@
 
 ## 设计沿革
 
+### 第二十二轮（2026-11-02，宅物 IP 展厅封面）
+
+**feed 契约与防盗链**：`ip_halls[]` 新增可选 `image`，值为绝对 HTTPS 资源地址；原有 `emoji` 始终保留，在图片缺失、字段为空或加载失败时继续作为降级。正式 App 请求其中 `/goods-media/` 图片时必须携带与 feed 请求相同的 `X-App-Token`；muka.cool 后台预览则通过合法本站 Referer 访问。令牌只能放在请求头，不可写入 URL/query。图片失败只移除 `img` 节点，不移除底层 emoji，也不改变展厅成员与统计逻辑。
+
+**定案**：首页 IP 展厅卡增加顶部封面媒体区，作品 / 角色类型标签浮于封面右上；统一 IP 页的策展头部复用同一图片优先、emoji 降级组件。封面使用 `object-fit: cover`，窄屏与横屏沿用各断点卡宽，文本仍限制在既有行数内。原型只做静态 URL 渲染，不请求真实接口，也不模拟上述请求头或 Referer；仅本仓库 GitHub Pages 地址下的演示封面映射到本地 `assets/goods-ip-star-trail.svg`，确保 `file://` 直开不请求外部图片。
+
+**原型同步**：`js/data/goods.js` 记录契约并为“星轨巡旅·作品厅”加入 HTTPS 演示封面；`js/screens/goods.js` 增加共享 `ipHallCover`；`css/app.css` 增加卡片与策展头部媒体样式；新增原创 SVG 星图素材与 `tests/goods-ip-hall-image.test.js`（Node 内置测试，无依赖、无浏览器）；`index.html` 全部资源版本号 v=55。
+
+**Android 同步注意**：Compose 图片加载器必须为 `/goods-media/` 封面请求添加与 feed 相同的 `X-App-Token`，不可把令牌写入 URL/query，也不要把该令牌发送给其他图片主机；鉴权或加载失败同样回落 `emoji`。muka.cool 后台预览使用合法本站 Referer，原型仍不请求真实接口。
+
+**走查**：Node 契约测试 6/6 通过；Chrome 以 `file://` 实际检查首页横滑卡、统一 IP 页策展头部、明/暗主题、360px 窄窗口与 1024 横屏，封面裁剪、标签和文字无异常。对真实图片节点派发 error 后仅移除图片并露出 emoji；全程外部 HTTP(S) 请求为 0。
+
 ### 第二十一轮（2026-10-27，统一公司 / 系列 / 媒介 / 角色层级）
 
 **起因**：同一 IP 的游戏、动画、漫画、音乐是不同媒介作品，不能为了“统一 IP”而合并资料或角色关系；但用户需要沿公司、系列、媒介、角色连续浏览。本轮在既有统一 IP 页内扩展关系视图，保留策展展品与联盟发现的边界。
