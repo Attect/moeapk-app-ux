@@ -1193,16 +1193,11 @@ body, .card, .li, .topbar, .navbar, .chip, .btn, .tbtn, .field-input,
 .g-mos-sub { font-size: 10px; opacity: .85; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* ---------- 展厅（分类页） ---------- */
-.g-cat-hero { display: flex; align-items: center; gap: 14px; padding: 14px 4px 4px; }
-.g-cat-emoji {
-  flex: none; width: 56px; height: 56px; border-radius: 18px;
-  display: flex; align-items: center; justify-content: center; font-size: 28px;
-  background: var(--grad-soft), var(--surface-high);
-  border: 1px solid var(--glass-brd); box-shadow: var(--shadow-card);
-}
-.g-cat-name { font-size: 19px; font-weight: 700; }
-.g-cat-sub { font-size: 11px; color: var(--on-surface-variant); margin-top: 1px; }
-.g-cat-blurb { font-size: 12px; color: var(--on-surface-variant); margin-top: 4px; }
+.g-cat-hero { display: flex; align-items: flex-start; gap: 8px; padding: 4px 2px 8px; }
+.g-cat-emoji { flex: none; font-size: 22px; line-height: 28px; }
+.g-cat-name { font-size: 15px; line-height: 22px; font-weight: 600; }
+.g-cat-sub { font-size: 11px; line-height: 16px; color: var(--on-surface-variant); margin-top: 1px; }
+.g-cat-blurb { font-size: 12px; line-height: 17px; color: var(--on-surface-variant); margin-top: 2px; }
 
 /* 双列瀑布流（小红书式）；卡片比例按 id 哈希错开 */
 .g-falls { column-count: 2; column-gap: 10px; margin-top: 4px; }

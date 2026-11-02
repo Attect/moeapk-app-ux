@@ -232,12 +232,12 @@
       const sort = S.x.goodsSort || 'new';
       const selectedIp = (S.x.goodsCatIp && S.x.goodsCatIp[arg]) || '';
       const ipOptions = ipOptionsForCat(arg);
-      if (!goodsByCat(arg).length) return emptyHint('这个展厅还在布置中');
       let h = '<div class="g-cat-hero">' +
         '<div class="g-cat-emoji">' + c.emoji + '</div>' +
         '<div class="g-cat-titles"><div class="g-cat-name">' + esc(c.name) + '</div>' +
         '<div class="g-cat-sub">' + esc(c.sub) + '</div>' +
         '<div class="g-cat-blurb">' + esc(c.blurb) + '</div></div></div>';
+      if (!goodsByCat(arg).length) return h + emptyHint('这个展厅还在布置中');
       // 只有策展向排序：不提供价格/销量排序
       h += '<div class="chip-row">' +
         chip('最近收录', sort === 'new', 'goods-sort', 'new') +

@@ -187,3 +187,30 @@ test('有商品的 mosaic 槽位仍使用物品封面而不是分类占位', () 
   assert.equal(mosaic.includes('<span>📛</span>'), false, '有商品时不应改成小铁片分类占位');
   assert.ok(mosaic.includes('<div class="g-mos-name">小铁片</div>'));
 });
+
+test('物品形态展厅详情使用轻量头部并保留商品与排序', () => {
+  const { screens } = loadPrototype();
+  const html = screens['goods-cat'].render('badge');
+  assert.match(html, /^<div class="g-cat-hero"><div class="g-cat-emoji">📛<\/div>/);
+  assert.match(html, /<div class="g-cat-name">小铁片<\/div>/);
+  assert.match(html, /<div class="g-cat-sub">吧唧 · 马口铁徽章<\/div>/);
+  assert.match(html, /data-a="goods-sort"/);
+  assert.match(html, /class="g-falls"/);
+
+  const css = fs.readFileSync(path.join(ROOT, 'css/app.css'), 'utf8');
+  const emojiRule = css.match(/\.g-cat-emoji\s*\{([^}]*)\}/);
+  assert.ok(emojiRule);
+  assert.match(emojiRule[1], /font-size: 22px/);
+  assert.doesNotMatch(emojiRule[1], /background|border|box-shadow|width: 56px/);
+});
+
+test('空物品形态展厅仍保留头部身份并隐藏无意义排序', () => {
+  const { context, screens } = loadPrototype();
+  context.DB.GOODS = [];
+  const html = screens['goods-cat'].render('badge');
+  assert.match(html, /class="g-cat-hero"/);
+  assert.match(html, /📛/);
+  assert.match(html, /小铁片/);
+  assert.match(html, /这个展厅还在布置中/);
+  assert.doesNotMatch(html, /data-a="goods-sort"/);
+});
