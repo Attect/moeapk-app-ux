@@ -201,22 +201,22 @@ body.has-full .proto-bar { opacity: 0; pointer-events: none; transition: opacity
 .tag-row .achip { font-size: 10px; padding: 1px 7px; }
 .tag-row .tag-kind { background: var(--secondary-container); color: var(--on-secondary-container); border-color: transparent; }
 
-/* ---------- 顶栏（CenterAlignedTopAppBar · 玻璃模糊） ---------- */
+/* ---------- 连续型顶栏：标题/辅助信息居左，操作居右 ---------- */
 #app { display: flex; flex-direction: column; height: 100%; overflow: hidden; position: relative; }
 .topbar {
   height: var(--topbar-h); flex: none;
-  display: flex; align-items: center; padding: 0 8px;
-  background: var(--glass-chrome);
-  backdrop-filter: var(--blur-chrome); -webkit-backdrop-filter: var(--blur-chrome);
-  border-bottom: 1px solid var(--glass-brd);
+  display: flex; align-items: center; padding: 0 4px;
+  background: transparent; border-bottom: 0;
   position: relative; z-index: 7;
 }
+.topbar-copy { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; padding: 0 6px; }
 .topbar-title {
-  flex: 1; text-align: center;
-  font-size: 22px; font-weight: 600; line-height: 28px; letter-spacing: .5px;
+  color: var(--on-surface); font-size: 20px; font-weight: 600; line-height: 24px;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  background: var(--grad-text); -webkit-background-clip: text; background-clip: text;
-  -webkit-text-fill-color: transparent; color: transparent;
+}
+.topbar-subtitle {
+  color: var(--on-surface-variant); font-size: 11px; line-height: 14px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .icbtn {
   width: 48px; height: 48px; flex: none;
@@ -1193,11 +1193,9 @@ body, .card, .li, .topbar, .navbar, .chip, .btn, .tbtn, .field-input,
 .g-mos-sub { font-size: 10px; opacity: .85; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* ---------- 展厅（分类页） ---------- */
-.g-cat-hero { display: flex; align-items: flex-start; gap: 8px; padding: 4px 2px 8px; }
+.g-cat-hero { display: flex; align-items: center; gap: 8px; padding: 4px 2px 8px; }
 .g-cat-emoji { flex: none; font-size: 22px; line-height: 28px; }
-.g-cat-name { font-size: 15px; line-height: 22px; font-weight: 600; }
-.g-cat-sub { font-size: 11px; line-height: 16px; color: var(--on-surface-variant); margin-top: 1px; }
-.g-cat-blurb { font-size: 12px; line-height: 17px; color: var(--on-surface-variant); margin-top: 2px; }
+.g-cat-blurb { font-size: 12px; line-height: 17px; color: var(--on-surface-variant); }
 
 /* 双列瀑布流（小红书式）；卡片比例按 id 哈希错开 */
 .g-falls { column-count: 2; column-gap: 10px; margin-top: 4px; }

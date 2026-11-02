@@ -188,12 +188,15 @@ test('有商品的 mosaic 槽位仍使用物品封面而不是分类占位', () 
   assert.ok(mosaic.includes('<div class="g-mos-name">小铁片</div>'));
 });
 
-test('物品形态展厅详情使用轻量头部并保留商品与排序', () => {
+test('物品形态展厅由顶栏承担名称与简介，正文只保留策展语', () => {
   const { screens } = loadPrototype();
-  const html = screens['goods-cat'].render('badge');
+  const def = screens['goods-cat'];
+  assert.equal(def.title('badge'), '小铁片');
+  assert.equal(def.topSubtitle('badge'), '吧唧 · 马口铁徽章');
+  const html = def.render('badge');
   assert.match(html, /^<div class="g-cat-hero"><div class="g-cat-emoji">📛<\/div>/);
-  assert.match(html, /<div class="g-cat-name">小铁片<\/div>/);
-  assert.match(html, /<div class="g-cat-sub">吧唧 · 马口铁徽章<\/div>/);
+  assert.match(html, /<div class="g-cat-blurb">别在包上的小心思，一枚一个心情。<\/div>/);
+  assert.doesNotMatch(html, /g-cat-name|g-cat-sub/);
   assert.match(html, /data-a="goods-sort"/);
   assert.match(html, /class="g-falls"/);
 
@@ -210,7 +213,22 @@ test('空物品形态展厅仍保留头部身份并隐藏无意义排序', () =>
   const html = screens['goods-cat'].render('badge');
   assert.match(html, /class="g-cat-hero"/);
   assert.match(html, /📛/);
-  assert.match(html, /小铁片/);
+  assert.doesNotMatch(html, /小铁片/, '正文不得重复顶栏展厅名');
+  assert.equal(screens['goods-cat'].title('badge'), '小铁片');
   assert.match(html, /这个展厅还在布置中/);
   assert.doesNotMatch(html, /data-a="goods-sort"/);
+});
+
+test('全局顶栏使用连续背景、左对齐标题与可选辅助信息', () => {
+  const css = fs.readFileSync(path.join(ROOT, 'css/app.css'), 'utf8');
+  const ui = fs.readFileSync(path.join(ROOT, 'js/ui.js'), 'utf8');
+  const topbar = css.match(/\.topbar\s*\{([^}]*)\}/);
+  const title = css.match(/\.topbar-title\s*\{([^}]*)\}/);
+  assert.ok(topbar && title);
+  assert.match(topbar[1], /background: transparent/);
+  assert.match(topbar[1], /border-bottom: 0/);
+  assert.doesNotMatch(title[1], /text-align: center|grad-text|font-size: 22px/);
+  assert.match(css, /\.topbar-subtitle\s*\{/);
+  assert.match(ui, /def0\.topSubtitle/);
+  assert.match(ui, /class="topbar-copy"/);
 });

@@ -181,9 +181,9 @@
     const def0 = cur ? SCREENS[cur.page] : SCREENS['tab:' + S.tab];
     const full = !!(cur && def0.full); // 沉浸式全屏子页（如素材查看器）：无顶栏，自带悬浮返回
     const tr = def0 && def0.topRight ? (typeof def0.topRight === 'function' ? def0.topRight() : def0.topRight) : null;
+    const ts = def0 && def0.topSubtitle ? (typeof def0.topSubtitle === 'function' ? def0.topSubtitle(cur ? cur.arg : undefined) : def0.topSubtitle) : null;
     const rightBtn = !full && tr ?
-      '<button class="icbtn" data-a="' + tr.act + '"' + (tr.arg != null ? ' data-arg="' + esc(tr.arg) + '"' : '') + '>' + icon(tr.icon) + '</button>' :
-      '<span class="icbtn"></span>';
+      '<button class="icbtn" data-a="' + tr.act + '"' + (tr.arg != null ? ' data-arg="' + esc(tr.arg) + '"' : '') + '>' + icon(tr.icon) + '</button>' : '';
     // 首次进入某 Tab 的轻引导（一次性横幅，点"知道了"永久消失——
     // 第十轮修订：已读标记持久化到 localStorage，冷启动/刷新不再重现；
     // 悬浮于底栏之上（不占布局），消除它不会引起任何内容位移。对应 App 侧 OnboardPref。）
@@ -194,8 +194,9 @@
       if (tip && !seen[S.tab]) onboard = '<div class="onboard" data-a="onboard-ok">' + icon(tip.icon) + '<span>' + tip.text + '</span><b>知道了</b></div>';
     }
     const topbar = full ? '' :
-      '<header class="topbar">' + (showBack ? '<button class="icbtn" data-a="back">' + icon('arrow_back') + '</button>' : '<span class="icbtn"></span>') +
-      '<span class="topbar-title">' + esc(title) + '</span>' + rightBtn + '</header>';
+      '<header class="topbar">' + (showBack ? '<button class="icbtn" data-a="back">' + icon('arrow_back') + '</button>' : '') +
+      '<span class="topbar-copy"><span class="topbar-title">' + esc(title) + '</span>' +
+      (ts ? '<span class="topbar-subtitle">' + esc(ts) + '</span>' : '') + '</span>' + rightBtn + '</header>';
     document.body.classList.toggle('has-full', full); // 全屏页隐藏 proto-bar 调试条（避免与查看器顶部信息重叠）
     // 下拉刷新指示器（第十轮）：刷新期间悬浮于内容顶部，列表保持原位可见
     const ptr = S.x.apkLoading ? '<div class="ptr-indicator"><div class="spinner"></div></div>' : '';

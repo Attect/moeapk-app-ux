@@ -226,6 +226,7 @@
   }
   registerScreen('goods-cat', {
     title: arg => { const c = catById(arg); return c ? c.name : '展厅'; },
+    topSubtitle: arg => { const c = catById(arg); return c ? c.sub : ''; },
     render(arg) {
       const c = catById(arg);
       if (!c) return emptyHint('展厅不存在');
@@ -234,9 +235,7 @@
       const ipOptions = ipOptionsForCat(arg);
       let h = '<div class="g-cat-hero">' +
         '<div class="g-cat-emoji">' + c.emoji + '</div>' +
-        '<div class="g-cat-titles"><div class="g-cat-name">' + esc(c.name) + '</div>' +
-        '<div class="g-cat-sub">' + esc(c.sub) + '</div>' +
-        '<div class="g-cat-blurb">' + esc(c.blurb) + '</div></div></div>';
+        '<div class="g-cat-blurb">' + esc(c.blurb) + '</div></div>';
       if (!goodsByCat(arg).length) return h + emptyHint('这个展厅还在布置中');
       // 只有策展向排序：不提供价格/销量排序
       h += '<div class="chip-row">' +
