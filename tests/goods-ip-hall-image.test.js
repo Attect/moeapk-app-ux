@@ -31,7 +31,7 @@ function loadPrototype() {
     chip(label, selected, act, arg) {
       return '<button class="chip' + (selected ? ' on' : '') + '" data-a="' + act + '" data-arg="' + (arg == null ? '' : arg) + '">' + label + '</button>';
     },
-    textBtn(label) { return '<button>' + label + '</button>'; },
+    textBtn(label, act) { return '<button data-a="' + act + '">' + label + '</button>'; },
     btn(label) { return '<button>' + label + '</button>'; },
     assistChip(label) { return '<span>' + label + '</span>'; },
     emptyHint(label) { return '<div>' + label + '</div>'; },
@@ -52,6 +52,14 @@ function hallCard(html, id) {
   const start = html.lastIndexOf('<button', at);
   const end = html.indexOf('</button>', at);
   return html.slice(start, end + '</button>'.length);
+}
+
+function mosaicHtml(html) {
+  const start = html.indexOf('<div class="g-mosaic">');
+  const end = html.indexOf('<div class="g-legal">', start);
+  assert.notEqual(start, -1, '应找到物品形态展厅墙');
+  assert.notEqual(end, -1, '展厅墙后应保留披露行');
+  return html.slice(start, end);
 }
 
 test('演示契约保留绝对 HTTPS image、必需 emoji 与存在的本地封面', () => {
@@ -133,4 +141,49 @@ test('统一 IP 页策展头部复用同一封面与降级逻辑', () => {
   assert.match(legacy, /class="g-ip-hall-emoji"[^>]*>🐱<\/span>/);
   const cover = legacy.slice(legacy.indexOf('g-ip-curation-cover'), legacy.indexOf('g-ip-curation-title'));
   assert.doesNotMatch(cover, /<img\b/);
+});
+
+test('宅物 home.hero 保留字段与文案，但只渲染紧凑副标题', () => {
+  const { context, screens } = loadPrototype();
+  assert.equal(context.DB.GOODS_HOME.hero, '看看有什么好东西');
+  const html = screens['tab:goods'].render();
+  assert.match(html, /^<div class="g-hero-sub">看看有什么好东西<\/div>/);
+  assert.doesNotMatch(html, /class="g-hero"|g-hero-title/);
+
+  const css = fs.readFileSync(path.join(ROOT, 'css/app.css'), 'utf8');
+  assert.match(css, /\.g-hero-sub\s*\{\s*margin: 2px 4px 0; color: var\(--on-surface-variant\);\s*font-size: 12px; line-height: 18px;\s*\}/);
+  assert.doesNotMatch(css, /^\.g-hero\s*\{|^\.g-hero-title\s*\{/m);
+});
+
+test('空 items 时 home.mosaic 仍渲染全部分类卡与可点击入口', () => {
+  const { context, screens } = loadPrototype();
+  context.DB.GOODS = [];
+  const html = screens['tab:goods'].render();
+  const mosaic = mosaicHtml(html);
+  assert.equal((mosaic.match(/class="g-mos-card"/g) || []).length, context.DB.GOODS_HOME.mosaic.length);
+  assert.doesNotMatch(html, /data-a="goods-reshuffle"/, '空库时应隐藏换一批');
+
+  for (const cat of context.DB.GOODS_CATS) {
+    assert.ok(mosaic.includes('data-a="goods-open-cat" data-arg="' + cat.id + '"'), cat.id + ' 应保留进入分类页的入口');
+    assert.ok(mosaic.includes('<span>' + cat.emoji + '</span>'), cat.id + ' 应使用分类 emoji');
+    assert.ok(mosaic.includes('<div class="g-mos-name">' + cat.name + '</div>'));
+    assert.ok(mosaic.includes('<div class="g-mos-sub">' + cat.sub + '</div>'));
+  }
+  assert.doesNotMatch(mosaic, /<img\b/);
+  assert.match(mosaic, /class="g-cover v0" data-focus="center" style="--gh:\d+"/);
+});
+
+test('有商品的 mosaic 槽位仍使用物品封面而不是分类占位', () => {
+  const { context, screens } = loadPrototype();
+  context.DB.GOODS_HOME = { hero: '测试', fresh_count: 0, mosaic: [{ hall: 'badge', span: 4, height: 148 }] };
+  context.DB.GOODS_IP_HALLS = [];
+  context.DB.GOODS = [context.DB.GOODS.find(g => g.id === 'g01')];
+  const html = screens['tab:goods'].render();
+  const mosaic = mosaicHtml(html);
+  assert.equal((mosaic.match(/class="g-mos-card"/g) || []).length, 1);
+  assert.match(html, /data-a="goods-reshuffle"/, '有商品时应保留换一批');
+  assert.ok(mosaic.includes('data-a="goods-open-cat" data-arg="badge"'));
+  assert.ok(mosaic.includes('<span>✨</span>'), '应沿用 g01 的物品封面');
+  assert.equal(mosaic.includes('<span>📛</span>'), false, '有商品时不应改成小铁片分类占位');
+  assert.ok(mosaic.includes('<div class="g-mos-name">小铁片</div>'));
 });

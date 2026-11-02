@@ -133,7 +133,8 @@
       const rand = rng(seed * 1009 + 7);
       // 首页布局来自数据层（对应 feed 的 home 对象；后台「展厅与首页」动态配置）
       const home = DB.GOODS_HOME || { hero: '看看有什么好东西', fresh_count: 8, mosaic: [] };
-      let h = '<div class="g-hero"><div class="g-hero-title">' + esc(home.hero) + '</div></div>';
+      // 顶栏已有“宅物”标题：home.hero 仅作轻量副标题，不再渲染重复的大号渐变卡片。
+      let h = '<div class="g-hero-sub">' + esc(home.hero) + '</div>';
 
       // IP 展厅与物品形态展厅是两套正交入口：作品=确认成员策展，角色=精确实体。
       // 卡片只使用 feed ip_halls 的策展统计，不读取联盟原始结果。
@@ -160,19 +161,23 @@
           }).join('') + '</div>';
       }
 
-      // 展厅墙：槽位顺序/跨列/高度按布局配置原样渲染（空厅跳过）。
-      // 「换一批」不动布局，只在每个槽位的展厅内重抽封面展品（反复刷有新的脸面，布局不晕车）。
+      // 展厅墙：槽位顺序/跨列/高度按布局配置原样渲染（空厅也保留卡片与入口）。
+      // 「换一批」不动布局，只在有商品的槽位内重抽封面展品（反复刷有新的脸面，布局不晕车）。
       // 宽扁槽（宽高比 >1.25，如 span4×128）方形图 cover 会只剩中间一条横带——
       // 改 contain 完整呈现、两侧露渐变底（与 emoji 占位同一设计语言）。
       const SPAN_W = { 2: 126, 3: 194, 4: 262, 6: 398 }; // 6 列网格各跨列的代表宽度（430 视口估算）
-      h += '<div class="sec-head"><span class="sec-title">物品形态展厅</span>' + textBtn('换一批', 'goods-reshuffle') + '</div>';
+      const canReshuffle = (home.mosaic || []).some(slot => goodsByCat(slot.hall).length > 0);
+      h += '<div class="sec-head"><span class="sec-title">物品形态展厅</span>' +
+        (canReshuffle ? textBtn('换一批', 'goods-reshuffle') : '') + '</div>';
       h += '<div class="g-mosaic">';
       (home.mosaic || []).forEach(slot => {
         const c = catById(slot.hall);
         if (!c) return;
         const items = goodsByCat(c.id);
-        if (!items.length) return;
-        const g = items[Math.floor(rand() * items.length)];
+        // 空库仍按 home.mosaic 展示分类 emoji / 稳定渐变；有商品时才抽物品封面并消耗随机种子。
+        const g = items.length
+          ? items[Math.floor(rand() * items.length)]
+          : { emoji: c.emoji, hue: hashStr(c.id) % 360 };
         const flat = (SPAN_W[slot.span] || 126) / slot.height > 1.25;
         h += '<div class="g-mos-card" style="grid-column:span ' + slot.span + ';height:' + slot.height + 'px" data-a="goods-open-cat" data-arg="' + c.id + '">' +
           cover(g, 0, { flat: flat }) +

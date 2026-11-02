@@ -1147,14 +1147,11 @@ body, .card, .li, .topbar, .navbar, .chip, .btn, .tbtn, .field-input,
   background: linear-gradient(var(--ga, 135deg), hsl(var(--gh), 44%, 34%) 0%, hsl(calc(var(--gh) + 36), 40%, 24%) 100%);
 }
 
-/* ---------- 主页 · 策展头 ---------- */
-.g-hero {
-  margin-top: 8px; padding: 16px 18px;
-  border-radius: 22px; background: var(--grad-hero);
-  border: 1px solid var(--glass-brd); box-shadow: var(--shadow-card);
+/* ---------- 主页 · 轻量副标题（顶栏已有“宅物”，不重复大标题卡片） ---------- */
+.g-hero-sub {
+  margin: 2px 4px 0; color: var(--on-surface-variant);
+  font-size: 12px; line-height: 18px;
 }
-.g-hero-title { font-size: 20px; font-weight: 700; letter-spacing: .5px; }
-.g-hero-sub { font-size: 12px; color: var(--on-surface-variant); margin-top: 4px; }
 
 /* ---------- 主页 · 新入荷横滑条（只署名不标价） ---------- */
 .g-fresh {
@@ -1551,7 +1548,7 @@ body, .card, .li, .topbar, .navbar, .chip, .btn, .tbtn, .field-input,
 }
 
 /* 主题切换过渡补入宅物卡片 */
-.g-fall-card, .g-mos-card, .g-cover, .g-note, .g-hero, .g-cat-emoji,
+.g-fall-card, .g-mos-card, .g-cover, .g-note, .g-hero-sub, .g-cat-emoji,
 .g-ip-hall-card, .g-ip-hall-visual, .g-ip-curation, .g-ip-tree-entry, .g-graph-stage, .g-graph-node, .g-raw-card {
   transition: background-color .22s ease, color .22s ease, border-color .22s ease;
 }
