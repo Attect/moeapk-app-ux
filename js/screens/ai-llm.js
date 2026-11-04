@@ -414,9 +414,11 @@
       const m = LLM_MODELS.find(x => x.id === S.x.lcId) || { name: S.x.lcId };
       const cfg = cfgOf(S.x.lcId);
       const ctx = contextChoices(m);
-      const sl = (label, k, min, max, step, fmt) =>
-        '<label class="slider-row"><span class="li-title">' + esc(label) + ' ' + fmt(cfg[k]) + '</span>' +
-        '<input type="range" min="' + min + '" max="' + max + '" step="' + step + '" value="' + cfg[k] + '" class="slider" data-live="lc-set" data-k="' + k + '"></label>';
+      const sl = (label, k, min, max, step, fmt) => {
+        const fill = Math.round((cfg[k] - min) / (max - min) * 100);
+        return '<label class="slider-row"><span class="li-title">' + esc(label) + ' ' + fmt(cfg[k]) + '</span>' +
+          '<input type="range" min="' + min + '" max="' + max + '" step="' + step + '" value="' + cfg[k] + '" class="slider" data-live="lc-set" data-k="' + k + '" style="--fill:' + fill + '%"></label>';
+      };
       let h = '<div class="dl-status" style="padding:8px 2px 0">当前模型：' + esc(m.name) + '</div>';
       h += card(
         // L8：系统提示词可编辑（原固定文案改为按模型可配）
@@ -462,6 +464,8 @@
   action('lc-set', (ds, el) => {
     const cfg = cfgOf(S.x.lcId); const k = ds.k;
     cfg[k] = +el.value;
+    const min = +el.min, max = +el.max;
+    el.style.setProperty('--fill', Math.round((el.value - min) / (max - min) * 100) + '%');
     const lb = el.parentElement.querySelector('.li-title');
     if (lb) {
       const base = lb.textContent.replace(/ [\d.]+$/, '');

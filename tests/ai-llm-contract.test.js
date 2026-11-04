@@ -45,9 +45,11 @@ test('上下文按模型元数据开放到训练上限', () => {
 test('视觉令牌使用低饱和主色、轻量阴影和统一更新卡', () => {
   const css = read('css/app.css');
   const apk = read('js/screens/apk.js');
-  assert.ok(css.includes('--c-pink: #D985A6'));
-  assert.ok(css.includes('--grad-primary: linear-gradient(135deg, #F0B8CC 0%, #D985A6 100%)'));
+  assert.ok(css.includes('--c-pink: #E5A8C0'));
+  assert.ok(css.includes('--grad-primary: linear-gradient(135deg, #F4D2DF 0%, #E5A8C0 100%)'));
   assert.ok(css.includes('--on-primary: #4F2738'));
+  assert.ok(css.includes('#E7DFE8'));
+  assert.ok(css.includes('var(--fill, 50%)'));
   assert.ok(css.includes('--glow-primary: 0 4px 10px -3px'));
   assert.ok(!css.includes('box-shadow: var(--shadow-card), var(--glow-soft);'));
   assert.ok(apk.includes('class="update-icon"'));

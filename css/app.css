@@ -14,7 +14,7 @@
 }
 :root {
   /* ---------- 品牌色板（取色自安卓娘） ---------- */
-  --c-pink: #D985A6;          /* 浅玫瑰粉 · 主色 */
+  --c-pink: #E5A8C0;          /* 浅玫瑰粉 · 主色 */
   --c-pink-deep: #B85B82;
   --c-pink-soft: #FFD6E6;
   --c-mint: #5FA58A;          /* 低饱和抹茶绿 · 辅助 */
@@ -25,7 +25,7 @@
   --c-cream: #FFF6EF;
 
   /* ---------- 渐变 ---------- */
-  --grad-primary: linear-gradient(135deg, #F0B8CC 0%, #D985A6 100%);
+  --grad-primary: linear-gradient(135deg, #F4D2DF 0%, #E5A8C0 100%);
   --grad-mint: linear-gradient(135deg, #9BCDB5 0%, #5FA58A 100%);
   --grad-text: linear-gradient(120deg, #C46890 10%, #8B7EC4 90%);
   --grad-hero: linear-gradient(118deg, #FFD9E8 0%, #DFF3EA 52%, #DCE8FB 100%);
@@ -46,7 +46,7 @@
   --on-primary: #4F2738;
   --primary-container: var(--c-pink-soft);
   --on-primary-container: #82314F;
-  --secondary-container: rgba(217,133,166,.14); /* 浅粉选中底 */
+  --secondary-container: rgba(229,168,192,.16); /* 浅粉选中底 */
   --on-secondary-container: #8E4D68;
   --error: #D64560;
   --on-error: #FFFFFF;
@@ -62,8 +62,8 @@
   --blur-chrome: saturate(1.5) blur(18px);
   --shadow-card: 0 4px 14px -6px rgba(200,90,145,.14), 0 1px 4px -2px rgba(110,80,140,.07);
   --shadow-float: 0 8px 22px -10px rgba(190,80,140,.20), 0 2px 8px -5px rgba(110,80,140,.10);
-  --glow-primary: 0 4px 10px -3px rgba(217,133,166,.26);
-  --glow-soft: 0 2px 8px -3px rgba(217,133,166,.18);
+  --glow-primary: 0 4px 10px -3px rgba(229,168,192,.26);
+  --glow-soft: 0 2px 8px -3px rgba(229,168,192,.18);
   --ring-focus: 0 0 0 3px rgba(233,78,138,.20);
 
   /* ---------- chrome 尺寸令牌（第十轮：顶栏 64→52 / 底栏 80→64 减薄） ---------- */
@@ -468,7 +468,22 @@ body.has-full .proto-bar { opacity: 0; pointer-events: none; transition: opacity
   background: var(--grad-primary); box-shadow: 0 0 8px rgba(233,78,138,.5);
 }
 .slider-row { display: block; padding: 10px 4px; }
-.slider { width: 100%; accent-color: var(--primary); margin-top: 8px; }
+.slider {
+  -webkit-appearance: none; appearance: none;
+  width: 100%; height: 6px; border-radius: 999px; margin-top: 10px;
+  background: linear-gradient(to right,
+    var(--c-pink) 0%, var(--c-pink) var(--fill, 50%),
+    #E7DFE8 var(--fill, 50%), #E7DFE8 100%);
+  outline: none;
+}
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 16px; height: 16px; border: 0; border-radius: 50%;
+  background: var(--c-pink); box-shadow: none; cursor: pointer;
+}
+.slider::-moz-range-track { height: 6px; border-radius: 999px; background: #E7DFE8; }
+.slider::-moz-range-progress { height: 6px; border-radius: 999px; background: var(--c-pink); }
+.slider::-moz-range-thumb { width: 16px; height: 16px; border: 0; border-radius: 50%; background: var(--c-pink); box-shadow: none; cursor: pointer; }
 
 /* ---------- 进度条（渐变 + 流光） ---------- */
 .pbar { height: 6px; border-radius: 999px; background: var(--surface-highest); overflow: hidden; margin-top: 10px; border: 1px solid var(--outline-variant); }
