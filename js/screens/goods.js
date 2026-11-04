@@ -76,15 +76,14 @@
   // 展品封面：优先真实商品图（images，淘宝 CDN；失败移除 img 回落 emoji 渐变占位）。
   // 无图时用 emoji + 色相渐变占位（演示数据形态）。v 0/1/2… 取多图/变体，详情页 pager 用。
   // 淘宝图基本 1:1 方形：focus（top/center/bottom，AI 选封面时返回）决定 cover 裁剪的纵向对齐；
-  // flat=true（宽扁槽位）改 contain 完整呈现、两侧露渐变底（与占位设计语言一致，绝不切商品）。
+  // 首页展厅墙等所有真实封面都以 cover 填满容器，宽扁槽也居中裁切，不留渐变侧边。
   // ar 为可选的容器宽高比（瀑布流卡片用）。
   function cover(g, v, opts) {
     const vi = v || 0;
-    const flat = !!(opts && opts.flat);
     const ar = opts && opts.ar;
     const img = g.images && g.images.length ? g.images[Math.min(vi, g.images.length - 1)] : null;
     const ph = '<span>' + (g.emoji || '🎁') + '</span>';
-    const cls = 'g-cover v' + vi + (flat ? ' fit' : '');
+    const cls = 'g-cover v' + vi;
     const focus = (g.focus === 'top' || g.focus === 'bottom') ? g.focus : 'center';
     const df = ' data-focus="' + focus + '"';
     const style = '--gh:' + (g.hue == null ? 300 : g.hue) + (ar ? ';aspect-ratio:' + ar : '');
@@ -163,9 +162,7 @@
 
       // 展厅墙：槽位顺序/跨列/高度按布局配置原样渲染（空厅也保留卡片与入口）。
       // 「换一批」不动布局，只在有商品的槽位内重抽封面展品（反复刷有新的脸面，布局不晕车）。
-      // 宽扁槽（宽高比 >1.25，如 span4×128）方形图 cover 会只剩中间一条横带——
-      // 改 contain 完整呈现、两侧露渐变底（与 emoji 占位同一设计语言）。
-      const SPAN_W = { 2: 126, 3: 194, 4: 262, 6: 398 }; // 6 列网格各跨列的代表宽度（430 视口估算）
+      // 不论槽位宽窄，真实封面都 cover 填满并居中裁切，不能以 contain 留出渐变侧边。
       const canReshuffle = (home.mosaic || []).some(slot => goodsByCat(slot.hall).length > 0);
       h += '<div class="sec-head"><span class="sec-title">物品形态展厅</span>' +
         (canReshuffle ? textBtn('换一批', 'goods-reshuffle') : '') + '</div>';
@@ -178,9 +175,8 @@
         const g = items.length
           ? items[Math.floor(rand() * items.length)]
           : { emoji: c.emoji, hue: hashStr(c.id) % 360 };
-        const flat = (SPAN_W[slot.span] || 126) / slot.height > 1.25;
         h += '<div class="g-mos-card" style="grid-column:span ' + slot.span + ';height:' + slot.height + 'px" data-a="goods-open-cat" data-arg="' + c.id + '">' +
-          cover(g, 0, { flat: flat }) +
+          cover(g) +
           '<div class="g-mos-label"><div class="g-mos-name">' + esc(c.name) + '</div>' +
           '<div class="g-mos-sub">' + esc(c.sub) + '</div></div></div>';
       });

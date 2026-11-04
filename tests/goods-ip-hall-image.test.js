@@ -188,6 +188,23 @@ test('有商品的 mosaic 槽位仍使用物品封面而不是分类占位', () 
   assert.ok(mosaic.includes('<div class="g-mos-name">小铁片</div>'));
 });
 
+test('宽扁物品形态展厅封面也使用 cover 填满，不再 contain 露出两侧渐变', () => {
+  const { context, screens } = loadPrototype();
+  context.DB.GOODS_HOME = { hero: '测试', fresh_count: 0, mosaic: [{ hall: 'badge', span: 4, height: 128 }] };
+  context.DB.GOODS_IP_HALLS = [];
+  context.DB.GOODS = [{ ...context.DB.GOODS.find(g => g.id === 'g01'), images: [LOCAL_IMAGE] }];
+  const mosaic = mosaicHtml(screens['tab:goods'].render());
+  assert.match(mosaic, /class="g-cover v0" data-focus="center"/);
+  assert.match(mosaic, /<img src="assets\/goods-ip-star-trail\.svg"/);
+  assert.doesNotMatch(mosaic, /g-cover[^"]*\bfit\b/);
+
+  const css = fs.readFileSync(path.join(ROOT, 'css/app.css'), 'utf8');
+  const imageRule = css.match(/\.g-cover img\s*\{([^}]*)\}/);
+  assert.ok(imageRule);
+  assert.match(imageRule[1], /object-fit:\s*cover/);
+  assert.doesNotMatch(css, /\.g-cover\.fit/);
+});
+
 test('物品形态展厅由顶栏承担名称与简介，正文只保留策展语', () => {
   const { screens } = loadPrototype();
   const def = screens['goods-cat'];

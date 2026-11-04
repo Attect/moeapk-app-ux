@@ -1159,10 +1159,9 @@ body, .card, .li, .topbar, .navbar, .chip, .btn, .tbtn, .field-input,
   background: linear-gradient(var(--ga, 135deg), hsl(var(--gh), 64%, 78%) 0%, hsl(calc(var(--gh) + 36), 56%, 62%) 100%);
 }
 .g-cover span { font-size: 44px; filter: drop-shadow(0 4px 10px rgba(60, 25, 55, .25)); transition: transform .2s; }
-/* 真实商品图（淘宝 CDN）：绝对定位覆盖渐变占位；加载失败由 onerror 移除 img 回落占位 */
+/* 真实商品图（淘宝 CDN）：绝对定位覆盖渐变占位；加载失败由 onerror 移除 img 回落占位。
+ * 包括首页宽扁展厅槽在内，统一 cover 填满容器，不以 contain 露出两侧渐变。 */
 .g-cover img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-/* 宽扁槽位（fit）：方形商品图完整呈现，两侧露渐变底 */
-.g-cover.fit img { object-fit: contain; }
 /* 焦点对齐（focus 字段，cover 裁剪时保商品主体） */
 .g-cover[data-focus="top"] img { object-position: center top; }
 .g-cover[data-focus="bottom"] img { object-position: center bottom; }
