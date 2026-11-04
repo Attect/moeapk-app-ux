@@ -43,7 +43,7 @@
     if (DB.UPDATES.length && !S.x.updateCardDismissed) {
       const names = DB.UPDATES.map(u => { const c = DB.CATALOG.find(i => i.id === u.id); return c ? c.title : u.id; });
       h += card('<div class="dl-row" data-a="go-update" style="cursor:pointer"><div style="flex:1;min-width:0"><div class="li-title" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' +
-        (DB.UPDATES.length === 1
+        '<span class="update-icon">' + icon('arrow_upward') + '</span>' + (DB.UPDATES.length === 1
           ? '发现新版本：' + esc(names[0])
           : '发现 ' + DB.UPDATES.length + ' 个应用可更新：' + esc(names.slice(0, 2).join('、')) + (DB.UPDATES.length > 2 ? ' 等' : '')) +
         '</div><div class="li-sub">' + esc(DB.UPDATES[0].version) + ' 版本可用 · 点击查看全部</div></div>' +

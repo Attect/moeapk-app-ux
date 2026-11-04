@@ -11,16 +11,26 @@
   function cfgOf(id) {
     S.x.llmCfg = S.x.llmCfg || {};
     if (!S.x.llmCfg[id]) S.x.llmCfg[id] = Object.assign({}, LLM_DEF);
+    const model = LLM_MODELS.find(m => m.id === id);
+    if (model && model.contextLength > 0) {
+      S.x.llmCfg[id].ctxLen = Math.min(S.x.llmCfg[id].ctxLen, model.contextLength);
+    }
     return S.x.llmCfg[id];
+  }
+  function contextChoices(model) {
+    const max = model && model.contextLength > 0 ? model.contextLength : 32768;
+    const out = [2048, 4096, 8192, 16384, 32768, 65536, 131072, 262144].filter(n => n <= max);
+    if (!out.includes(max)) out.push(max);
+    return { max, values: out };
   }
   // 可选对话模型：目录 LLM + 本地导入 + 多模态演示
   // badges：GGUF 自检能力徽章（架构/量化/视觉/MTP 等）；think：支持深度思考开关（chat_template_kwargs）
   const LLM_MODELS = DB.AI.filter(m => m.type === 'model' && m.kind === 'llm').map(m => ({
-    id: m.id, name: m.name, size: m.parts.reduce((s, p) => s + p.size, 0),
+    id: m.id, name: m.name, size: m.parts.reduce((s, p) => s + p.size, 0), contextLength: m.context_length || 0,
     local: false, multiModal: false, think: false, badges: ['Q1_0']
   })).concat([
-    { id: 'local-bonsai', name: 'Bonsai-1.7B-Local.gguf', size: 260000000, local: true, multiModal: false, think: false, badges: ['Q4_K_M'] },
-    { id: 'bonsai-vl', name: 'Bonsai-VL 2B（多模态）', size: 1750000000, local: true, multiModal: true, think: true, badges: ['Q4_K_M', '视觉', 'MTP'] }
+    { id: 'local-bonsai', name: 'Bonsai-1.7B-Local.gguf', size: 260000000, contextLength: 32768, local: true, multiModal: false, think: false, badges: ['Q4_K_M'] },
+    { id: 'bonsai-vl', name: 'Bonsai-VL 2B（多模态）', size: 1750000000, contextLength: 262144, local: true, multiModal: true, think: true, badges: ['Q4_K_M', '视觉', 'MTP'] }
   ]);
 
   function jobBar(key, label) {
@@ -33,7 +43,7 @@
     return '<div class="' + (cls || '') + '" style="background:linear-gradient(165deg,hsl(' + a.hue + ',62%,64%),hsl(' + ((a.hue + 60) % 360) + ',48%,30%))"></div>';
   }
   // 共享给拆分文件（ai-llm / ai-diffusion / ai-tts）
-  window._aiShared = { A, L, curSess, cfgOf, LLM_MODELS, jobBar, assetThumb };
+  window._aiShared = { A, L, curSess, cfgOf, contextChoices, LLM_MODELS, jobBar, assetThumb };
 
   registerScreen('tab:ai', {
     title: 'AI',

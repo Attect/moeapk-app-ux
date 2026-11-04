@@ -102,7 +102,28 @@ async function shot(name) {
     await evaluate('document.querySelector(\'[data-a="lc-max-output"][data-arg="8192"]\').click()');
     const output = await evaluate('window._aiShared.cfgOf("bonsai-vl").maxOutput');
     if (output !== 8192) throw new Error(`maxOutput=${output}`);
-    await shot('walk-round25-config-light.png');
+    await evaluate('document.querySelector(\'[data-a="lc-ctx"][data-arg="262144"]\').click()');
+    const context = await evaluate('window._aiShared.cfgOf("bonsai-vl").ctxLen');
+    if (context !== 262144) throw new Error(`ctxLen=${context}`);
+    await shot('walk-round26-config-light.png');
+
+    await evaluate('location.hash = "#ai/llm-config/bonsai-1-7b-q1"');
+    await sleep(200);
+    const smallModel = await evaluate(`({
+      has32k: !!document.querySelector('[data-a="lc-ctx"][data-arg="32768"]'),
+      has256k: !!document.querySelector('[data-a="lc-ctx"][data-arg="262144"]')
+    })`);
+    if (!smallModel.has32k || smallModel.has256k) {
+      throw new Error(`model context choices incorrect: ${JSON.stringify(smallModel)}`);
+    }
+    await evaluate('document.querySelector(\'[data-a="lc-ctx"][data-arg="32768"]\').click()');
+    await evaluate('location.hash = "#apk"');
+    await sleep(200);
+    await shot('walk-round26-update-light.png');
+    await evaluate('document.querySelector(\'[data-a="theme-toggle"]\').click()');
+    await sleep(150);
+    await shot('walk-round26-update-dark.png');
+    await evaluate('document.querySelector(\'[data-a="theme-toggle"]\').click()');
 
     await evaluate('nav.push("llm")');
     await sleep(200);
@@ -137,7 +158,7 @@ async function shot(name) {
     if (scrolled.top !== 0 || scrolled.partial <= before || !scrolled.latest || scrolled.follow !== false) {
       throw new Error(`free scroll failed: ${JSON.stringify({ before, scrolled })}`);
     }
-    await shot('walk-round25-scroll-paused-light.png');
+    await shot('walk-round26-scroll-paused-light.png');
     await evaluate('document.querySelector(\'.chat-latest\').click()');
     await waitFor(() => evaluate(`(() => {
       const c = document.getElementById('chat');
@@ -150,10 +171,10 @@ async function shot(name) {
       width: 1024, height: 680, deviceScaleFactor: 1, mobile: false,
     });
     await sleep(300);
-    await shot('walk-round25-chat-dark-land.png');
+    await shot('walk-round26-chat-dark-land.png');
     if (externalRequests.length) throw new Error(`external requests: ${externalRequests.join(',')}`);
     if (exceptions.length) throw new Error(`browser exceptions: ${JSON.stringify(exceptions)}`);
-    console.log(JSON.stringify({ ok: true, output, before, scrolled, externalRequests: 0, exceptions: 0 }, null, 2));
+    console.log(JSON.stringify({ ok: true, output, context, smallModel, before, scrolled, externalRequests: 0, exceptions: 0 }, null, 2));
   } finally {
     try { if (ws) ws.close(); } catch {}
     chrome.kill();

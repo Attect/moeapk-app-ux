@@ -7,7 +7,7 @@ window.DB.AI = [
   { "type": "engine", "id": "llm-fork", "name": "LLM 引擎（llama.cpp fork）", "kind": "llm", "version": "1.0.0",
     "summary": "端侧 LLM 推理引擎（llama.cpp fork，arm64）。",
     "parts": [ { "name": "llm-fork-arm64-v8a.zip", "size": 15728640 } ] },
-  { "type": "model", "id": "bonsai-1-7b-q1", "name": "Bonsai 1.7B（Q1_0）", "kind": "llm", "version": "1.0.0",
+  { "type": "model", "id": "bonsai-1-7b-q1", "name": "Bonsai 1.7B（Q1_0）", "kind": "llm", "version": "1.0.0", "context_length": 32768,
     "summary": "PrismML Bonsai 1.7B Q1_0 量化 GGUF（llm-fork 引擎专用格式）", "engine": "llm-fork",
     "parts": [ { "name": "Bonsai-1.7B-Q1_0.gguf", "size": 248302272 } ] },
   { "type": "model", "id": "audio8-tts", "name": "Audio8 TTS 0.6B（INT4）", "kind": "tts", "version": "0.6b-preview-v3",

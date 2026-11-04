@@ -1,6 +1,6 @@
 // LLM 对话子页 + LLM 推理配置子页。对应 ui/ai/LlmScreen.kt、LlmConfigScreen.kt
 (function () {
-  const { A, L, curSess, cfgOf, LLM_MODELS, assetThumb } = window._aiShared;
+  const { A, L, curSess, cfgOf, contextChoices, LLM_MODELS, assetThumb } = window._aiShared;
 
   registerScreen('llm', {
     title: () => { const s = curSess(); return s ? s.title : 'LLM 对话'; },
@@ -413,6 +413,7 @@
       S.x.lcId = arg || S.x.lcId;
       const m = LLM_MODELS.find(x => x.id === S.x.lcId) || { name: S.x.lcId };
       const cfg = cfgOf(S.x.lcId);
+      const ctx = contextChoices(m);
       const sl = (label, k, min, max, step, fmt) =>
         '<label class="slider-row"><span class="li-title">' + esc(label) + ' ' + fmt(cfg[k]) + '</span>' +
         '<input type="range" min="' + min + '" max="' + max + '" step="' + step + '" value="' + cfg[k] + '" class="slider" data-live="lc-set" data-k="' + k + '"></label>';
@@ -421,7 +422,9 @@
         // L8：系统提示词可编辑（原固定文案改为按模型可配）
         '<label class="field"><span class="field-label">系统提示词</span>' +
         '<textarea class="field-input" rows="3" data-live="lc-sysprompt">' + esc(cfg.sysprompt) + '</textarea></label>' +
-        sl('上下文长度', 'ctxLen', 2048, 32768, 1024, v => v) +
+        '<div class="muted small" style="padding-top:6px">上下文长度</div><div class="chip-row wrap" style="padding-top:4px">' +
+        ctx.values.map(n => chip(n, cfg.ctxLen === n, 'lc-ctx', n)).join('') + '</div>' +
+        '<div class="field-cap">模型最大 ' + ctx.max + ' tokens，可向上选择到该值；较大上下文会增加内存占用和预填充时间，不默认拉满。</div>' +
         '<div class="muted small" style="padding-top:6px">输出上限</div><div class="chip-row" style="padding-top:4px">' +
         [1024, 2048, 4096, 8192].map(n => chip(n, cfg.maxOutput === n, 'lc-max-output', n)).join('') + '</div>' +
         '<div class="field-cap">单次生成最多输出的 token 数；实际仍受剩余上下文限制。</div>' +
@@ -467,6 +470,7 @@
   });
   action('lc-seed', (ds, el) => { cfgOf(S.x.lcId).seed = +el.value; });
   action('lc-device', ds => { cfgOf(S.x.lcId).device = ds.arg; render(); });
+  action('lc-ctx', ds => { cfgOf(S.x.lcId).ctxLen = +ds.arg; render(); });
   action('lc-max-output', ds => { cfgOf(S.x.lcId).maxOutput = +ds.arg; render(); });
   action('lc-kv', ds => { cfgOf(S.x.lcId).kv = ds.arg; render(); });
   action('lc-spec', ds => { cfgOf(S.x.lcId).spec = ds.arg; render(); });
