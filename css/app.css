@@ -698,7 +698,16 @@ body.has-full .proto-bar { opacity: 0; pointer-events: none; transition: opacity
 
 /* ---------- LLM 对话页：对话区 + 底部输入区 + 侧边菜单 ---------- */
 .chat-page { height: 100%; display: flex; flex-direction: column; }
-#chat { flex: 1; overflow-y: auto; min-height: 0; padding-top: 8px; }
+.chat-scroll { position: relative; flex: 1; min-height: 0; }
+#chat { height: 100%; overflow-y: auto; min-height: 0; padding-top: 8px; }
+.chat-latest {
+  display: none; position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%);
+  align-items: center; gap: 4px; padding: 8px 14px; border: 1px solid var(--glass-brd);
+  border-radius: 999px; background: var(--glass-chrome); color: var(--primary);
+  backdrop-filter: blur(14px); box-shadow: var(--shadow-float); cursor: pointer; z-index: 3;
+}
+.chat-latest.on { display: inline-flex; }
+.chat-latest .ic { width: 18px; height: 18px; }
 .chat-empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 40px 28px; color: var(--on-surface-variant); text-align: center; }
 .chat-empty .ic { width: 42px; height: 42px; opacity: .45; }
 .composer { flex: none; padding: 10px 0 4px; border-top: 1px solid var(--glass-brd); }

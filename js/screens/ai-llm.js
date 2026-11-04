@@ -38,7 +38,7 @@
         }
         h += '<div style="padding-top:8px">' + card(body) + '</div>';
       } else {
-        h += '<div id="chat">';
+        h += '<div class="chat-scroll"><div id="chat">';
         sess.messages.forEach((msg, mi) => {
           if (msg.role === 'sys') { h += '<div class="msg-row"><div class="msg-card sys">' + esc(msg.text) + '</div></div>'; return; }
           h += '<div class="msg-row">' + (msg.role === 'ai' ? '<img class="msg-mascot" src="assets/chara-head.webp" alt="">' : '') +
@@ -62,7 +62,7 @@
         } else if (sess.thinking) {
           h += '<div class="msg-row"><img class="msg-mascot" src="assets/chara-head.webp" alt=""><div class="msg-card ai">' + esc(sess.partial || '') + '<span class="muted">▍</span></div></div>';
         }
-        h += '</div>';
+        h += '</div><button class="chat-latest' + (S.x.llmFollow === false ? ' on' : '') + '" data-a="llm-latest">' + icon('expand_more') + '<span>回到最新</span></button></div>';
       }
     }
     // 底部输入区：模型选择 + 上下文用量；附件 + 输入 + 发送
@@ -119,8 +119,8 @@
 
   action('llm-menu', () => { S.x.llmDrawer = true; render(); });
   action('llm-drawer-close', () => { S.x.llmDrawer = false; render(); });
-  action('llm-new-chat', () => { const l = L(); l.cur = null; l.attach = null; S.x.llmDrawer = false; render(); });
-  action('llm-switch', ds => { L().cur = ds.arg; S.x.llmDrawer = false; render(); });
+  action('llm-new-chat', () => { const l = L(); l.cur = null; l.attach = null; S.x.llmDrawer = false; S.x.llmFollow = true; renderChat(); });
+  action('llm-switch', ds => { L().cur = ds.arg; S.x.llmDrawer = false; S.x.llmFollow = true; renderChat(); });
 
   // 底部模型选择对话框（新对话态选 modelSel；有消息会话换模型则另起新对话）
   action('llm-pick', () => {
@@ -187,9 +187,37 @@
       startStream(sess);
     }
   }
+  // 重绘流式气泡时保留用户阅读位置；仅跟随模式自动贴底。
+  function renderChat() {
+    const old = document.getElementById('chat');
+    const top = old ? old.scrollTop : 0;
+    render();
+    const c = document.getElementById('chat');
+    if (!c) return;
+    if (S.x.llmFollow === false) c.scrollTop = Math.min(top, Math.max(0, c.scrollHeight - c.clientHeight));
+    else c.scrollTop = c.scrollHeight;
+    const b = document.querySelector('.chat-latest');
+    if (b) b.classList.toggle('on', S.x.llmFollow === false);
+  }
+  action('llm-latest', () => {
+    S.x.llmFollow = true;
+    const c = document.getElementById('chat');
+    if (c) c.scrollTo({ top: c.scrollHeight, behavior: 'smooth' });
+    const b = document.querySelector('.chat-latest');
+    if (b) b.classList.remove('on');
+  });
+  document.addEventListener('scroll', ev => {
+    const c = ev.target;
+    if (!c || c.id !== 'chat') return;
+    const atBottom = c.scrollHeight - c.scrollTop - c.clientHeight <= 24;
+    S.x.llmFollow = atBottom;
+    const b = document.querySelector('.chat-latest');
+    if (b) b.classList.toggle('on', !atBottom);
+  }, true);
   action('llm-think', () => { const l = L(); l.think = !l.think; render(); });
   function startStream(sess) {
-    render();
+    S.x.llmFollow = true;
+    renderChat();
     const lastUser = [...sess.messages].reverse().find(x => x.role === 'user');
     const q = lastUser ? lastUser.text : '';
     const reply = '这是模拟回复：端侧模型已收到你的消息' + (lastUser && lastUser.img != null ? '（含 1 张图片）' : '') +
@@ -209,8 +237,7 @@
         sess.tokens += tokens;
         sess.thinking = false;
       }
-      render();
-      const c = document.getElementById('chat'); if (c) c.scrollIntoView({ block: 'end' });
+      renderChat();
     }, 60);
   }
   action('llm-stop', () => {
@@ -395,6 +422,9 @@
         '<label class="field"><span class="field-label">系统提示词</span>' +
         '<textarea class="field-input" rows="3" data-live="lc-sysprompt">' + esc(cfg.sysprompt) + '</textarea></label>' +
         sl('上下文长度', 'ctxLen', 2048, 32768, 1024, v => v) +
+        '<div class="muted small" style="padding-top:6px">输出上限</div><div class="chip-row" style="padding-top:4px">' +
+        [1024, 2048, 4096, 8192].map(n => chip(n, cfg.maxOutput === n, 'lc-max-output', n)).join('') + '</div>' +
+        '<div class="field-cap">单次生成最多输出的 token 数；实际仍受剩余上下文限制。</div>' +
         '<label class="field"><span class="field-label">种子（-1 为随机）</span>' +
         '<input class="field-input" type="number" value="' + cfg.seed + '" data-live="lc-seed"></label>' +
         // L4：采样参数完整透出（top_k / top_p / min_p / 重复惩罚，每次请求即时生效）
@@ -404,23 +434,24 @@
         sl('min_p', 'minP', 0, 0.5, 0.01, v => (+v).toFixed(2)) +
         sl('重复惩罚', 'penalty', 0.8, 1.5, 0.01, v => (+v).toFixed(2)) +
         '<div class="muted small" style="padding-top:6px">推理方式</div><div class="chip-row" style="padding-top:4px">' +
-        ['cpu', 'gpu', 'npu'].map(d => chip(d.toUpperCase(), cfg.device === d, 'lc-device', d)).join('') + '</div>' +
+        ['cpu', 'gpu'].map(d => chip(d.toUpperCase(), cfg.device === d, 'lc-device', d)).join('') + '</div>' +
+        '<div class="field-cap">CPU 或 GPU（OpenCL）；切换后下一次请求自动重载。当前引擎没有 NPU 档位。</div>' +
         sl('线程数', 'threads', 1, 8, 1, v => v) +
-        sl('批大小', 'batch', 8, 512, 8, v => v) +
-        '<div class="field-cap">批大小已透传引擎：影响 prefill 吞吐，过大可能内存不足。</div>' +
+        sl('微批大小', 'batch', 8, 512, 8, v => v) +
+        '<div class="field-cap">prompt 单次物理计算 token 数；负载参数变化自动重载，采样参数无需重载。</div>' +
         '<div class="muted small" style="padding-top:6px">KV 缓存量化</div><div class="chip-row" style="padding-top:4px">' +
         ['FP16', 'Q8_0', 'Q4_0'].map(kv => chip(kv, cfg.kv === kv, 'lc-kv', kv)).join('') + '</div>' +
-        // L3：投机解码（自投机零额外文件；MTP 需模型含 NextN 头）
+        // L3：自投机按请求切换；mrope 由 native 自动回落普通解码，MTP 不做空头档位
         '<div class="muted small" style="padding-top:6px">生成加速（投机解码）</div><div class="chip-row" style="padding-top:4px">' +
-        [['off', '关闭'], ['ngram', '自投机（推荐）'], ['mtp', 'MTP（需 NextN）']].map(x => chip(x[1], cfg.spec === x[0], 'lc-spec', x[0])).join('') + '</div>' +
-        '<div class="field-cap">自投机在已生成文本中找草稿，无需额外模型文件；MTP 需模型含 NextN 头（模型中心有徽章标识）。</div>' +
+        [['off', '关闭'], ['ngram', '自投机']].map(x => chip(x[1], cfg.spec === x[0], 'lc-spec', x[0])).join('') + '</div>' +
+        '<div class="field-cap">自投机在已生成文本中找草稿，无需额外模型文件；下一次请求生效，不重载权重。</div>' +
         // L6：空闲自动卸载
         '<div class="muted small" style="padding-top:6px">模型常驻</div><div class="chip-row" style="padding-top:4px">' +
         [['always', '常驻'], ['3', '3 分钟'], ['10', '10 分钟'], ['30', '30 分钟']].map(x => chip(x[1], cfg.resident === x[0], 'lc-resident', x[0])).join('') + '</div>' +
         '<div class="field-cap">超时未使用将卸载模型释放内存，下次对话自动重载。</div>');
       h += '<div style="margin-top:12px;display:flex;gap:8px">' +
         btn('恢复默认', 'lc-reset', null, 'ghost') + btn('完成', 'lc-done', null, 'flex') + '</div>';
-      h += '<div class="muted small center" style="padding:12px">采样参数与批大小在每次请求时即时生效，无需重载模型；配置按模型独立保存。</div>';
+      h += '<div class="muted small center" style="padding:12px">采样参数、输出上限与生成加速按请求生效；负载参数变化自动重载。配置按模型独立保存。</div>';
       return h;
     }
   });
@@ -436,6 +467,7 @@
   });
   action('lc-seed', (ds, el) => { cfgOf(S.x.lcId).seed = +el.value; });
   action('lc-device', ds => { cfgOf(S.x.lcId).device = ds.arg; render(); });
+  action('lc-max-output', ds => { cfgOf(S.x.lcId).maxOutput = +ds.arg; render(); });
   action('lc-kv', ds => { cfgOf(S.x.lcId).kv = ds.arg; render(); });
   action('lc-spec', ds => { cfgOf(S.x.lcId).spec = ds.arg; render(); });
   action('lc-resident', ds => { cfgOf(S.x.lcId).resident = ds.arg; render(); });

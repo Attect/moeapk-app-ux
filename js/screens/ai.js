@@ -5,8 +5,8 @@
   const A = () => S.x.ai = S.x.ai || {};
   const L = () => A().llm = A().llm || { sessions: [], cur: null, modelSel: 'bonsai-vl', attach: null };
   const curSess = () => { const l = L(); return l.sessions.find(s => s.id === l.cur) || null; };
-  const LLM_DEF = { ctxLen: 8192, seed: 42, temp: 0.7, device: 'npu', threads: 4, batch: 128, kv: 'Q8_0',
-    topK: 40, topP: 0.95, minP: 0.05, penalty: 1.1, spec: 'off', resident: 'always',
+  const LLM_DEF = { ctxLen: 8192, seed: 42, temp: 0.7, device: 'gpu', threads: 4, batch: 128, kv: 'Q8_0',
+    topK: 40, topP: 0.95, minP: 0.05, penalty: 1.1, spec: 'off', resident: 'always', maxOutput: 2048,
     sysprompt: '你是 MoeApk 端侧 AI 助手，回答简洁友好。' };
   function cfgOf(id) {
     S.x.llmCfg = S.x.llmCfg || {};
