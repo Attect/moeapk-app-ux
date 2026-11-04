@@ -80,11 +80,11 @@
 
   /* ---------- 背景（多层柔光 mesh） ---------- */
   --bg-mesh:
-    radial-gradient(120% 70% at 8% -4%, rgba(255,214,230,.85) 0%, transparent 55%),
+    radial-gradient(120% 70% at 8% 2%, rgba(255,214,230,.85) 0%, transparent 55%),
     radial-gradient(100% 60% at 96% 6%, rgba(201,240,221,.75) 0%, transparent 52%),
     radial-gradient(110% 70% at 88% 102%, rgba(213,229,249,.8) 0%, transparent 55%),
     radial-gradient(100% 70% at 4% 96%, rgba(255,240,222,.8) 0%, transparent 52%),
-    linear-gradient(160deg, #FDF5F3 0%, #FBF3F6 45%, #F5F3FA 100%);
+    linear-gradient(160deg, #F5E7E1 0%, #F3ECF0 45%, #F0EEF7 100%);
 }
 [data-theme="dark"] {
   /* ---------- 星夜配色 ---------- */
