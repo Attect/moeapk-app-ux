@@ -90,7 +90,7 @@
         (local.length ? '<div style="margin-top:8px">' + progress(Math.min(1, total / 8e9)) + '<div class="muted" style="font-size:11px;margin-top:4px">约 ' + fmtSize(total) + ' / 建议预留 8 GB 模型分区</div></div>' : ''));
 
       // 分类 Tab + 就地过滤
-      h += '<div class="chip-row" style="position:sticky;top:-8px;z-index:3;background:var(--bg);padding-top:10px">' +
+      h += '<div class="chip-row" style="position:sticky;top:calc(var(--statusbar-h) + var(--topbar-h) - 8px);z-index:3;background:var(--glass-chrome);backdrop-filter:var(--blur-chrome);-webkit-backdrop-filter:var(--blur-chrome);padding-top:10px">' +
         CATS.map(c => chip(c[1], cat === c[0], 'mdl-cat', c[0])).join('') + '</div>';
       h += card('<div class="msg-row" style="margin-top:0">' + icon('search', 'small') +
         '<input class="field-input" style="flex:1" data-keep="mdl-q" placeholder="过滤模型名称…" value="' + esc((S.x.keep && S.x.keep['mdl-q']) || '') + '"></div>' +
@@ -152,8 +152,8 @@
         '<div class="chip-row" style="padding-top:0">' + ['全部', '魔塔社区', 'HF 镜像', 'HuggingFace'].map(x =>
           chip(x, src === x, 'mdl-src', x)).join('') + '</div>' +
         '<div style="padding:0 12px 12px">' + btn('搜索模型库', 'models-find', null, 'small block') + '</div>');
-      // mdl-page：页级样式域——本页吸顶分类行（top:-8px 满宽横带）与吸顶分组标题胶囊
-      // 错位共存（分组标题改为 top:44px 吸在分类行下沿，见 app.css），避免两者重叠
+      // mdl-page：页级样式域——吸顶分类行与分组标题从状态栏 + 顶栏下沿错位计算，
+      // 分组标题吸在分类行下沿（见 app.css），避免两者重叠或躲到顶部 chrome 后面。
       return '<div class="mdl-page">' + h + '</div>';
     }
   });

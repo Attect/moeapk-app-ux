@@ -121,6 +121,31 @@
       (acts ? '<div class="dlg-actions">' + acts + '</div>' : '') + '</div></div>';
   }
 
+  // 系统状态栏只用于原型走查：让标题栏上方不再是一块未表达的空白，
+  // 可以直接验证滚动内容确实延伸到状态栏背后。沉浸式页沿用同一安全区。
+  function statusbarHtml(full) {
+    const now = new Date();
+    const time = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+    return '<div class="statusbar' + (full ? ' full' : '') + '" aria-hidden="true"><span>' + time + '</span>' +
+      '<span class="status-icons"><span>5G</span>' + icon('signal_cellular_alt') + icon('wifi') +
+      '<span class="status-battery"></span></span></div>';
+  }
+
+  // 底部导航隐显只改覆盖层 class，不触发整页 render，避免滚动中的列表被重建。
+  function setNavHidden(hidden) {
+    const app = document.getElementById('app');
+    if (!app) return;
+    const next = !!(hidden && app.classList.contains('has-nav') && !isRail());
+    S.x.navHidden = next;
+    app.classList.toggle('nav-hidden', next);
+    const bar = app.querySelector('.navbar');
+    if (bar) {
+      bar.setAttribute('aria-hidden', next ? 'true' : 'false');
+      if (next) bar.setAttribute('inert', '');
+      else bar.removeAttribute('inert');
+    }
+  }
+
   // ---------- 渲染 ----------
   window.render = function () {
     const app = document.getElementById('app');
@@ -146,12 +171,13 @@
       app.__ident = ident;
       nextScroll = S.scrollMem[ident] || 0;
       S.x.showTop = nextScroll > 480; // 换屏即按目标位置校正回顶按钮（不带旧屏残值）
+      S.x.navHidden = false; // 换屏/换 Tab 时导航重新出现，不带入上一屏滚动方向
     } else {
       nextScroll = prevScroll;
     }
-    app.className = cur ? '' : 'has-nav'; // Tab 页（有底栏）标记：横屏时底栏变左栏 rail
     // 模拟键盘只在对话页有效，切走自动收起
     if (S.x.kbDemo && (!cur || cur.page !== 'llm')) S.x.kbDemo = false;
+    if (cur || isRail()) S.x.navHidden = false;
     let title, content, showBack, bottom = '';
     if (cur) {
       const def = SCREENS[cur.page];
@@ -163,7 +189,7 @@
       title = typeof def.title === 'function' ? def.title() : def.title;
       content = def.render();
       showBack = false;
-      bottom = '<nav class="navbar">' + TABS.map(t =>
+      bottom = '<nav class="navbar" aria-label="主导航" aria-hidden="' + (S.x.navHidden ? 'true' : 'false') + '"' + (S.x.navHidden ? ' inert' : '') + '>' + TABS.map(t =>
         '<button class="nav-item' + (S.tab === t.id ? ' on' : '') + '" data-a="tab" data-arg="' + t.id + '">' +
         icon(t.icon) + '<span>' + t.label + '</span></button>').join('') + '</nav>';
     }
@@ -193,10 +219,14 @@
       const tip = ONBOARD_TIPS[S.tab];
       if (tip && !seen[S.tab]) onboard = '<div class="onboard" data-a="onboard-ok">' + icon(tip.icon) + '<span>' + tip.text + '</span><b>知道了</b></div>';
     }
-    const topbar = full ? '' :
-      '<header class="topbar">' + (showBack ? '<button class="icbtn" data-a="back">' + icon('arrow_back') + '</button>' : '') +
+    const topbar = full ? statusbarHtml(true) :
+      '<div class="top-chrome">' + statusbarHtml(false) + '<header class="topbar">' +
+      (showBack ? '<button class="icbtn" data-a="back">' + icon('arrow_back') + '</button>' : '') +
       '<span class="topbar-copy"><span class="topbar-title">' + esc(title) + '</span>' +
-      (ts ? '<span class="topbar-subtitle">' + esc(ts) + '</span>' : '') + '</span>' + rightBtn + '</header>';
+      (ts ? '<span class="topbar-subtitle">' + esc(ts) + '</span>' : '') + '</span>' + rightBtn +
+      '</header></div>';
+    app.className = (cur ? '' : 'has-nav') + (full ? ' has-full' : '') +
+      (S.x.kbDemo ? ' has-kbd' : '') + (S.x.navHidden ? ' nav-hidden' : '');
     document.body.classList.toggle('has-full', full); // 全屏页隐藏 proto-bar 调试条（避免与查看器顶部信息重叠）
     // 下拉刷新指示器（第十轮）：刷新期间悬浮于内容顶部，列表保持原位可见
     const ptr = S.x.apkLoading ? '<div class="ptr-indicator"><div class="spinner"></div></div>' : '';
@@ -221,8 +251,16 @@
         try { el2.setSelectionRange(selPos, selPos); } catch (e) { /* 非文本输入 */ }
       }
     }
+    const kb = app.querySelector('.kbdemo');
+    if (kb) app.style.setProperty('--kbd-h', kb.offsetHeight + 'px');
     const c = document.getElementById('content');
-    if (c && c.scrollTop !== nextScroll) c.scrollTop = nextScroll;
+    if (c) {
+      // DOM 重建后的首帧不算用户滚动；从恢复位置重新累计方向，避免导航误隐藏。
+      c.__chromeLastY = nextScroll;
+      c.__chromeAnchorY = nextScroll;
+      c.__chromeDir = 0;
+      if (c.scrollTop !== nextScroll) c.scrollTop = nextScroll;
+    }
   };
 
   // ---------- 全局事件 ----------
@@ -251,12 +289,33 @@
     const live = e.target.dataset && e.target.dataset.live;
     if (live && ACTIONS[live]) ACTIONS[live](e.target.dataset, e.target);
   });
-  // 回顶按钮显隐（滚动位置的记忆/还原统一由 render() 的 S.scrollMem 机制承担）
+  // 回顶按钮与底部导航跟随真实滚动位置；仅直接切 class，不重绘滚动中的列表。
   document.addEventListener('scroll', e => {
-    if (e.target && e.target.id === 'content') {
-      const show = e.target.scrollTop > 480;
-      if (!!show !== !!S.x.showTop) { S.x.showTop = show; render(); }
+    const c = e.target;
+    if (!c || c.id !== 'content') return;
+    const y = c.scrollTop;
+    const show = y > 480;
+    if (!!show !== !!S.x.showTop) {
+      S.x.showTop = show;
+      const topBtn = document.querySelector('.to-top');
+      if (topBtn) topBtn.classList.toggle('on', show);
     }
+
+    if (!document.getElementById('app').classList.contains('has-nav') || isRail()) return;
+    const lastY = c.__chromeLastY == null ? y : c.__chromeLastY;
+    const delta = y - lastY;
+    const dir = delta > 0 ? 1 : (delta < 0 ? -1 : 0);
+    if (dir && dir !== c.__chromeDir) {
+      c.__chromeDir = dir;
+      c.__chromeAnchorY = lastY;
+    }
+    if (c.__chromeAnchorY == null) c.__chromeAnchorY = lastY;
+    const travel = dir === 1 ? y - c.__chromeAnchorY : c.__chromeAnchorY - y;
+    // scrollTop 增加 = 向下浏览：隐藏；反向超过 8px 即显示。顶部始终恢复。
+    if (y <= 24) setNavHidden(false);
+    else if (dir === 1 && y > 96 && travel > 8) setNavHidden(true);
+    else if (dir === -1 && travel > 8) setNavHidden(false);
+    c.__chromeLastY = y;
   }, true);
 
   // ---------- 模拟软键盘（第四轮：键盘行为定案的可视化验证） ----------
@@ -311,7 +370,11 @@
     try { localStorage.setItem('proto-onboard-seen', JSON.stringify(Object.keys(s))); } catch (e) { /* 忽略 */ }
     render();
   });
-  action('to-top', () => { const c = document.getElementById('content'); if (c) c.scrollTo({ top: 0, behavior: 'smooth' }); });
+  action('to-top', () => {
+    setNavHidden(false);
+    const c = document.getElementById('content');
+    if (c) c.scrollTo({ top: 0, behavior: 'smooth' });
+  });
 
   // 输入框聚焦时滚入视野（软键盘场景兜底，对应 Compose 侧 imePadding + 自动滚动）
   document.addEventListener('focusin', e => {
@@ -321,7 +384,7 @@
   });
 
   // 通用动作
-  action('tab', ds => nav.goTab(ds.arg));
+  action('tab', ds => { setNavHidden(false); nav.goTab(ds.arg); });
   action('back', () => { if (!nav.pop()) nav.goTab(S.tab); });
   // D9：草稿自动保存的白名单（LLM 消息 / 生图提示词 / 负向词），启动时恢复
   const DRAFT_KEYS = ['llm-q', 'diff-prompt', 'diff-neg'];

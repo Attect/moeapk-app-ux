@@ -66,7 +66,7 @@
   --glow-soft: 0 2px 8px -3px rgba(229,168,192,.18);
   --ring-focus: 0 0 0 3px rgba(233,78,138,.20);
 
-  /* ---------- chrome 尺寸令牌（第十轮：顶栏 64→52 / 底栏 80→64 减薄） ---------- */
+  /* ---------- chrome 尺寸令牌（内容顶栏 52 / 悬浮底栏 64；系统栏另计） ---------- */
   --topbar-h: 52px;
   --navbar-h: 64px;
 
@@ -177,7 +177,7 @@ body.has-full .proto-bar { opacity: 0; pointer-events: none; transition: opacity
 
 /* ---------- 模拟软键盘（第四轮：验证"输入区贴键盘、零多余间隙"定案） ---------- */
 .kbdemo {
-  flex: none;
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 30;
   background: var(--glass-chrome); backdrop-filter: var(--blur-chrome);
   border-top: 1px solid var(--glass-brd);
   padding: 4px 6px 8px;
@@ -201,13 +201,28 @@ body.has-full .proto-bar { opacity: 0; pointer-events: none; transition: opacity
 .tag-row .achip { font-size: 10px; padding: 1px 7px; }
 .tag-row .tag-kind { background: var(--secondary-container); color: var(--on-secondary-container); border-color: transparent; }
 
-/* ---------- 连续型顶栏：标题/辅助信息居左，操作居右 ---------- */
-#app { display: flex; flex-direction: column; height: 100%; overflow: hidden; position: relative; }
+/* ---------- 边到边 Scaffold：内容真实延伸到系统栏与 chrome 背后 ----------
+ * 顶栏/底栏不再参与普通文档流；滚动区铺满 #app，首末 padding 只负责可读性。
+ * 因此 backdrop-filter 取样的是正在滑过的真实列表，而不是静态 mesh 背景。 */
+#app {
+  --nav-lift: 0px;
+  --nav-reserve: 0px;
+  display: block; height: 100%; overflow: hidden; position: relative;
+}
+#app.has-nav { --nav-lift: calc(var(--navbar-h) + 20px); --nav-reserve: calc(var(--navbar-h) + 20px); }
+#app.has-nav.nav-hidden { --nav-lift: 0px; }
+.top-chrome {
+  position: absolute; inset: 0 0 auto; z-index: 20;
+  background: var(--glass-chrome);
+  backdrop-filter: var(--blur-chrome); -webkit-backdrop-filter: var(--blur-chrome);
+  border-bottom: 1px solid var(--outline-variant);
+  box-shadow: 0 6px 20px -16px var(--shadow);
+}
 .topbar {
-  height: var(--topbar-h); flex: none;
+  height: var(--topbar-h);
   display: flex; align-items: center; padding: 0 4px;
   background: transparent; border-bottom: 0;
-  position: relative; z-index: 7;
+  position: relative;
 }
 .topbar-copy { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; padding: 0 6px; }
 .topbar-title {
@@ -218,6 +233,26 @@ body.has-full .proto-bar { opacity: 0; pointer-events: none; transition: opacity
   color: var(--on-surface-variant); font-size: 11px; line-height: 14px;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
+/* 原型显式画出系统状态栏，验证列表可穿到其背后；交互控件仍避开此安全区。 */
+.statusbar {
+  height: var(--statusbar-h); padding: 0 16px;
+  display: flex; align-items: center; justify-content: space-between;
+  color: var(--on-surface); font-size: 12px; font-weight: 600; line-height: 1;
+  pointer-events: none; user-select: none;
+}
+.statusbar.full {
+  position: absolute; inset: 0 0 auto; z-index: 26; color: rgba(255,255,255,.9);
+  background: linear-gradient(rgba(0,0,0,.30), transparent);
+  text-shadow: 0 1px 3px rgba(0,0,0,.45);
+}
+.status-icons { display: inline-flex; align-items: center; gap: 5px; font-size: 9px; font-weight: 500; }
+.status-icons .ic { width: 13px; height: 13px; }
+.status-battery {
+  position: relative; width: 18px; height: 9px; margin-left: 1px;
+  border: 1.5px solid currentColor; border-radius: 3px; opacity: .9;
+}
+.status-battery::before { content: ''; position: absolute; inset: 1px; border-radius: 1px; background: currentColor; }
+.status-battery::after { content: ''; position: absolute; right: -3px; top: 2px; width: 2px; height: 3px; border-radius: 0 1px 1px 0; background: currentColor; }
 .icbtn {
   width: 48px; height: 48px; flex: none;
   display: inline-flex; align-items: center; justify-content: center;
@@ -227,12 +262,16 @@ body.has-full .proto-bar { opacity: 0; pointer-events: none; transition: opacity
 .icbtn:active { background: rgba(233,78,138,.14); transform: scale(.92); }
 .ic { width: 24px; height: 24px; }
 
-/* ---------- 内容区 ---------- */
+/* ---------- 内容区：物理视口边到边，逻辑内容避开 chrome ---------- */
 .content {
-  flex: 1; overflow-y: auto; overscroll-behavior: contain;
-  padding: 8px 16px 24px;
+  position: absolute; inset: 0; overflow-y: auto; overscroll-behavior: contain;
+  padding: calc(var(--statusbar-h) + var(--topbar-h) + 8px) 16px calc(var(--gesture-h) + var(--nav-reserve) + 24px);
+  scroll-padding-top: calc(var(--statusbar-h) + var(--topbar-h) + 16px);
+  scroll-padding-bottom: calc(var(--gesture-h) + var(--nav-reserve) + 16px);
   scrollbar-width: none;
 }
+.content.full { padding: 0; overflow: hidden; scroll-padding: 0; }
+#app.has-kbd .content { bottom: var(--kbd-h, 198px); }
 .content::-webkit-scrollbar { display: none; }
 .ptr-hint { text-align: center; color: var(--on-surface-variant); font-size: 12px; padding: 8px 0 0; }
 /* 下拉刷新指示器（第十二轮修订，对应 App PullToRefreshBox）：**只换主题色**——
@@ -241,21 +280,30 @@ body.has-full .proto-bar { opacity: 0; pointer-events: none; transition: opacity
  * 模糊取样的是内容层、阴影是外部绘制层，都不随指示器自身的隐藏一起消失，
  * 会在列表顶部留下常驻残影；半透明圆底再与 elevation 叠加，还会把正圆糊成灰边。 */
 .ptr-indicator {
-  position: absolute; top: calc(var(--topbar-h) + 8px); left: 50%; transform: translateX(-50%); z-index: 8;
+  position: absolute; top: calc(var(--statusbar-h) + var(--topbar-h) + 8px); left: 50%; transform: translateX(-50%); z-index: 22;
   width: 40px; height: 40px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   background: var(--surface-highest);
 }
 .ptr-indicator .spinner { width: 20px; height: 20px; border-width: 2.5px; }
 
-/* ---------- 底部导航（NavigationBar · 玻璃模糊 + 发光选中） ---------- */
+/* ---------- 底部导航（悬浮玻璃胶囊；滚动方向驱动隐显） ---------- */
 .navbar {
-  flex: none; height: var(--navbar-h); padding-bottom: 4px;
+  position: absolute; left: 12px; right: 12px; bottom: calc(var(--gesture-h) + 10px); z-index: 20;
+  height: var(--navbar-h); padding-bottom: 4px;
   display: flex;
   background: var(--glass-chrome);
   backdrop-filter: var(--blur-chrome); -webkit-backdrop-filter: var(--blur-chrome);
-  border-top: 1px solid var(--glass-brd);
-  position: relative; z-index: 7;
+  border: 1px solid var(--glass-brd); border-radius: 26px;
+  box-shadow: var(--shadow-float);
+  transform: translate3d(0,0,0); opacity: 1;
+  transition: transform .26s cubic-bezier(.2,.8,.2,1), opacity .18s ease,
+    background .22s ease, border-color .22s ease;
+  will-change: transform, opacity;
+}
+#app.nav-hidden .navbar {
+  transform: translate3d(0,calc(100% + var(--gesture-h) + 18px),0);
+  opacity: 0; pointer-events: none;
 }
 .nav-item {
   flex: 1; border: 0; background: none; cursor: pointer;
@@ -294,9 +342,9 @@ body.has-full .proto-bar { opacity: 0; pointer-events: none; transition: opacity
 /* 分组标题（I3 吸顶；第八轮定案：玻璃胶囊）——
  * ① 组前 26px 大留白（原 14px 与「标题→卡片」间距雷同，分组边界不辨）；
  * ② 玻璃底收缩为文字宽胶囊（原满宽负 margin 横带），滚动吸顶时不再整带压住卡片软阴影；
- * ③ top: 6px 悬浮（原 -8px 顶死滚动区上沿），滑过内容在胶囊上下留有缝隙。 */
+ * ③ 吸顶位置从状态栏 + 顶栏下沿再留 6px，滚动区虽边到边，标题也不会藏进顶部 chrome。 */
 .section-title {
-  position: sticky; top: 6px; z-index: 3;
+  position: sticky; top: calc(var(--statusbar-h) + var(--topbar-h) + 6px); z-index: 3;
   width: fit-content; max-width: 100%;
   margin: 26px 0 0 4px; padding: 6px 13px;
   font-size: 13px; font-weight: 700; letter-spacing: .3px;
@@ -310,9 +358,9 @@ body.has-full .proto-bar { opacity: 0; pointer-events: none; transition: opacity
 .section-title::before { content: '✦'; margin-right: 6px; font-size: 10px; }
 /* 页首首个分组标题上方无卡片，组前留白收敛 */
 .content > .section-title:first-child { margin-top: 14px; }
-/* 模型中心（第十一轮）：吸顶分类行（top:-8px 满宽横带）与吸顶分组标题胶囊错位共存——
- * 分组标题吸在分类行下沿（分类行可见高度 ≈ 42px），否则两者同区重叠互压。 */
-.mdl-page .section-title { top: 44px; }
+/* 模型中心：吸顶分类行与分组标题统一从状态栏 + 顶栏下沿错位计算，
+ * 分组标题吸在分类行下沿（分类行可见高度 ≈ 42px），避免两者同区重叠互压。 */
+.mdl-page .section-title { top: calc(var(--statusbar-h) + var(--topbar-h) + 44px); }
 .sec-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 4px 2px; }
 .sec-title {
   font-size: 14px; font-weight: 600;
@@ -531,9 +579,11 @@ body.has-full .proto-bar { opacity: 0; pointer-events: none; transition: opacity
 
 /* ---------- Toast（SnackBar 语义 · 深色玻璃） ---------- */
 .toast-wrap {
-  position: absolute; left: 16px; right: 16px; bottom: calc(var(--navbar-h) + 16px); z-index: 50;
+  position: absolute; left: 16px; right: 16px; bottom: calc(var(--gesture-h) + 12px); z-index: 50;
   display: flex; flex-direction: column; align-items: center; gap: 8px;
   pointer-events: none;
+  transform: translateY(calc(0px - var(--nav-lift)));
+  transition: transform .26s cubic-bezier(.2,.8,.2,1);
 }
 .toast {
   background: var(--inverse-surface); color: var(--inverse-on-surface);
@@ -907,7 +957,7 @@ body.has-full .proto-bar { opacity: 0; pointer-events: none; transition: opacity
 .as-cell .as-check .ic { width: 16px; height: 16px; }
 .as-cell.selected { outline: 3px solid var(--primary); outline-offset: -3px; }
 .batch-bar {
-  position: sticky; bottom: 0; z-index: 5;
+  position: sticky; bottom: calc(var(--gesture-h) + var(--nav-lift) + 4px); z-index: 5;
   display: flex; align-items: center; gap: 10px;
   background: var(--glass-chrome);
   backdrop-filter: var(--blur-chrome); -webkit-backdrop-filter: var(--blur-chrome);
@@ -917,9 +967,9 @@ body.has-full .proto-bar { opacity: 0; pointer-events: none; transition: opacity
 }
 
 /* ---------- 主题切换过渡（I8：Compose 侧对应 animateColor） ---------- */
-body, .card, .li, .topbar, .navbar, .chip, .btn, .tbtn, .field-input,
+body, .card, .li, .topbar, .top-chrome, .chip, .btn, .tbtn, .field-input,
 .content, .composer, .msg-card, .drawer, .dlg, .toast, .switch, .as-cell,
-.batch-bar, .onboard, .d-sess, .empty-illust, .section-title {
+.batch-bar, .d-sess, .empty-illust, .section-title {
   transition: background-color .22s ease, color .22s ease, border-color .22s ease, background .22s ease;
 }
 
@@ -933,30 +983,34 @@ body, .card, .li, .topbar, .navbar, .chip, .btn, .tbtn, .field-input,
 
 /* ---------- 回顶按钮（I3） ---------- */
 .to-top {
-  position: absolute; right: 14px; bottom: calc(var(--navbar-h) + 4px); z-index: 8;
+  position: absolute; right: 14px; bottom: calc(var(--gesture-h) + 4px); z-index: 22;
   width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--glass-brd); cursor: pointer;
   background: var(--glass-chrome);
   backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
   color: var(--primary);
   box-shadow: var(--shadow-float);
   display: flex; align-items: center; justify-content: center;
-  opacity: 0; pointer-events: none; transform: translateY(8px);
-  transition: opacity .2s, transform .2s;
+  opacity: 0; pointer-events: none; transform: translateY(calc(0px - var(--nav-lift) + 8px));
+  transition: opacity .2s, transform .26s cubic-bezier(.2,.8,.2,1);
 }
-.to-top.on { opacity: 1; pointer-events: auto; transform: none; }
-.to-top:active { transform: scale(.9); }
+.to-top.on { opacity: 1; pointer-events: auto; transform: translateY(calc(0px - var(--nav-lift))); }
+.to-top:active { transform: translateY(calc(0px - var(--nav-lift))) scale(.9); }
 .to-top .ic { width: 20px; height: 20px; }
 
 /* ---------- 首次引导横幅（I1） ---------- */
 .onboard {
-  position: absolute; left: 14px; right: 14px; bottom: calc(var(--navbar-h) - 2px); z-index: 9;
+  position: absolute; left: 14px; right: 14px; bottom: calc(var(--gesture-h) + 4px); z-index: 23;
   display: flex; align-items: center; gap: 10px;
   background: var(--grad-soft), var(--surface-high);
+  backdrop-filter: var(--blur-chrome); -webkit-backdrop-filter: var(--blur-chrome);
   border: 1px solid var(--glass-brd);
   color: var(--on-surface);
   border-radius: 18px; padding: 12px 14px; cursor: pointer;
   box-shadow: var(--shadow-float);
   font-size: 13px; line-height: 18px;
+  transform: translateY(calc(0px - var(--nav-lift)));
+  transition: transform .26s cubic-bezier(.2,.8,.2,1), background .22s ease,
+    color .22s ease, border-color .22s ease;
 }
 .onboard .ic { width: 20px; height: 20px; flex: none; color: var(--primary); }
 .onboard span { flex: 1; }
@@ -1099,6 +1153,7 @@ body, .card, .li, .topbar, .navbar, .chip, .btn, .tbtn, .field-input,
 @media (prefers-reduced-motion: reduce) {
   .sparkle, .login-mascot img, .av-cloud-inner.sway, .av-cloud-inner.sway-flat,
   .av-load-dot, .av-cloud.reveal { animation: none !important; }
+  .navbar, .to-top, .onboard, .toast-wrap { transition: none !important; }
 }
 
 /* ============================================================
@@ -1111,15 +1166,17 @@ body, .card, .li, .topbar, .navbar, .chip, .btn, .tbtn, .field-input,
 
 /* ---------- ≥720px：NavigationRail ---------- */
 @container (min-width: 720px) {
+  #app.has-nav { --nav-lift: 0px; --nav-reserve: 0px; }
   #app.has-nav .navbar {
-    position: absolute; left: 0; top: var(--topbar-h); bottom: 0; width: 84px;
-    flex-direction: column; height: auto; padding: 12px 0;
-    border-top: 0; border-right: 1px solid var(--glass-brd);
-    z-index: 6;
+    position: absolute; left: 0; right: auto; top: calc(var(--statusbar-h) + var(--topbar-h)); bottom: 0; width: 84px;
+    flex-direction: column; height: auto; padding: 12px 0 calc(12px + var(--gesture-h));
+    border: 0; border-right: 1px solid var(--glass-brd); border-radius: 0;
+    z-index: 15; transform: none; opacity: 1; pointer-events: auto;
   }
   #app.has-nav .nav-item { flex: none; width: 84px; height: 62px; }
-  #app.has-nav .content { margin-left: 84px; }
-  #app.has-nav .onboard { left: 98px; }
+  /* Rail 同样覆盖在真实内容上；padding 只保证首屏不落入栏下。 */
+  #app.has-nav .content { margin-left: 0; padding-left: 100px; }
+  #app.has-nav .onboard { left: 100px; }
   /* 素材网格负边距在右移后收敛回内容区内 */
   #app.has-nav .as-grid { margin-left: 0; }
 }
@@ -1502,7 +1559,7 @@ body, .card, .li, .topbar, .navbar, .chip, .btn, .tbtn, .field-input,
 
 /* 底部 CTA：sticky 玻璃条（沿用 batch-bar 模式） */
 .g-cta {
-  position: sticky; bottom: 0; z-index: 5;
+  position: sticky; bottom: calc(var(--gesture-h) + 4px); z-index: 5;
   display: flex; align-items: center; gap: 10px;
   background: var(--glass-chrome);
   backdrop-filter: var(--blur-chrome); -webkit-backdrop-filter: var(--blur-chrome);

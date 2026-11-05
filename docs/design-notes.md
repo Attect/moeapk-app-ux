@@ -49,6 +49,23 @@
 
 ## 设计沿革
 
+### 第二十九轮（2026-11-05，真实边到边玻璃 chrome 与悬浮底栏）
+
+**起因**：此前顶栏、底部 TAB 都在普通文档流中占高，列表根本到不了这些半透明层背后；所谓玻璃只能看到静态 mesh，顶栏甚至完全透明。底部 TAB 也是贴边实栏，不是参考界面那种内容可穿过的悬浮磨砂胶囊。
+
+**定案**：
+1. **边到边层叠**：`#app` 改为定位容器，滚动区 `position:absolute; inset:0`，状态栏 + 顶栏组成独立 `.top-chrome`，底部 `.navbar` 绝对定位覆盖列表。首屏和末尾通过 `contentPadding` 避让，不能再用布局占位制造“假悬浮”。普通子页同样延伸到状态栏/标题栏背后；`full:true` 查看器继续全屏并显示系统栏安全区。
+2. **真实磨砂**：顶部 chrome、悬浮底栏、回顶键、引导条均使用真实 `backdrop-filter`；底栏左右 12px、底部手势区 + 10px、26px 圆角和完整描边/浮层阴影。列表可直接滑到状态栏、标题栏、TAB 与回顶键后方。吸顶标签、分组标题同步改为从系统栏 + 顶栏下沿计算偏移，不躲进旧文档流上沿。
+3. **滚动隐显**：`scrollTop` 增加（向下浏览）且越过 96px 后，累计同向 8px 即将底栏以 transform/opacity 动画退出；反向累计 8px 或回到顶部 24px 内恢复。隐藏时同步 `aria-hidden` / `inert`，不保留不可见点击与焦点目标。横屏 ≥720px 的 NavigationRail 常驻，不套用底栏隐显。
+4. **几何稳定**：`--nav-reserve` 固定保留列表末尾可读空间，`--nav-lift` 只驱动回顶键、Toast、引导条和批量条的悬浮位移；底栏隐显不能改变 `scrollHeight`。回顶按钮显隐也不再触发整页 `render()`，滚动中的列表不重建。
+5. **键盘兼容**：模拟键盘改为底层覆盖面板，实测高度写入 `--kbd-h`，对话滚动区底边与键盘上沿贴合；输入区既有 imePadding 语义不变。
+
+**Compose 同步约束**：根布局用 `Box` 叠放 `LazyColumn` / chrome，列表 `contentPadding` 加系统栏、顶栏和底栏高度；用 `NestedScrollConnection` 按方向驱动底栏 `animateFloatAsState` 的偏移，不要给底栏做布局高度动画。Rail 保持常驻。**真实背景模糊必须采样下层列表**，不能把半透明颜色或 `Modifier.blur` 当作完成——后者只模糊控件自身；可评估 Haze 等 backdrop 实现，不能接受“看起来透明但背后无内容”的替代方案。
+
+**原型同步**：`ui.js` 增加系统栏、真实覆盖层与滚动方向控制；`app.css` 重构 Scaffold、悬浮玻璃和相关 sticky 偏移；模型中心/提示词库的吸顶分类行改用同一安全区令牌。修正回顶图标方向。全部资源版本号 v=63。
+
+**走查**：`tests/browser-chrome-layers.js` 在 `file://` 下检查内容物理边到边、导航后方确有卡片、状态栏后方确有内容、向下隐藏/向上恢复、`inert`、回顶悬浮层、360px 窄屏、1024×680 Rail、模拟键盘与沉浸式查看器；明/暗主题、外部 HTTP(S) 请求和浏览器异常检查均通过。原有 `browser-ai-round26.js` 流式回归及 20 项 Node 契约测试通过。截图：`walk-chrome-light-top.png`、`walk-chrome-light-scrolled.png`、`walk-chrome-light-hidden.png`、`walk-chrome-dark-scrolled.png`、`walk-chrome-land.png`。
+
 ### 第二十八轮（2026-11-05，展厅响应式原比例瀑布流）
 
 **起因**：物品形态展厅与 IP 策展列表使用普通网格时，扣除内容边距和列间距后，常见手机宽度可能只剩一列；同一行卡片还会被强制对齐。目标形态改为手机至少双列、宽屏逐级的增列的信息流，图片不变形，长标题可换行，各列按自然高度排列。
@@ -576,7 +593,7 @@ LLM 对话输入框聚焦时弹出模拟键盘面板（仅原型演示用），�
 | `.pc-stats`（点云统计卡） | `top: calc(var(--statusbar-h) + 10px)` |
 | `.av-toolbar` / `.cloud-panel`（底部） | `padding-bottom` / `bottom` 含 `var(--gesture-h)` |
 
-原型不画系统栏（那是系统的事），但**必须表达它的占位**——同一套令牌在 App 侧的对应物是 `Modifier.statusBarsPadding()` / `navigationBarsPadding()`（见 `ASSET_VIEWER` 全屏子页，`contentWindowInsets = WindowInsets(0,0,0,0)` 之下自行避让）。
+第二十九轮起，原型在普通页与沉浸式页均显式画出系统状态栏，以便直接走查内容穿过其背后的效果；此前“原型不画系统栏”的简化废止。交互元素仍必须用上述令牌避让——同一套令牌在 App 侧的对应物是 `Modifier.statusBarsPadding()` / `navigationBarsPadding()`（见 `ASSET_VIEWER` 全屏子页，`contentWindowInsets = WindowInsets(0,0,0,0)` 之下自行避让）。
 
 ### 横屏 / 平板适配（App 侧对应 WindowSizeClass + NavigationSuiteScaffold + ListDetailPaneScaffold）
 

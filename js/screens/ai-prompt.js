@@ -14,7 +14,7 @@
         if (kw && (p.title + ' ' + p.text).toLowerCase().indexOf(kw) < 0) return false;
         return true;
       });
-      let h = '<div class="chip-row" style="position:sticky;top:-8px;z-index:3;background:var(--bg);padding-top:10px">' +
+      let h = '<div class="chip-row" style="position:sticky;top:calc(var(--statusbar-h) + var(--topbar-h) - 8px);z-index:3;background:var(--glass-chrome);backdrop-filter:var(--blur-chrome);-webkit-backdrop-filter:var(--blur-chrome);padding-top:10px">' +
         CATS.map(c => chip(c, cat === c, 'prompt-cat', c)).join('') + '</div>';
       h += card('<div class="msg-row" style="margin-top:0">' + icon('search', 'small') +
         '<input class="field-input" style="flex:1" data-keep="prompt-q" placeholder="搜索标题或内容…" value="' + esc((S.x.keep && S.x.keep['prompt-q']) || '') + '"></div>');
