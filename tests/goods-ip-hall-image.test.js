@@ -205,6 +205,39 @@ test('宽扁物品形态展厅封面也使用 cover 填满，不再 contain 露�
   assert.doesNotMatch(css, /\.g-cover\.fit/);
 });
 
+test('展厅列表使用手机至少双列、宽屏增列的瀑布流，长标题不截断', () => {
+  const css = fs.readFileSync(path.join(ROOT, 'css/app.css'), 'utf8');
+  const falls = css.match(/\.g-falls\s*\{([^}]*)\}/);
+  assert.ok(falls);
+  assert.match(falls[1], /column-count:\s*2/);
+  assert.match(falls[1], /column-gap:\s*10px/);
+  for (const [width, count] of [[520, 3], [760, 4], [1040, 5]]) {
+    const media = css.match(new RegExp('@container \\(min-width: ' + width + 'px\\)\\s*\\{\\s*\\.g-falls\\s*\\{([^}]*)\\}'));
+    assert.ok(media, width + 'px 宽屏断点应存在');
+    assert.match(media[1], new RegExp('column-count:\\s*' + count));
+  }
+
+  const title = css.match(/\.g-fall-title\s*\{([^}]*)\}/);
+  assert.ok(title);
+  assert.match(title[1], /overflow-wrap:\s*anywhere/);
+  assert.doesNotMatch(title[1], /line-clamp|-webkit-box|text-overflow|overflow:\s*hidden/);
+});
+
+test('分类展厅与 IP 展厅真实封面加载后保持原图比例', () => {
+  const { context, screens } = loadPrototype();
+  context.DB.GOODS = context.DB.GOODS.map(g => ({ ...g, images: [LOCAL_IMAGE] }));
+  for (const html of [screens['goods-cat'].render('badge'), screens['goods-ip'].render('1001')]) {
+    assert.match(html, /class="g-falls"/);
+    assert.match(html, /aspect-ratio:(?:1\/1|4\/5|3\/4)/, '加载前保留稳定占位比例');
+    assert.match(html, /onload="this\.parentElement\.style\.aspectRatio=this\.naturalWidth\+'\/'\+this\.naturalHeight"/);
+  }
+
+  const css = fs.readFileSync(path.join(ROOT, 'css/app.css'), 'utf8');
+  const coverRule = css.match(/\.g-cover\s*\{([^}]*)\}/);
+  assert.ok(coverRule);
+  assert.match(coverRule[1], /position:\s*relative/, '绝对定位图片必须受自身封面容器约束');
+});
+
 test('物品形态展厅由顶栏承担名称与简介，正文只保留策展语', () => {
   const { screens } = loadPrototype();
   const def = screens['goods-cat'];

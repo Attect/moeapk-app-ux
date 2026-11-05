@@ -49,6 +49,16 @@
 
 ## 设计沿革
 
+### 第二十八轮（2026-11-05，展厅响应式原比例瀑布流）
+
+**起因**：物品形态展厅与 IP 策展列表使用普通网格时，扣除内容边距和列间距后，常见手机宽度可能只剩一列；同一行卡片还会被强制对齐。目标形态改为手机至少双列、宽屏逐级的增列的信息流，图片不变形，长标题可换行，各列按自然高度排列。
+
+**定案**：默认双列，520 / 760 / 1040px 容器断点分别增至 3 / 4 / 5 列；CSS 多列与 Compose `LazyVerticalStaggeredGrid` 均不要求跨列水平对齐。缺图和加载中使用稳定的 1:1、4:5、3:4 占位节奏，真实图片成功后按 `naturalWidth/naturalHeight` 或位图尺寸校正容器，保持原图宽高比，不为制造高差强行裁图。标题取消两行截断，允许完整换行；首页展厅墙的 `cover` 填满规则不受影响。
+
+**原型同步**：`cover()` 增加 `natural` 加载校正；`.g-cover` 显式建立定位包含块，确保图片只覆盖自己的封面区域；`.g-fall-title` 移除 line-clamp；分类展厅和统一 IP 页继续共用 `.g-falls`。全部资源版本号 v=62。
+
+**走查**：20 项 Node 契约测试通过；Chrome 在 `file://` 下验证 360px 明/暗双列、1024×680 四列、长标题完整换行、本地 640:400 演示封面加载后维持 8:5，外部 HTTP(S) 请求为 0。截图：`walk-round28-goods-waterfall-mobile-light.png`、`walk-round28-goods-waterfall-mobile-dark.png`、`walk-round28-goods-waterfall-landscape-light.png`。
+
 ### 第二十七轮（2026-11-04，展厅墙横卡封面填满）
 
 **起因**：真机“小铁片”宽槽封面左右露出渐变侧边。根因是旧策略给宽扁槽主动切换为 `contain` / Compose `ContentScale.Fit`，并非图片尺寸不足或加载失败。

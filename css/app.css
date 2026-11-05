@@ -1155,6 +1155,7 @@ body, .card, .li, .topbar, .navbar, .chip, .btn, .tbtn, .field-input,
 
 /* 展品封面占位（通用）：--gh 传色相；v1/v2 为详情页多图变体 */
 .g-cover {
+  position: relative;
   display: flex; align-items: center; justify-content: center; overflow: hidden;
   background: linear-gradient(var(--ga, 135deg), hsl(var(--gh), 64%, 78%) 0%, hsl(calc(var(--gh) + 36), 56%, 62%) 100%);
 }
@@ -1223,7 +1224,8 @@ body, .card, .li, .topbar, .navbar, .chip, .btn, .tbtn, .field-input,
 .g-cat-emoji { flex: none; font-size: 22px; line-height: 28px; }
 .g-cat-blurb { font-size: 12px; line-height: 17px; color: var(--on-surface-variant); }
 
-/* 双列瀑布流（小红书式）；卡片比例按 id 哈希错开 */
+/* 响应式瀑布流：手机至少双列；更宽视口在下方断点增加列数。
+ * CSS 多列按卡片自然高度排列，不强制同一行跨列对齐。 */
 .g-falls { column-count: 2; column-gap: 10px; margin-top: 4px; }
 .g-fall-card {
   break-inside: avoid; margin-bottom: 10px; border-radius: 16px; overflow: hidden; cursor: pointer;
@@ -1235,7 +1237,7 @@ body, .card, .li, .topbar, .navbar, .chip, .btn, .tbtn, .field-input,
 .g-fall-body { padding: 10px 12px 12px; }
 .g-fall-title {
   font-size: 13px; font-weight: 600; line-height: 18px;
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  overflow-wrap: anywhere;
 }
 /* 列表价格弱化：小号普通色，不用电商红 */
 .g-fall-meta { display: flex; align-items: baseline; justify-content: space-between; margin-top: 6px; font-size: 11px; color: var(--on-surface-variant); }
@@ -1587,12 +1589,19 @@ body, .card, .li, .topbar, .navbar, .chip, .btn, .tbtn, .field-input,
   .g-ip-hall-card { width: 236px; }
 }
 
-/* ---------- 宅物 · 横屏 / 平板 ---------- */
-@container (min-width: 920px) {
-  /* 瀑布三列 */
+/* ---------- 宅物 · 宽屏 / 平板：空间越宽，瀑布列数越多 ---------- */
+@container (min-width: 520px) {
   .g-falls { column-count: 3; }
+}
+@container (min-width: 760px) {
+  .g-falls { column-count: 4; }
+}
+@container (min-width: 920px) {
   /* 详情页 pager 不再满宽出血，收为圆角大图居中 */
   .g-pager-wrap { margin: 8px 0 0; border-radius: 20px; overflow: hidden; max-width: 640px; margin-left: auto; margin-right: auto; }
+}
+@container (min-width: 1040px) {
+  .g-falls { column-count: 5; }
 }
 
 /* ============================================================
