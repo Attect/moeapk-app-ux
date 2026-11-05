@@ -207,10 +207,16 @@ body.has-full .proto-bar { opacity: 0; pointer-events: none; transition: opacity
 #app {
   --nav-lift: 0px;
   --nav-reserve: 0px;
+  --nav-motion-duration: .34s;
+  --nav-motion-easing: cubic-bezier(.22,1.28,.36,1);
   display: block; height: 100%; overflow: hidden; position: relative;
 }
 #app.has-nav { --nav-lift: calc(var(--navbar-h) + 20px); --nav-reserve: calc(var(--navbar-h) + 20px); }
 #app.has-nav.nav-hidden { --nav-lift: 0px; }
+#app.nav-hidden {
+  --nav-motion-duration: .24s;
+  --nav-motion-easing: cubic-bezier(.55,0,.8,.24);
+}
 .top-chrome {
   position: absolute; inset: 0 0 auto; z-index: 20;
   background: var(--glass-chrome);
@@ -297,7 +303,7 @@ body.has-full .proto-bar { opacity: 0; pointer-events: none; transition: opacity
   border: 1px solid var(--glass-brd); border-radius: 26px;
   box-shadow: var(--shadow-float);
   transform: translate3d(0,0,0); opacity: 1;
-  transition: transform .26s cubic-bezier(.2,.8,.2,1), opacity .18s ease,
+  transition: transform var(--nav-motion-duration) var(--nav-motion-easing), opacity .18s ease,
     background .22s ease, border-color .22s ease;
   will-change: transform, opacity;
 }
@@ -583,7 +589,7 @@ body.has-full .proto-bar { opacity: 0; pointer-events: none; transition: opacity
   display: flex; flex-direction: column; align-items: center; gap: 8px;
   pointer-events: none;
   transform: translateY(calc(0px - var(--nav-lift)));
-  transition: transform .26s cubic-bezier(.2,.8,.2,1);
+  transition: transform var(--nav-motion-duration) var(--nav-motion-easing);
 }
 .toast {
   background: var(--inverse-surface); color: var(--inverse-on-surface);
@@ -991,7 +997,7 @@ body, .card, .li, .topbar, .top-chrome, .chip, .btn, .tbtn, .field-input,
   box-shadow: var(--shadow-float);
   display: flex; align-items: center; justify-content: center;
   opacity: 0; pointer-events: none; transform: translateY(calc(0px - var(--nav-lift) + 8px));
-  transition: opacity .2s, transform .26s cubic-bezier(.2,.8,.2,1);
+  transition: opacity .2s, transform var(--nav-motion-duration) var(--nav-motion-easing);
 }
 .to-top.on { opacity: 1; pointer-events: auto; transform: translateY(calc(0px - var(--nav-lift))); }
 .to-top:active { transform: translateY(calc(0px - var(--nav-lift))) scale(.9); }
@@ -1009,7 +1015,7 @@ body, .card, .li, .topbar, .top-chrome, .chip, .btn, .tbtn, .field-input,
   box-shadow: var(--shadow-float);
   font-size: 13px; line-height: 18px;
   transform: translateY(calc(0px - var(--nav-lift)));
-  transition: transform .26s cubic-bezier(.2,.8,.2,1), background .22s ease,
+  transition: transform var(--nav-motion-duration) var(--nav-motion-easing), background .22s ease,
     color .22s ease, border-color .22s ease;
 }
 .onboard .ic { width: 20px; height: 20px; flex: none; color: var(--primary); }

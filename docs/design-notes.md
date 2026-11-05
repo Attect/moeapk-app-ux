@@ -66,6 +66,8 @@
 
 **走查**：`tests/browser-chrome-layers.js` 在 `file://` 下检查内容物理边到边、导航后方确有卡片、状态栏后方确有内容、向下隐藏/向上恢复、`inert`、回顶悬浮层、360px 窄屏、1024×680 Rail、模拟键盘与沉浸式查看器；明/暗主题、外部 HTTP(S) 请求和浏览器异常检查均通过。原有 `browser-ai-round26.js` 流式回归及 20 项 Node 契约测试通过。截图：`walk-chrome-light-top.png`、`walk-chrome-light-scrolled.png`、`walk-chrome-light-hidden.png`、`walk-chrome-dark-scrolled.png`、`walk-chrome-land.png`。
 
+**同日动画修订**：底部 TAB 不再使用默认匀速观感。隐藏为 **240ms + `cubic-bezier(.55,0,.8,.24)`** 加速滑向屏幕底部；显示为 **340ms + `cubic-bezier(.22,1.28,.36,1)`**，从底部出现并带轻微回弹。`#app` 的 `--nav-motion-duration` / `--nav-motion-easing` 同步驱动底栏、回顶键、Toast 与引导条；Compose 以同参数 `CubicBezierEasing` 对应，alpha 单独钳制。资源版本号 v=64，浏览器回归显式断言两条曲线。
+
 ### 第二十八轮（2026-11-05，展厅响应式原比例瀑布流）
 
 **起因**：物品形态展厅与 IP 策展列表使用普通网格时，扣除内容边距和列间距后，常见手机宽度可能只剩一列；同一行卡片还会被强制对齐。目标形态改为手机至少双列、宽屏逐级的增列的信息流，图片不变形，长标题可换行，各列按自然高度排列。

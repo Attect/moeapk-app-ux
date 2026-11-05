@@ -59,5 +59,5 @@ test('所有静态资源统一使用本轮版本号', () => {
   const html = read('index.html');
   const versions = [...html.matchAll(/\?v=(\d+)/g)].map(m => m[1]);
   assert.ok(versions.length >= 20);
-  assert.ok(versions.every(v => v === '63'));
+  assert.ok(versions.every(v => v === '64'));
 });

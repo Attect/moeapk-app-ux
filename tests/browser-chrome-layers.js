@@ -129,6 +129,9 @@ async function auditTabs() {
     await send('Runtime.enable');
     await send('Network.enable');
     await metrics(1280, 960);
+    await send('Emulation.setEmulatedMedia', {
+      features: [{ name: 'prefers-reduced-motion', value: 'no-preference' }],
+    });
     const index = pathToFileURL(path.join(root, 'index.html')).href;
     await navigate(`${index}?theme=light&frame=port#apk`);
     await dismissOnboard();
@@ -148,6 +151,7 @@ async function auditTabs() {
         topBlur: getComputedStyle(top).backdropFilter,
         radius: getComputedStyle(nav).borderRadius,
         status: !!document.querySelector('.top-chrome .statusbar'),
+        motion: getComputedStyle(nav).transitionTimingFunction,
         paddingTop: parseFloat(getComputedStyle(content).paddingTop),
         chromeHeight: t.height
       };
@@ -156,16 +160,19 @@ async function auditTabs() {
     assert(report.initial.topFills && report.initial.floating, `chrome is not overlaid: ${JSON.stringify(report.initial)}`);
     assert(report.initial.blur.includes('blur') && report.initial.topBlur.includes('blur'), 'chrome backdrop blur missing');
     assert(report.initial.status && report.initial.paddingTop >= report.initial.chromeHeight, 'status/top safe padding missing');
+    assert(report.initial.motion.includes('cubic-bezier(0.22, 1.28, 0.36, 1)'), `show easing mismatch: ${report.initial.motion}`);
     await shot('walk-chrome-light-top.png');
 
     await scrollTo(430);
     report.hidden = await evaluate(`(() => {
       const app = document.getElementById('app'), nav = document.querySelector('.navbar');
       return { cls: app.classList.contains('nav-hidden'), aria: nav.getAttribute('aria-hidden'), inert: nav.inert,
-        opacity: getComputedStyle(nav).opacity, transform: getComputedStyle(nav).transform };
+        opacity: getComputedStyle(nav).opacity, transform: getComputedStyle(nav).transform,
+        motion: getComputedStyle(nav).transitionTimingFunction };
     })()`);
     assert(report.hidden.cls && report.hidden.aria === 'true' && report.hidden.inert, `nav did not hide accessibly: ${JSON.stringify(report.hidden)}`);
     assert(Number(report.hidden.opacity) === 0 && report.hidden.transform !== 'none', 'nav hide animation did not finish');
+    assert(report.hidden.motion.includes('cubic-bezier(0.55, 0, 0.8, 0.24)'), `hide easing mismatch: ${report.hidden.motion}`);
     await shot('walk-chrome-light-hidden.png');
 
     await scrollTo(390);
