@@ -131,13 +131,18 @@ async function resetFirst() {
     report.singleShow = await evaluate(`!document.querySelector('.av-stage').classList.contains('chrome-hidden') && !document.querySelector('.av-toolbar').inert`);
     assert(report.singleShow, 'second single tap did not restore chrome');
 
+    const baseLayout = await evaluate(`(() => { const m=document.querySelector('.av-page[data-pos="0"] .av-picture');
+      return [m.style.left,m.style.top,m.style.width,m.style.height].join(';'); })()`);
     await doubleClickAt(center); await sleep(320);
-    report.doubleZoom = await evaluate(`(() => { const p=document.querySelector('.av-pager'), m=document.querySelector('.av-page[data-pos="0"] .av-media');
+    report.doubleZoom = await evaluate(`(() => { const p=document.querySelector('.av-pager'), f=document.querySelector('.av-page[data-pos="0"] .av-media'),
+      m=f.querySelector('.av-picture');
       return { scale:S.x.avZoom.scale, hidden:document.querySelector('.av-stage').classList.contains('chrome-hidden'),
-      transform:m.style.transform, filled:m.offsetWidth===p.clientWidth&&m.offsetHeight===p.clientHeight,
-      zoomed:document.querySelector('.av-page[data-pos="0"]').classList.contains('zoomed') }; })()`);
-    assert(report.doubleZoom.scale === 2.5 && report.doubleZoom.hidden && report.doubleZoom.filled && report.doubleZoom.zoomed,
-      `double tap zoom/full-bleed mismatch: ${JSON.stringify(report.doubleZoom)}`);
+      transform:m.style.transform, filled:f.offsetWidth===p.clientWidth&&f.offsetHeight===p.clientHeight,
+      stableBase:[m.style.left,m.style.top,m.style.width,m.style.height].join(';'),
+      noThresholdClass:!document.querySelector('.av-page[data-pos="0"]').classList.contains('zoomed') }; })()`);
+    assert(report.doubleZoom.scale === 2.5 && report.doubleZoom.hidden && report.doubleZoom.filled &&
+      report.doubleZoom.stableBase === baseLayout && report.doubleZoom.noThresholdClass,
+      `double tap continuous zoom mismatch: ${JSON.stringify(report.doubleZoom)}`);
     await shot('walk-asset-viewer-double-zoom.png');
     await doubleClickAt(center); await sleep(300);
     assert(await evaluate(`S.x.avZoom.scale===1 && S.x.avZoom.x===0 && S.x.avZoom.y===0 && !document.querySelector('.av-stage').classList.contains('chrome-hidden')`),
@@ -148,11 +153,13 @@ async function resetFirst() {
     await touch('touchStart', [{x:pinchCenter.x-40,y:pinchCenter.y,id:0},{x:pinchCenter.x+40,y:pinchCenter.y,id:1}]);
     await touch('touchMove', [{x:pinchCenter.x-90,y:pinchCenter.y,id:0},{x:pinchCenter.x+90,y:pinchCenter.y,id:1}]);
     await sleep(80);
-    report.pinch = await evaluate(`({scale:S.x.avZoom.scale,id:S.x.viewId,
+    report.pinch = await evaluate(`(() => { const f=document.querySelector('.av-page[data-pos="0"] .av-media'), p=document.querySelector('.av-pager');
+      return {scale:S.x.avZoom.scale,id:S.x.viewId,
       hidden:document.querySelector('.av-stage').classList.contains('chrome-hidden'),
-      filled:document.querySelector('.av-page[data-pos="0"]').classList.contains('zoomed')})`);
-    assert(report.pinch.scale > 1.8 && report.pinch.id === 'as1' && report.pinch.hidden && report.pinch.filled,
-      `pinch did not zoom current image into full-bleed mode: ${JSON.stringify(report.pinch)}`);
+      filled:f.offsetWidth===p.clientWidth&&f.offsetHeight===p.clientHeight,
+      stableBase:(() => { const m=f.querySelector('.av-picture'); return [m.style.left,m.style.top,m.style.width,m.style.height].join(';'); })()}; })()`);
+    assert(report.pinch.scale > 1.8 && report.pinch.id === 'as1' && report.pinch.hidden && report.pinch.filled && report.pinch.stableBase === baseLayout,
+      `pinch did not zoom current image continuously: ${JSON.stringify(report.pinch)}`);
     await touch('touchEnd', []); await sleep(80);
     await touch('touchStart', [{x:pinchCenter.x,y:pinchCenter.y,id:0}]);
     await touch('touchMove', [{x:pinchCenter.x+42,y:pinchCenter.y+20,id:0}]);
@@ -207,12 +214,16 @@ async function resetFirst() {
     assert(report.landscape.width > report.landscape.height && report.landscape.navInside, `landscape viewer mismatch: ${JSON.stringify(report.landscape)}`);
     await shot('walk-asset-viewer-landscape-dark.png');
     const landCenter = await point('.av-page[data-pos="0"] .av-media');
+    const landBase = await evaluate(`(() => { const m=document.querySelector('.av-page[data-pos="0"] .av-picture');
+      return [m.style.left,m.style.top,m.style.width,m.style.height].join(';'); })()`);
     await doubleClickAt(landCenter); await sleep(320);
-    report.landscapeFill = await evaluate(`(() => { const p=document.querySelector('.av-pager'), m=document.querySelector('.av-page[data-pos="0"] .av-media');
-      return {filled:m.offsetWidth===p.clientWidth&&m.offsetHeight===p.clientHeight,
+    report.landscapeFill = await evaluate(`(() => { const p=document.querySelector('.av-pager'), f=document.querySelector('.av-page[data-pos="0"] .av-media'),
+      m=f.querySelector('.av-picture');
+      return {filled:f.offsetWidth===p.clientWidth&&f.offsetHeight===p.clientHeight,
+        stableBase:[m.style.left,m.style.top,m.style.width,m.style.height].join(';'),
         hidden:document.querySelector('.av-stage').classList.contains('chrome-hidden')}; })()`);
-    assert(report.landscapeFill.filled && report.landscapeFill.hidden,
-      `landscape zoom left letterbox or chrome: ${JSON.stringify(report.landscapeFill)}`);
+    assert(report.landscapeFill.filled && report.landscapeFill.hidden && report.landscapeFill.stableBase === landBase,
+      `landscape zoom changed base layout or chrome: ${JSON.stringify(report.landscapeFill)}`);
     await shot('walk-asset-viewer-landscape-fill.png');
 
     assert(!externalRequests.length, `external requests: ${externalRequests.join(',')}`);

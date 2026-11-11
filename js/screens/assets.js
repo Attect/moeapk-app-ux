@@ -344,26 +344,27 @@
     if (!S.x.avZoom || S.x.avZoom.id !== id) S.x.avZoom = { id, scale: 1, x: 0, y: 0 };
     return S.x.avZoom;
   }
-  function mediaStage(a, active) {
+  function mediaStage(a) {
     if (a.kind === 'pointcloud') return cloudStage(a);
     if (a.kind === 'audio') return audioStage(a);
-    const z = active && a.kind === 'image' ? zoomOf(a.id) : { scale: 1, x: 0, y: 0 };
-    return '<div class="av-media' + (a.kind === 'image' ? ' av-zoomable' : '') + '"' +
-      ' style="background:linear-gradient(165deg,hsl(' + a.hue + ',62%,64%),hsl(' + ((a.hue + 60) % 360) + ',48%,30%));' +
-      'transform:translate3d(' + z.x + 'px,' + z.y + 'px,0) scale(' + z.scale + ')">' +
-      (a.kind === 'video' ? '<span style="width:56px;height:56px;border-radius:50%;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;color:#fff">' + icon('play_arrow') + '</span>' : '') + '</div>';
+    return '<div class="av-media' + (a.kind === 'image' ? ' av-zoomable' : '') + '">' +
+      '<div class="av-picture" style="background:linear-gradient(165deg,hsl(' + a.hue + ',62%,64%),hsl(' + ((a.hue + 60) % 360) + ',48%,30%))"></div>' +
+      (a.kind === 'video' ? '<span style="width:56px;height:56px;border-radius:50%;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;color:#fff;z-index:1">' + icon('play_arrow') + '</span>' : '') + '</div>';
   }
-  // 三页常驻轨道：拖动时只改 transform，不在松手时突然替换整页。
-  // 轨道自身宽度恒等于视口，故 -100% 恰好是一屏，而不是三屏内容总宽。
+  // 三页常驻轨道：媒体容器始终全屏，安全区只决定 1× 初始取景，不参与阈值布局切换。
   function pagerStage(list, idx) {
-    const page = (item, pos) => {
-      const zoomed = item && pos === 0 && item.kind === 'image' && zoomOf(item.id).scale > 1.001;
-      return '<div class="av-page' + (zoomed ? ' zoomed' : '') + '" data-pos="' + pos + '">' +
-        (item ? mediaStage(item, pos === 0) : '') + '</div>';
-    };
-    return '<div class="av-pager"><div class="av-pager-track">' +
-      page(list[idx - 1], -1) + page(list[idx], 0) + page(list[idx + 1], 1) +
-      '</div></div>';
+    const page = (item, pos) => '<div class="av-page" data-pos="' + pos + '">' +
+      (item ? mediaStage(item) : '') + '</div>';
+    const html = '<div class="av-pager"><div class="av-pager-track">' +
+      page(list[idx - 1], -1) + page(list[idx], 0) + page(list[idx + 1], 1) + '</div></div>';
+    requestAnimationFrame(() => {
+      const a = cur();
+      if (a && a.kind === 'image') {
+        const z = zoomOf(a.id);
+        paintZoom(z.scale, z.x, z.y, false);
+      }
+    });
+    return html;
   }
   registerScreen('asset', {
     title: '素材',
@@ -520,11 +521,7 @@
     if (!p || pageAnimating || !l[i + direction]) return false;
     if (cur().kind === 'image') {
       S.x.avZoom = { id: cur().id, scale: 1, x: 0, y: 0 };
-      const media = p.pager.querySelector('.av-page[data-pos="0"] .av-media');
-      if (media) {
-        media.style.transition = 'none';
-        media.style.transform = 'translate3d(0,0,0) scale(1)';
-      }
+      paintZoom(1, 0, 0, false);
     }
     settlePage(direction);
     return true;
@@ -549,12 +546,32 @@
   function zoomParts() {
     const p = pagerParts();
     if (!p || cur().kind !== 'image') return null;
-    const media = p.pager.querySelector('.av-page[data-pos="0"] .av-zoomable');
-    return media ? Object.assign({ media }, p) : null;
+    const frame = p.pager.querySelector('.av-page[data-pos="0"] .av-zoomable');
+    const media = frame && frame.querySelector('.av-picture');
+    return media ? Object.assign({ media, frame }, p) : null;
+  }
+  // 1×：宽不超过安全区，高位于顶部安全区与底栏之间；放大：中心连续过渡到全屏中心。
+  function mediaLayout(parts, scale) {
+    const vw = parts.pager.clientWidth, vh = parts.pager.clientHeight;
+    const appStyle = getComputedStyle(document.getElementById('app'));
+    const top = parseFloat(appStyle.getPropertyValue('--statusbar-h')) || 0;
+    const toolbar = document.querySelector('.av-toolbar');
+    const bottom = toolbar ? toolbar.offsetHeight : 0;
+    const side = vw > vh ? 24 : 0; // 原型模拟横屏圆角/挖孔；Compose 读取真实 WindowInsets。
+    const safeW = Math.max(1, vw - side * 2), safeH = Math.max(1, vh - top - bottom);
+    const fit = Math.min(safeW / 9, safeH / 16); // 原型图片比例 9:16
+    const baseW = 9 * fit, baseH = 16 * fit;
+    const safeX = side + safeW / 2, safeY = top + safeH / 2;
+    const fillZoom = Math.max(1.0001, vw / baseW, vh / baseH);
+    const progress = Math.max(0, Math.min(1, (scale - 1) / (fillZoom - 1)));
+    return { baseW, baseH,
+      cx: safeX + (vw / 2 - safeX) * progress,
+      cy: safeY + (vh / 2 - safeY) * progress };
   }
   function clampedZoom(parts, scale, x, y) {
-    const maxX = Math.max(0, (parts.media.offsetWidth * scale - parts.pager.clientWidth) / 2);
-    const maxY = Math.max(0, (parts.media.offsetHeight * scale - parts.pager.clientHeight) / 2);
+    const layout = mediaLayout(parts, scale);
+    const maxX = Math.max(0, (layout.baseW * scale - parts.pager.clientWidth) / 2);
+    const maxY = Math.max(0, (layout.baseH * scale - parts.pager.clientHeight) / 2);
     return { scale, x: Math.max(-maxX, Math.min(maxX, x)), y: Math.max(-maxY, Math.min(maxY, y)) };
   }
   function paintZoom(scale, x, y, animate) {
@@ -563,10 +580,14 @@
     const next = clampedZoom(p, Math.max(1, Math.min(5, scale)), x, y);
     const z = zoomOf(cur().id);
     z.scale = next.scale; z.x = next.x; z.y = next.y;
+    const base = mediaLayout(p, 1), current = mediaLayout(p, z.scale);
+    // 左/上/宽/高恒为安全区初始值；之后只改连续 transform，不触发任何布局切换。
+    p.media.style.left = (base.cx - base.baseW / 2) + 'px';
+    p.media.style.top = (base.cy - base.baseH / 2) + 'px';
+    p.media.style.width = base.baseW + 'px'; p.media.style.height = base.baseH + 'px';
+    const dx = current.cx - base.cx + z.x, dy = current.cy - base.cy + z.y;
     p.media.style.transition = animate ? 'transform .22s cubic-bezier(.2,.8,.2,1)' : 'none';
-    p.media.style.transform = 'translate3d(' + z.x + 'px,' + z.y + 'px,0) scale(' + z.scale + ')';
-    const page = p.media.closest('.av-page');
-    if (page) page.classList.toggle('zoomed', z.scale > 1.001);
+    p.media.style.transform = 'translate3d(' + dx + 'px,' + dy + 'px,0) scale(' + z.scale + ')';
     const zoomed = z.scale > 1.01;
     if (zoomed !== !!S.x.avZoomed) {
       S.x.avZoomed = zoomed;
@@ -583,9 +604,13 @@
     const z = zoomOf(cur().id);
     if (z.scale > 1.01) { paintZoom(1, 0, 0, true); return; }
     const r = p.pager.getBoundingClientRect();
-    const pivot = { x: clientX - r.left - r.width / 2, y: clientY - r.top - r.height / 2 };
-    const scale = 2.5;
-    paintZoom(scale, pivot.x * (1 - scale), pivot.y * (1 - scale), true);
+    const point = { x: clientX - r.left, y: clientY - r.top };
+    const target = 2.5, startCenter = mediaLayout(p, z.scale), targetCenter = mediaLayout(p, target);
+    const startPivotX = point.x - startCenter.cx, startPivotY = point.y - startCenter.cy;
+    const targetPivotX = point.x - targetCenter.cx, targetPivotY = point.y - targetCenter.cy;
+    const ratio = target / z.scale;
+    paintZoom(target, targetPivotX + ratio * (z.x - startPivotX),
+      targetPivotY + ratio * (z.y - startPivotY), true);
   }
 
   const viewPointers = new Map();
@@ -618,7 +643,7 @@
         lastX: e.clientX, lastT: now, velocityX: 0, dragX: 0, startAt: now,
         startZoom: { scale: z.scale, x: z.x, y: z.y }, doubleCandidate };
       setTrackOffset(0, false);
-      const media = p.pager.querySelector('.av-page[data-pos="0"] .av-media');
+      const media = p.pager.querySelector('.av-page[data-pos="0"] .av-picture');
       if (media) media.style.transition = 'none';
     } else if (viewPointers.size === 2 && cur().kind === 'image') {
       clearPendingTap();
@@ -641,10 +666,11 @@
       const pair = pointerPair(), start = viewGesture.pinch;
       const rect = p.pager.getBoundingClientRect();
       const scale = Math.max(1, Math.min(5, start.scale * pair.distance / start.distance));
-      const startPivotX = start.x - rect.left - rect.width / 2;
-      const startPivotY = start.y - rect.top - rect.height / 2;
-      const nowPivotX = pair.x - rect.left - rect.width / 2;
-      const nowPivotY = pair.y - rect.top - rect.height / 2;
+      const startCenter = mediaLayout(p, start.scale), nowCenter = mediaLayout(p, scale);
+      const startPivotX = start.x - rect.left - startCenter.cx;
+      const startPivotY = start.y - rect.top - startCenter.cy;
+      const nowPivotX = pair.x - rect.left - nowCenter.cx;
+      const nowPivotY = pair.y - rect.top - nowCenter.cy;
       const ratio = scale / start.scale;
       paintZoom(scale, nowPivotX + ratio * (start.offsetX - startPivotX),
         nowPivotY + ratio * (start.offsetY - startPivotY), false);
