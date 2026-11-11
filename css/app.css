@@ -1307,36 +1307,35 @@ body, .card, .li, .topbar, .top-chrome, .chip, .btn, .tbtn, .field-input,
 .g-fall-price { font-weight: 600; }
 
 /* ---------- 展品卡（详情） ---------- */
-/* 顶部图片 pager：scroll-snap 横滑，负 margin 满宽 */
+/* 顶部图片 pager：3:4 边到边大图，页码在右上、圆点在图下 */
 .g-pager-wrap { position: relative; margin: 4px -16px 0; }
 .g-pager {
   display: flex; overflow-x: auto; scrollbar-width: none;
   scroll-snap-type: x mandatory; overscroll-behavior-x: contain;
 }
 .g-pager::-webkit-scrollbar { display: none; }
-.g-shot { flex: none; width: 100%; aspect-ratio: 1; scroll-snap-align: center; position: relative; }
+.g-shot { flex: none; width: 100%; aspect-ratio: 3 / 4; scroll-snap-align: center; position: relative; }
 .g-shot .g-cover { width: 100%; height: 100%; }
 .g-shot .g-cover span { font-size: 96px; }
-.g-dots { position: absolute; bottom: 12px; left: 0; right: 0; display: flex; justify-content: center; gap: 6px; pointer-events: none; }
-.g-dot { width: 6px; height: 6px; border-radius: 999px; background: rgba(255, 255, 255, .55); box-shadow: 0 1px 3px rgba(30, 10, 40, .3); transition: width .2s, background .2s; }
-.g-dot.on { width: 16px; background: #fff; }
-
-.g-d-title { font-size: 19px; font-weight: 700; line-height: 26px; margin-top: 14px; }
-.g-d-meta { font-size: 11px; color: var(--on-surface-variant); margin-top: 4px; }
-/* 价格移入底部 CTA 行（.g-cta-price，见 CTA 节） */
-
-/* 陈列备注（展品说明牌）：柔和渐变底卡片 */
-.g-note {
-  margin-top: 12px; padding: 12px 14px; border-radius: 16px;
-  background: var(--grad-soft), var(--surface-low);
-  border: 1px solid var(--glass-brd); box-shadow: var(--shadow-card);
-  font-size: 13px; line-height: 20px;
+.g-page-count {
+  position: absolute; top: 12px; right: 12px; padding: 3px 8px; border-radius: 12px;
+  background: rgba(0, 0, 0, .38); color: #fff; font-size: 14px; line-height: 20px;
 }
-.g-note-label { font-size: 11px; font-weight: 700; color: var(--primary); margin-bottom: 4px; letter-spacing: .3px; }
-.g-attrs { padding-bottom: 2px; }
-/* IP 标签与实体页：与规格芯片/展厅分类区分，沿既有 chip 与 surface 令牌 */
-.g-ip-tags { padding-top: 6px; }
-.g-ip-tags .chip { color: var(--primary); }
+.g-dots { display: flex; justify-content: center; gap: 6px; padding: 8px 0; pointer-events: none; }
+.g-dot { width: 6px; height: 6px; border-radius: 999px; background: var(--outline-variant); transition: background .2s; }
+.g-dot.on { background: var(--primary); }
+
+/* 标题保留独立层级；其余内容统一为 App 当前的正文样式 */
+.g-d-title { margin: 14px 0 6px; font-size: 22px; font-weight: 500; line-height: 28px; }
+.g-d-text { margin-top: 10px; font-size: 14px; line-height: 20px; color: var(--on-surface); overflow-wrap: anywhere; }
+.g-d-tags {
+  display: flex; gap: 12px; margin-top: 10px; overflow-x: auto; scrollbar-width: none;
+  font-size: 14px; line-height: 20px; color: var(--primary);
+}
+.g-d-tags::-webkit-scrollbar { display: none; }
+.g-d-tag { flex: none; padding: 0; border: 0; background: none; color: inherit; font: inherit; cursor: pointer; white-space: nowrap; }
+.g-d-attrs { color: var(--primary); }
+.g-d-related-head { padding-left: 0; padding-right: 0; }
 .g-ip-filter { align-items: center; }
 .g-ip-hero {
   margin-top: 10px; padding: 14px 16px; border-radius: 18px;
@@ -1526,63 +1525,34 @@ body, .card, .li, .topbar, .top-chrome, .chip, .btn, .tbtn, .field-input,
 }
 .g-raw-foot { padding: 12px 4px 2px; font-size: 10px; line-height: 16px; color: var(--on-surface-variant); }
 
-/* 原始标题直展（坦诚区；提炼对照） */
-.g-org-text {
-  margin-top: 6px; padding: 10px 12px; border-radius: 12px;
-  background: var(--surface-container); border: 1px solid var(--outline-variant);
-  font-size: 12px; line-height: 18px; color: var(--on-surface-variant);
-}
-
-/* 可能存在的优惠（坦诚区；每条目一张虚线小卡 + SVG 图标，弱化不催促） */
-.g-promo { margin-top: 10px; }
-.g-promo-label { font-size: 11px; color: var(--on-surface-variant); margin-bottom: 6px; }
-.g-promo-list { display: flex; flex-wrap: wrap; gap: 6px; }
-.g-promo-card {
-  display: inline-flex; align-items: center; gap: 5px;
-  padding: 6px 10px; border-radius: 10px;
-  border: 1px dashed var(--outline-variant); background: var(--surface-container);
-  font-size: 12px; line-height: 18px; color: var(--on-surface);
-}
-.g-promo-card .ic { width: 15px; height: 15px; color: var(--primary); flex-shrink: 0; }
-/* CTA 价格的「约」（预估到手价，坦诚口径） */
-.g-cta-about { font-size: 11px; font-weight: 400; color: var(--on-surface-variant); margin-right: 1px; }
-
-/* 披露小字（详情页底部固定，合规 + 坦诚路线） */
+/* 主页披露小字 */
 .g-legal { font-size: 11px; line-height: 17px; color: var(--on-surface-variant); padding: 16px 6px 4px; opacity: .85; }
-
-/* 可能已失效提示条（详情页，CTA 上方；保留展示 + 引导搜同款）；
-   预售提示条同款视觉（坦诚区中性虚线盒，非警告色） */
-.g-stale, .g-presale {
-  display: flex; align-items: flex-start; gap: 8px;
-  margin-top: 12px; padding: 10px 12px; border-radius: 12px;
-  background: var(--surface-container); border: 1px dashed var(--outline-variant);
-  font-size: 12px; line-height: 18px; color: var(--on-surface-variant);
+/* 详情页披露保留旧原型“原始标题”的直展边框卡片；其他原始信息仍按 App 统一正文 */
+.g-legal-detail {
+  margin-top: 14px; padding: 10px 12px; border-radius: 12px;
+  background: var(--surface-container); border: 1px solid var(--outline-variant);
+  font-size: 12px; line-height: 18px; color: var(--on-surface-variant); overflow-wrap: anywhere;
 }
-.g-stale .ic, .g-presale .ic { width: 16px; height: 16px; flex-shrink: 0; margin-top: 1px; }
+
 /* 瀑布卡失效淡标记 */
 .g-fall-stale { font-size: 10px; color: var(--on-surface-variant); border: 1px solid var(--outline-variant); border-radius: 6px; padding: 0 4px; margin-left: 6px; }
-/* 详情页数据落灰度已并入 meta 行（此物…前缀），不再单独占行 */
-
-/* 底部 CTA：sticky 玻璃条（沿用 batch-bar 模式） */
+/* 页面级底部 CTA：不随正文滚动；价格放在淘宝按钮内部左侧 */
+#app.has-page-bottom .content { padding-bottom: calc(var(--gesture-h) + 108px); }
+#app.has-page-bottom .to-top { bottom: calc(var(--gesture-h) + 100px); }
 .g-cta {
-  position: sticky; bottom: calc(var(--gesture-h) + 4px); z-index: 5;
-  display: flex; align-items: center; gap: 10px;
-  background: var(--glass-chrome);
-  backdrop-filter: var(--blur-chrome); -webkit-backdrop-filter: var(--blur-chrome);
-  border: 1px solid var(--glass-brd); border-radius: 18px;
-  padding: 10px 12px; margin-top: 10px; box-shadow: var(--shadow-float);
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 5;
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 16px calc(var(--gesture-h) + 10px);
+  background: var(--surface); border-top: 1px solid var(--outline-variant);
 }
-.g-cta-copy {
-  border: 1px solid var(--outline-variant); border-radius: 14px;
-  width: 44px; height: 44px; color: var(--on-surface-variant);
-}
+.g-cta-buy { min-width: 0; justify-content: space-between; padding: 10px 16px; text-align: left; }
+.g-cta-copy { flex: none; width: 48px; height: 48px; color: var(--on-surface-variant); }
 .btn.g-buying { opacity: .7; pointer-events: none; }
-/* CTA 行内价格块（居右）：主价 + 划线价（为淘宝标价） */
-.g-cta-price { margin-left: 6px; text-align: right; font-size: 17px; font-weight: 700; line-height: 1.15; white-space: nowrap; }
-.g-cta-price s { display: block; font-size: 11px; font-weight: 400; color: var(--on-surface-variant); }
-
-/* 原始标题直展（坦诚区；不再折叠） */
-.g-org-label { margin-top: 14px; font-size: 12px; color: var(--on-surface-variant); }
+.g-cta-price { flex: 1; min-width: 0; font-size: 16px; font-weight: 500; line-height: 20px; white-space: nowrap; }
+.g-cta-price > span, .g-cta-price s { display: block; }
+.g-cta-price s { font-size: 14px; font-weight: 400; color: inherit; }
+.g-cta-action { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.g-cta-action .ic { width: 20px; height: 20px; }
 
 /* 共享元素转场克隆体（卡片→详情 / 详情→卡片） */
 .g-hero-anim {
@@ -1632,7 +1602,7 @@ body, .card, .li, .topbar, .top-chrome, .chip, .btn, .tbtn, .field-input,
 }
 
 /* 主题切换过渡补入宅物卡片 */
-.g-fall-card, .g-mos-card, .g-cover, .g-note, .g-hero-sub, .g-cat-emoji,
+.g-fall-card, .g-mos-card, .g-cover, .g-hero-sub, .g-cat-emoji,
 .g-ip-hall-card, .g-ip-hall-visual, .g-ip-curation, .g-ip-tree-entry, .g-graph-stage, .g-graph-node, .g-raw-card {
   transition: background-color .22s ease, color .22s ease, border-color .22s ease;
 }
@@ -1658,10 +1628,6 @@ body, .card, .li, .topbar, .top-chrome, .chip, .btn, .tbtn, .field-input,
 }
 @container (min-width: 760px) {
   .g-falls { column-count: 4; }
-}
-@container (min-width: 920px) {
-  /* 详情页 pager 不再满宽出血，收为圆角大图居中 */
-  .g-pager-wrap { margin: 8px 0 0; border-radius: 20px; overflow: hidden; max-width: 640px; margin-left: auto; margin-right: auto; }
 }
 @container (min-width: 1040px) {
   .g-falls { column-count: 5; }

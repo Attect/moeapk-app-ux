@@ -2,9 +2,9 @@
 // 板块定案（2026-10）：策展式陈列，不是商城——
 //   · 主页与展厅卡片不出现价格红字；主页分类卡只图+名，列表页价格小字弱化；
 //   · 无销量、无促销、无"买"字：主按钮为「去淘宝看看」；
-//   · 来源披露压到最短：主页/详情页各一句小字（措辞略分工），列表页不放；
+//   · 来源披露：主页一句小字，详情页在正文末尾完整说明，列表页不放；
 //   · 陈列备注由 AI 生成 + 人工抽查（抽查可关）。
-// 对应（规划中）：ui/goods/GoodsHomeScreen.kt、GoodsCatScreen.kt、GoodsDetailScreen.kt
+// 对应：ui/goods/GoodsHomeScreen.kt、GoodsCatScreen.kt、GoodsDetailScreen.kt
 (function () {
   const catById = id => (DB.GOODS_CATS || []).find(c => c.id === id);
   const goodById = id => (DB.GOODS || []).find(g => g.id === id);
@@ -42,7 +42,7 @@
 
   // 数据落灰度文案（对应 feed 的 fresh_days：距最近一次联盟核实的天数）：
   // 今天=此物刚刚擦新 / ≤3 天=此物放了两三天了 / ≤7 天=此物放了一段时间 /
-  // ≤14 天=此物有点落灰了 / 更久=此物落灰了；失效展品的「这是古董」由提示条承担，不走这里。
+  // ≤14 天=此物有点落灰了 / 更久=此物落灰了；失效状态另有正文提示，不影响时效正文。
   // 旧数据缺 fresh_days 时回落收录天数。
   function freshText(g) {
     const d = g.fresh_days == null ? (g.days || 0) : g.fresh_days;
@@ -111,12 +111,12 @@
     return '<span class="g-ip-hall-visual ' + cls + '">' + ph +
       (img ? '<img src="' + esc(img) + '" alt="" loading="lazy" decoding="async" onerror="this.remove()">' : '') + '</span>';
   }
-  // 来源披露统一为一句小字：主页与详情页措辞略有分工，列表页不放
+  // 主页披露为一句小字；详情页在正文末尾沿用旧原型“原始标题”的边框卡片，列表页不放
   function legalLine() {
     return '<div class="g-legal">数据来自淘宝推广渠道</div>';
   }
   function legalLineDetail() {
-    return '<div class="g-legal">信息来自淘宝推广渠道，此处仅作展示不进行交易</div>';
+    return '<div class="g-legal-detail">信息来自淘宝推广渠道，此处仅作展示不进行交易，不保证采用的信息来自官方店铺，也不保证正品和价格最低</div>';
   }
   function ipHallCard(hall) {
     const work = hall.subject.kind === 'work';
@@ -284,65 +284,54 @@
   action('goods-open-cat', ds => nav.push('goods-cat', ds.arg));
   // goods-open 注册在下方「共享元素转场」节（带卡片快照与 FLIP 动画）
 
-  // ---------- 展品卡（详情）：上图下文，底部固定「去淘宝看看」 ----------
-  // 信息分区（2026-10-09 重排）：身份区（顶栏标题=展品名；标题/展厅/收录时间/落灰度一行 meta）→
-  // 策展区（陈列备注=灵魂 + 规格芯片）→ 坦诚区（原始标题直展 + 失效提示 + 披露）→
-  // CTA 行（复制口令 / 去淘宝看看 / 价格居右）。
+  // ---------- 展品卡（详情）：3:4 大图 + 统一正文 + 相关商品 + 底部 CTA ----------
+  // 与 Compose 当前实现一致：标题单独层级，其余信息均为同字号、默认色正文；
+  // IP / 规格仅以正文末尾的 # 文本标签使用主题色，不再使用陈列备注卡、芯片或提示条。
   registerScreen('goods-detail', {
     title: arg => { const g = goodById(arg); return g ? g.title : '展品卡'; },
     render(arg) {
       const g = goodById(arg);
       if (!g) return emptyHint('这件展品已撤下');
-      const c = catById(g.cat);
-      const buying = S.x.buyFor === g.id;
-      // 顶部图片 pager：scroll-snap 横滑；圆点由下方全局 scroll 监听直接改 class（不走 render）。
+      // 顶部图片 pager：3:4 边到边大图，页码位于右上，圆点位于图下。
       // 页数 = 真实图片数（上限 5，与后端 pics 上限一致；演示数据的占位图固定 3 页）。
       // 双指撑开/双击进全屏查看器（见文件末查看器节）。
       const shots = Math.max(1, Math.min(5, (g.images && g.images.length) || 3));
       let h = '<div class="g-pager-wrap"><div class="g-pager">' +
         Array.from({ length: shots }, (_, v) => '<div class="g-shot">' + cover(g, v) + '</div>').join('') +
-        '</div><div class="g-dots">' +
+        '</div>' + (shots > 1 ? '<div class="g-page-count">1/' + shots + '</div>' +
+        '<div class="g-dots">' +
         Array.from({ length: shots }, (_, i) => '<i class="g-dot' + (i === 0 ? ' on' : '') + '"></i>').join('') +
-        '</div></div>';
-      // 身份区：标题 + 一行 meta（展厅 · 收录时间 · 落灰度；失效由下方古董条承担）
+        '</div>' : '') + '</div>';
       h += '<div class="g-d-title">' + esc(g.title) + '</div>';
-      h += '<div class="g-d-meta">' + esc(c ? c.name : '') + ' · ' + g.days + ' 天前收录' +
-        (g.stale ? '' : ' · ' + freshText(g)) + '</div>';
-      // 策展区：陈列备注（AI 生成 + 人工抽查，抽查可关）+ 规格芯片
-      h += '<div class="g-note"><div class="g-note-label">✦ 陈列备注</div>' + esc(g.note) + '</div>';
+      // 以下顺序对应 GoodsDetailScreen：备注 → 优惠 → 失效/预售 → 收录时效 → 原始标题 → # 标签。
+      if (g.note) h += '<div class="g-d-text">' + esc(g.note) + '</div>';
+      if (g.promos && g.promos.length) {
+        h += '<div class="g-d-text">可能存在的优惠<br>' +
+          g.promos.slice(0, 3).map(p => '· ' + esc(p)).join('<br>') + '</div>';
+      }
+      if (g.stale) {
+        h += '<div class="g-d-text">这个商品可能已经下架，但你仍可以去搜搜同款。</div>';
+      }
+      if (g.presale) {
+        h += '<div class="g-d-text">这是预售商品，页面价格可能需要先付定金，具体以淘宝页面为准。</div>';
+      }
+      h += '<div class="g-d-text">' + g.days + ' 天前收录 · ' + freshText(g) + '</div>';
+      h += '<div class="g-d-text">' + esc(g.origin) + '</div>';
       const ipLinks = (g.ip_ids || []).map(ipById).filter(Boolean);
       if (ipLinks.length) {
-        h += '<div class="chip-row g-ip-tags">' + ipLinks.map(e =>
-          chip(ipKindLabel(e.kind) + '·' + e.name, false, 'goods-open-ip', e.id)).join('') + '</div>';
+        h += '<div class="g-d-tags">' + ipLinks.map(e =>
+          '<button type="button" class="g-d-tag" data-a="goods-open-ip" data-arg="' + e.id + '">#' + esc(e.name) + '</button>').join('') + '</div>';
       }
-      h += '<div class="chip-row g-attrs">' + g.attrs.map(assistChip).join('') + '</div>';
-      // 坦诚区：原始标题直接展示（提炼对照，不再折叠）
-      h += '<div class="g-org-label">它在淘宝的原始标题</div>' +
-        '<div class="g-org-text">' + esc(g.origin) + '</div>';
-      // 预售提示（联盟 presale_info 判定）：付定金阶段到手价=定金+尾款预估，坦诚标注避免误导
-      if (g.presale) {
-        h += '<div class="g-presale">' + icon('info') +
-          '<span><b>预售商品</b>——还在付定金阶段，价格含定金+尾款的预估，以淘宝页面为准。</span></div>';
+      if (g.attrs.length) {
+        h += '<div class="g-d-text g-d-attrs">' + g.attrs.map(a => '#' + esc(a)).join('  ') + '</div>';
       }
-      // 可能存在的优惠（联盟促销条目；券会过期/有门槛，弱化呈现不催促）：
-      // 每条目一张小卡片 + SVG 图标示意（券=票券 / 折=百分号 / 减降补贴抵扣=降价标签 / 包邮等标签=通用优惠）
-      if (g.promos && g.promos.length) {
-        const pIcon = p => {
-          if (p.includes('券')) return 'confirmation_number';
-          if (p.includes('折')) return 'percent';
-          if (p.includes('减') || p.includes('降') || p.includes('补贴') || p.includes('抵扣')) return 'sell';
-          return 'local_offer';
-        };
-        h += '<div class="g-promo"><div class="g-promo-label">可能存在的优惠</div>' +
-          '<div class="g-promo-list">' +
-          g.promos.map(p => '<div class="g-promo-card">' + icon(pIcon(p)) + '<span>' + esc(p) + '</span></div>').join('') +
-          '</div></div>';
-      }
+      // 按最新要求：完整披露作为最后一段正文，位于所有相关商品之前。
+      h += legalLineDetail();
       // 同 IP 还有（跨展厅）：与物品形态分类正交，只在确有同实体展品时显示
       const sameIp = (DB.GOODS || []).filter(x => x.id !== g.id &&
         (g.ip_ids || []).some(id => (x.ip_ids || []).includes(id))).slice(0, 5);
       if (sameIp.length) {
-        h += '<div class="sec-head"><span class="sec-title">同 IP 还有</span></div>' +
+        h += '<div class="sec-head g-d-related-head"><span class="sec-title">同 IP 还有</span></div>' +
           '<div class="g-fresh">' + sameIp.map(x =>
             '<div class="g-fresh-card" data-a="goods-open" data-arg="' + x.id + '">' +
             cover(x) +
@@ -352,28 +341,27 @@
       // 同展厅还有
       const rel = goodsByCat(g.cat).filter(x => x.id !== g.id).slice(0, 5);
       if (rel.length) {
-        h += '<div class="sec-head"><span class="sec-title">同展厅还有</span></div>' +
+        h += '<div class="sec-head g-d-related-head"><span class="sec-title">同展厅还有</span></div>' +
           '<div class="g-fresh">' + rel.map(x =>
             '<div class="g-fresh-card" data-a="goods-open" data-arg="' + x.id + '">' +
             cover(x) +
             '<div class="g-fresh-name">' + esc(x.title) + '</div>' +
-            '<div class="g-fresh-cat">' + fmtPrice(x.price) + '</div></div>').join('') + '</div>';
+            '<div class="g-fresh-cat">' + esc((catById(x.cat) || {}).name || '') + ' · ' + fmtPrice(x.price) + '</div></div>').join('') + '</div>';
       }
-      // 可能已失效（保留展示：用户可能去搜同款；坦诚提示，不拦跳转；落灰度语义并入首词）
-      if (g.stale) {
-        h += '<div class="g-stale">' + icon('info') +
-          '<span><b>这是古董</b>——这件可能已经下架了。若口令或跳转失效，可复制原始标题去淘宝搜同款。</span></div>';
-      }
-      // 披露（定案：固定于详情页底部，一句小字）
-      h += legalLineDetail();
-      // 底部 CTA：复制淘口令（次） + 去淘宝看看（主） + 价格（居右，划线价为淘宝标价）
-      h += '<div class="g-cta">' +
-        '<button class="icbtn g-cta-copy" data-a="goods-tpwd" data-arg="' + g.id + '" title="复制淘口令">' + icon('content_copy') + '</button>' +
-        btn(buying ? '正在唤起淘宝…' : icon('open_in_new') + ' 去淘宝看看', 'goods-buy', g.id, 'flex' + (buying ? ' g-buying' : '')) +
-        '<div class="g-cta-price"><span class="g-cta-about">约</span>' + fmtPrice(g.price) +
-        (g.list ? '<s title="为淘宝标价">' + fmtPrice(g.list) + '</s>' : '') + '</div>' +
-        '</div>';
       return h;
+    },
+    // 页面级底栏不随正文滚动；价格位于淘宝按钮内部左侧，复制口令是右侧独立图标。
+    bottom(arg) {
+      const g = goodById(arg);
+      if (!g) return '';
+      const buying = S.x.buyFor === g.id;
+      return '<div class="g-cta">' +
+        '<button class="btn flex g-cta-buy' + (buying ? ' g-buying' : '') + '" data-a="goods-buy" data-arg="' + g.id + '">' +
+        '<span class="g-cta-price"><span>约 ' + fmtPrice(g.price) + '</span>' +
+        (g.list ? '<s title="为淘宝标价">' + fmtPrice(g.list) + '</s>' : '') + '</span>' +
+        '<span class="g-cta-action">' + icon('open_in_new') + '<span>' + (buying ? '正在唤起淘宝…' : '去淘宝看看') + '</span></span></button>' +
+        '<button class="icbtn g-cta-copy" data-a="goods-tpwd" data-arg="' + g.id + '" title="复制淘口令">' + icon('content_copy') + '</button>' +
+        '</div>';
     }
   });
 
@@ -961,7 +949,7 @@
   });
   window.addEventListener('keydown', e => { if (e.key === 'Escape' && viewerEl) closeViewer(); });
 
-  // pager 圆点跟随：直接改 DOM class，不触发 render（避免重建导致 pager 回滚）
+  // pager 页码与圆点跟随：直接改 DOM，不触发 render（避免重建导致 pager 回滚）
   document.addEventListener('scroll', e => {
     const t = e.target;
     if (t && t.classList && t.classList.contains('g-pager')) {
@@ -969,6 +957,8 @@
       const wrap = t.parentElement;
       if (!wrap) return;
       wrap.querySelectorAll('.g-dot').forEach((d, j) => d.classList.toggle('on', i === j));
+      const count = wrap.querySelector('.g-page-count');
+      if (count) count.textContent = (i + 1) + '/' + wrap.querySelectorAll('.g-dot').length;
     }
   }, true);
 })();

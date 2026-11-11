@@ -1,5 +1,6 @@
 // UI 组件库 + 渲染编排。组件以 HTML 字符串函数表示，事件经全局委托分发（data-a / data-*）。
-// 页面注册：registerScreen(id, {title, render})；动作注册：ACTIONS[name] = (ds, el) => {}。
+// 页面注册：registerScreen(id, {title, render, bottom?})；bottom 是不随 content 滚动的页面级底栏。
+// 动作注册：ACTIONS[name] = (ds, el) => {}。
 (function () {
   window.SCREENS = {};
   window.ACTIONS = {};
@@ -183,6 +184,7 @@
       const def = SCREENS[cur.page];
       title = typeof def.title === 'function' ? def.title(cur.arg) : def.title;
       content = def.render(cur.arg);
+      bottom = def.bottom ? (typeof def.bottom === 'function' ? def.bottom(cur.arg) : def.bottom) : '';
       showBack = !def.hideBack;
     } else {
       const def = SCREENS['tab:' + S.tab];
@@ -226,6 +228,7 @@
       (ts ? '<span class="topbar-subtitle">' + esc(ts) + '</span>' : '') + '</span>' + rightBtn +
       '</header></div>';
     app.className = (cur ? '' : 'has-nav') + (full ? ' has-full' : '') +
+      (cur && def0.bottom ? ' has-page-bottom' : '') +
       (S.x.kbDemo ? ' has-kbd' : '') + (S.x.navHidden ? ' nav-hidden' : '');
     document.body.classList.toggle('has-full', full); // 全屏页隐藏 proto-bar 调试条（避免与查看器顶部信息重叠）
     // 下拉刷新指示器（第十轮）：刷新期间悬浮于内容顶部，列表保持原位可见
