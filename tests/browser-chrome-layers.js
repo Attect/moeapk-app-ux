@@ -134,10 +134,12 @@ async function auditTabs() {
     });
     const index = pathToFileURL(path.join(root, 'index.html')).href;
     await navigate(`${index}?theme=light&frame=port#apk`);
-    report.onboardLight = await evaluate(`(() => { const el=document.querySelector('.onboard'), s=getComputedStyle(el);
-      return { bg:s.backgroundColor, blur:s.backdropFilter, image:s.backgroundImage }; })()`);
-    assert(report.onboardLight.bg === 'rgba(255, 255, 255, 0.38)' && report.onboardLight.blur.includes('blur(18px)') &&
-      report.onboardLight.image.includes('linear-gradient'), `light onboard is not real frosted glass: ${JSON.stringify(report.onboardLight)}`);
+    report.onboardLight = await evaluate(`(() => { const el=document.querySelector('.onboard'), s=getComputedStyle(el),
+      nav=getComputedStyle(document.querySelector('.navbar'));
+      return { bg:s.backgroundColor, navBg:nav.backgroundColor, blur:s.backdropFilter, navBlur:nav.backdropFilter, image:s.backgroundImage }; })()`);
+    assert(report.onboardLight.bg === report.onboardLight.navBg && report.onboardLight.blur === report.onboardLight.navBlur &&
+      report.onboardLight.blur.includes('blur(18px)') && report.onboardLight.image === 'none',
+    `light onboard does not match bottom chrome: ${JSON.stringify(report.onboardLight)}`);
     await shot('walk-onboard-light.png');
     await dismissOnboard();
 
@@ -226,10 +228,12 @@ async function auditTabs() {
     await scrollTo(520);
     await evaluate(`document.querySelector('[data-a="theme-toggle"]').click()`);
     await sleep(250);
-    report.onboardDark = await evaluate(`(() => { const el=document.querySelector('.onboard'), s=getComputedStyle(el);
-      return { bg:s.backgroundColor, blur:s.backdropFilter, image:s.backgroundImage }; })()`);
-    assert(report.onboardDark.bg === 'rgba(58, 50, 82, 0.48)' && report.onboardDark.blur.includes('blur(18px)') &&
-      report.onboardDark.image.includes('linear-gradient'), `dark onboard is not real frosted glass: ${JSON.stringify(report.onboardDark)}`);
+    report.onboardDark = await evaluate(`(() => { const el=document.querySelector('.onboard'), s=getComputedStyle(el),
+      nav=getComputedStyle(document.querySelector('.navbar'));
+      return { bg:s.backgroundColor, navBg:nav.backgroundColor, blur:s.backdropFilter, navBlur:nav.backdropFilter, image:s.backgroundImage }; })()`);
+    assert(report.onboardDark.bg === report.onboardDark.navBg && report.onboardDark.blur === report.onboardDark.navBlur &&
+      report.onboardDark.blur.includes('blur(18px)') && report.onboardDark.image === 'none',
+    `dark onboard does not match bottom chrome: ${JSON.stringify(report.onboardDark)}`);
     await shot('walk-onboard-dark.png');
     await dismissOnboard();
     report.darkTabs = await auditTabs();
