@@ -340,6 +340,28 @@
   });
 
   // ---------- 查看器 ----------
+  function zoomOf(id) {
+    if (!S.x.avZoom || S.x.avZoom.id !== id) S.x.avZoom = { id, scale: 1, x: 0, y: 0 };
+    return S.x.avZoom;
+  }
+  function mediaStage(a, active) {
+    if (a.kind === 'pointcloud') return cloudStage(a);
+    if (a.kind === 'audio') return audioStage(a);
+    const z = active && a.kind === 'image' ? zoomOf(a.id) : { scale: 1, x: 0, y: 0 };
+    return '<div class="av-media' + (a.kind === 'image' ? ' av-zoomable' : '') + '"' +
+      ' style="background:linear-gradient(165deg,hsl(' + a.hue + ',62%,64%),hsl(' + ((a.hue + 60) % 360) + ',48%,30%));' +
+      'transform:translate3d(' + z.x + 'px,' + z.y + 'px,0) scale(' + z.scale + ')">' +
+      (a.kind === 'video' ? '<span style="width:56px;height:56px;border-radius:50%;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;color:#fff">' + icon('play_arrow') + '</span>' : '') + '</div>';
+  }
+  // 三页常驻轨道：拖动时只改 transform，不在松手时突然替换整页。
+  // 轨道自身宽度恒等于视口，故 -100% 恰好是一屏，而不是三屏内容总宽。
+  function pagerStage(list, idx) {
+    const page = (item, pos) => '<div class="av-page" data-pos="' + pos + '">' +
+      (item ? mediaStage(item, pos === 0) : '') + '</div>';
+    return '<div class="av-pager"><div class="av-pager-track">' +
+      page(list[idx - 1], -1) + page(list[idx], 0) + page(list[idx + 1], 1) +
+      '</div></div>';
+  }
   registerScreen('asset', {
     title: '素材',
     full: true, // 沉浸式全屏：无顶栏（顶栏由悬浮返回键 + 工具栏承担），Compose 侧对应全屏 Dialog/immersive viewer
@@ -348,28 +370,26 @@
       const a = cur();
       if (!a) return emptyHint('素材不存在');
       const idx = list.indexOf(a);
+      const chromeOff = a.kind === 'image' && S.x.avChrome === false;
+      const chromeAttrs = chromeOff ? ' aria-hidden="true" inert' : '';
       // 处理进度条（工具栏上方）
       let proc = '';
       if (S.x.proc) {
         const j = mock.job(S.x.proc.key);
         if (!j) { S.x.proc = null; }
         else {
-          proc = '<div class="proc-bar">' +
+          proc = '<div class="proc-bar av-chrome"' + chromeAttrs + '>' +
             '<div style="flex:1"><div class="li-title" style="font-weight:400;color:var(--on-surface)">' + esc(S.x.proc.title) + '</div>' +
             '<div class="dl-status">' + esc(j.phase || '处理中') + ' · ' + Math.round(j.p * 100) + '%</div>' +
             progress(j.p) + '</div>' +
             textBtn('取消', 'av-cancel', null, 'danger') + '</div>';
         }
       }
-      // 舞台按类型
-      let stage = '';
-      if (a.kind === 'pointcloud') stage = cloudStage(a);
-      else if (a.kind === 'audio') stage = audioStage(a);
-      else stage = '<div class="av-media" style="background:linear-gradient(165deg,hsl(' + a.hue + ',62%,64%),hsl(' + ((a.hue + 60) % 360) + ',48%,30%))">' +
-        (a.kind === 'video' ? '<span style="width:56px;height:56px;border-radius:50%;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;color:#fff">' + icon('play_arrow') + '</span>' : '') + '</div>';
+      // 图片/视频与相邻类型共用同一条跟手轨道；只有当前图片承载缩放状态。
+      const stage = pagerStage(list, idx);
       const navBtns = (a.kind === 'image' || a.kind === 'video') ?
-        ((idx > 0 ? '<button class="av-nav left" data-a="av-prev">' + icon('keyboard_arrow_right') + '</button>' : '') +
-         (idx < list.length - 1 ? '<button class="av-nav right" data-a="av-next">' + icon('keyboard_arrow_right') + '</button>' : '')) : '';
+        ((idx > 0 ? '<button class="av-nav av-chrome left" data-a="av-prev"' + chromeAttrs + '>' + icon('keyboard_arrow_right') + '</button>' : '') +
+         (idx < list.length - 1 ? '<button class="av-nav av-chrome right" data-a="av-next"' + chromeAttrs + '>' + icon('keyboard_arrow_right') + '</button>' : '')) : '';
       // 工具栏按类型
       // 按钮文案恒为「3D 点云」：任何备注（「旗舰芯」等）都会造成按钮尺寸不一致/错位，
       // 用户明确要求不带（第十四轮定案）
@@ -395,22 +415,27 @@
         tool('info', '详情', 'av-info');
       // 多选入口（图片/视频）：进入批量选择模式
       if (a.kind === 'image' || a.kind === 'video') tools += tool('playlist_add', '多选', 'as-batch-on-viewer');
-      return '<div class="av-stage">' +
-        '<button class="av-back" data-a="av-back">' + icon('arrow_back') + '</button>' +
-        '<div class="av-counter">' + (idx + 1) + ' / ' + list.length + (KIND_LABEL[a.kind] ? ' · ' + KIND_LABEL[a.kind] : '') + '</div>' +
+      return '<div class="av-stage' + (chromeOff ? ' chrome-hidden' : '') + '">' +
+        '<button class="av-back av-chrome" data-a="av-back"' + chromeAttrs + '>' + icon('arrow_back') + '</button>' +
+        '<div class="av-counter av-chrome"' + (chromeOff ? ' aria-hidden="true"' : '') + '>' + (idx + 1) + ' / ' + list.length + (KIND_LABEL[a.kind] ? ' · ' + KIND_LABEL[a.kind] : '') + '</div>' +
         stage + navBtns + proc +
-        '<div class="av-toolbar">' + tools + '</div></div>';
+        '<div class="av-toolbar av-chrome"' + chromeAttrs + '>' + tools + '</div></div>';
     }
   });
   action('av-back', () => nav.pop());
   // 左右切到点云素材同样进入加载态（App 侧每次切换都会重新解析 pcache）
-  function viewStep(d) {
+  function commitStep(d) {
     const l = assets(); const i = l.indexOf(cur());
     const nx = l[i + d];
     if (!nx) return;
     S.x.viewId = nx.id;
+    S.x.avZoom = { id: nx.id, scale: 1, x: 0, y: 0 };
     if (nx.kind === 'pointcloud') startCloudLoading(nx.id);
     render();
+  }
+  function viewStep(d) {
+    if (pageAnimating) return;
+    if (!animatePage(d)) commitStep(d);
   }
   action('av-prev', () => viewStep(-1));
   action('av-next', () => viewStep(1));
@@ -455,20 +480,222 @@
   });
   action('av-share', () => toast('已调起系统分享（模拟）'));
 
-  // I6 手势：查看器左右滑动切换（touch swipe；Compose 侧对应 pager + drag）
-  let swX = null, swY = null;
-  document.addEventListener('touchstart', e => {
-    if (!nav.current() || nav.current().page !== 'asset') return;
-    swX = e.touches[0].clientX; swY = e.touches[0].clientY;
+  // I6 手势升级：常驻三页轨道跟手滑动；图片单击显隐 chrome、双击与双指缩放。
+  // 单指在 1× 时不消费横拖（交给分页），放大后才用于平移图片；双指始终进入捏合。
+  let pageAnimating = false, pageTimer = null;
+  function pagerParts() {
+    const pager = document.querySelector('.av-stage .av-pager');
+    return pager ? { pager, track: pager.querySelector('.av-pager-track') } : null;
+  }
+  function setTrackOffset(offset, animate) {
+    const p = pagerParts();
+    if (!p) return;
+    const w = p.pager.clientWidth;
+    p.track.style.transition = animate ? 'transform .28s cubic-bezier(.22,.8,.28,1)' : 'none';
+    p.track.style.transform = 'translate3d(' + (-w + offset) + 'px,0,0)';
+  }
+  function settlePage(direction) {
+    const p = pagerParts();
+    if (!p) { pageAnimating = false; return; }
+    clearTimeout(pageTimer);
+    pageAnimating = true;
+    setTrackOffset(direction ? -direction * p.pager.clientWidth : 0, true);
+    pageTimer = setTimeout(() => {
+      pageAnimating = false;
+      if (direction) commitStep(direction);
+      else if (pagerParts()) {
+        p.track.style.transition = 'none';
+        p.track.style.transform = '';
+      }
+    }, 290);
+  }
+  function animatePage(direction) {
+    const p = pagerParts();
+    const l = assets(), i = l.indexOf(cur());
+    if (!p || pageAnimating || !l[i + direction]) return false;
+    if (cur().kind === 'image') {
+      S.x.avZoom = { id: cur().id, scale: 1, x: 0, y: 0 };
+      const media = p.pager.querySelector('.av-page[data-pos="0"] .av-media');
+      if (media) {
+        media.style.transition = 'none';
+        media.style.transform = 'translate3d(0,0,0) scale(1)';
+      }
+    }
+    settlePage(direction);
+    return true;
+  }
+
+  function applyChromeVisibility() {
+    const stage = document.querySelector('.av-stage');
+    if (!stage) return;
+    const off = cur().kind === 'image' && S.x.avChrome === false;
+    stage.classList.toggle('chrome-hidden', off);
+    stage.querySelectorAll('.av-chrome').forEach(el => {
+      el.setAttribute('aria-hidden', off ? 'true' : 'false');
+      if (off) el.setAttribute('inert', ''); else el.removeAttribute('inert');
+    });
+  }
+  function toggleChrome() {
+    if (!nav.current() || nav.current().page !== 'asset' || cur().kind !== 'image') return;
+    S.x.avChrome = S.x.avChrome === false;
+    applyChromeVisibility();
+  }
+  function zoomParts() {
+    const p = pagerParts();
+    if (!p || cur().kind !== 'image') return null;
+    const media = p.pager.querySelector('.av-page[data-pos="0"] .av-zoomable');
+    return media ? Object.assign({ media }, p) : null;
+  }
+  function clampedZoom(parts, scale, x, y) {
+    const maxX = Math.max(0, (parts.media.offsetWidth * scale - parts.pager.clientWidth) / 2);
+    const maxY = Math.max(0, (parts.media.offsetHeight * scale - parts.pager.clientHeight) / 2);
+    return { scale, x: Math.max(-maxX, Math.min(maxX, x)), y: Math.max(-maxY, Math.min(maxY, y)) };
+  }
+  function paintZoom(scale, x, y, animate) {
+    const p = zoomParts();
+    if (!p) return;
+    const next = clampedZoom(p, Math.max(1, Math.min(5, scale)), x, y);
+    const z = zoomOf(cur().id);
+    z.scale = next.scale; z.x = next.x; z.y = next.y;
+    p.media.style.transition = animate ? 'transform .22s cubic-bezier(.2,.8,.2,1)' : 'none';
+    p.media.style.transform = 'translate3d(' + z.x + 'px,' + z.y + 'px,0) scale(' + z.scale + ')';
+  }
+  function doubleZoom(clientX, clientY) {
+    const p = zoomParts();
+    if (!p) return;
+    const z = zoomOf(cur().id);
+    if (z.scale > 1.01) { paintZoom(1, 0, 0, true); return; }
+    const r = p.pager.getBoundingClientRect();
+    const pivot = { x: clientX - r.left - r.width / 2, y: clientY - r.top - r.height / 2 };
+    const scale = 2.5;
+    paintZoom(scale, pivot.x * (1 - scale), pivot.y * (1 - scale), true);
+  }
+
+  const viewPointers = new Map();
+  let viewGesture = null, tapTimer = null, lastTap = null;
+  function clearPendingTap() {
+    clearTimeout(tapTimer); tapTimer = null; lastTap = null;
+  }
+  function pointerPair() {
+    const p = Array.from(viewPointers.values());
+    const a = p[0], b = p[1];
+    return { a, b, distance: Math.hypot(a.x - b.x, a.y - b.y),
+      x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+  }
+  document.addEventListener('pointerdown', e => {
+    const current = nav.current();
+    if (!current || current.page !== 'asset') return;
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    if (e.target.closest('button,input,.av-toolbar,.proc-bar,.cloud-panel')) { clearPendingTap(); return; }
+    const p = pagerParts();
+    if (!p || pageAnimating || !e.target.closest('.av-pager')) return;
+    try { p.pager.setPointerCapture(e.pointerId); } catch (_) {}
+    viewPointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    const z = zoomOf(cur().id);
+    if (viewPointers.size === 1) {
+      const now = Date.now();
+      const doubleCandidate = !!(tapTimer && lastTap && now - lastTap.t < 290 &&
+        Math.hypot(e.clientX - lastTap.x, e.clientY - lastTap.y) < 42);
+      if (doubleCandidate) { clearTimeout(tapTimer); tapTimer = null; }
+      viewGesture = { mode: 'idle', startX: e.clientX, startY: e.clientY,
+        lastX: e.clientX, lastT: now, velocityX: 0, dragX: 0, startAt: now,
+        startZoom: { scale: z.scale, x: z.x, y: z.y }, doubleCandidate };
+      setTrackOffset(0, false);
+      const media = p.pager.querySelector('.av-page[data-pos="0"] .av-media');
+      if (media) media.style.transition = 'none';
+    } else if (viewPointers.size === 2 && cur().kind === 'image') {
+      clearPendingTap();
+      const pair = pointerPair();
+      viewGesture.mode = 'pinch';
+      viewGesture.pinch = { distance: Math.max(1, pair.distance), x: pair.x, y: pair.y,
+        scale: z.scale, offsetX: z.x, offsetY: z.y };
+      p.track.style.transform = '';
+    }
   }, { passive: true });
-  document.addEventListener('touchend', e => {
-    if (swX == null) return;
-    const dx = e.changedTouches[0].clientX - swX;
-    const dy = e.changedTouches[0].clientY - swY;
-    swX = swY = null;
-    if (Math.abs(dx) < 56 || Math.abs(dx) < Math.abs(dy) * 1.4) return; // 横向明显滑动才算
-    if (dx < 0) viewStep(1); else viewStep(-1);
-  }, { passive: true });
+
+  document.addEventListener('pointermove', e => {
+    if (!viewGesture || !viewPointers.has(e.pointerId)) return;
+    viewPointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    const p = pagerParts();
+    if (!p) return;
+    const z = zoomOf(cur().id);
+    if (viewGesture.mode === 'pinch') {
+      if (viewPointers.size < 2) return;
+      const pair = pointerPair(), start = viewGesture.pinch;
+      const rect = p.pager.getBoundingClientRect();
+      const scale = Math.max(1, Math.min(5, start.scale * pair.distance / start.distance));
+      const startPivotX = start.x - rect.left - rect.width / 2;
+      const startPivotY = start.y - rect.top - rect.height / 2;
+      const nowPivotX = pair.x - rect.left - rect.width / 2;
+      const nowPivotY = pair.y - rect.top - rect.height / 2;
+      const ratio = scale / start.scale;
+      paintZoom(scale, nowPivotX + ratio * (start.offsetX - startPivotX),
+        nowPivotY + ratio * (start.offsetY - startPivotY), false);
+      e.preventDefault();
+      return;
+    }
+    if (viewGesture.mode === 'pinch-end' || viewPointers.size !== 1) return;
+    const dx = e.clientX - viewGesture.startX, dy = e.clientY - viewGesture.startY;
+    if (viewGesture.mode === 'idle' && Math.hypot(dx, dy) > 8) {
+      clearPendingTap(); viewGesture.doubleCandidate = false;
+      if (cur().kind === 'image' && z.scale > 1.01) viewGesture.mode = 'pan';
+      else if (Math.abs(dx) > Math.abs(dy) * 1.05) viewGesture.mode = 'swipe';
+      else viewGesture.mode = 'vertical';
+    }
+    if (viewGesture.mode === 'pan') {
+      paintZoom(z.scale, viewGesture.startZoom.x + dx, viewGesture.startZoom.y + dy, false);
+      e.preventDefault();
+    } else if (viewGesture.mode === 'swipe') {
+      const l = assets(), i = l.indexOf(cur());
+      const edge = (dx > 0 && i <= 0) || (dx < 0 && i >= l.length - 1);
+      viewGesture.dragX = edge ? dx * .32 : dx;
+      setTrackOffset(viewGesture.dragX, false);
+      e.preventDefault();
+    }
+    const now = Date.now(), dt = Math.max(1, now - viewGesture.lastT);
+    viewGesture.velocityX = (e.clientX - viewGesture.lastX) / dt;
+    viewGesture.lastX = e.clientX; viewGesture.lastT = now;
+  }, { passive: false });
+
+  function finishViewPointer(e, cancelled) {
+    if (!viewGesture || !viewPointers.has(e.pointerId)) return;
+    const g = viewGesture;
+    viewPointers.delete(e.pointerId);
+    if (g.mode === 'pinch' && viewPointers.size) {
+      g.mode = 'pinch-end';
+      return;
+    }
+    if (viewPointers.size) return;
+    viewGesture = null;
+    const p = pagerParts();
+    if (!p) return;
+    if (cancelled) {
+      clearPendingTap();
+      if (g.mode === 'swipe') settlePage(0);
+      if (cur().kind === 'image' && zoomOf(cur().id).scale <= 1.01) paintZoom(1, 0, 0, true);
+      return;
+    }
+    if (g.mode === 'idle' && Date.now() - g.startAt < 500) {
+      p.track.style.transform = '';
+      if (cur().kind === 'image') {
+        if (g.doubleCandidate) { clearPendingTap(); doubleZoom(e.clientX, e.clientY); }
+        else {
+          lastTap = { x: e.clientX, y: e.clientY, t: Date.now() };
+          clearTimeout(tapTimer);
+          tapTimer = setTimeout(() => { tapTimer = null; lastTap = null; toggleChrome(); }, 280);
+        }
+      }
+    } else if (g.mode === 'swipe') {
+      const dx = g.dragX, w = p.pager.clientWidth;
+      const direction = Math.abs(dx) > w * .2 || Math.abs(g.velocityX) > .55 ? (dx < 0 ? 1 : -1) : 0;
+      const i = assets().indexOf(cur());
+      settlePage(direction && assets()[i + direction] ? direction : 0);
+    } else if (cur().kind === 'image' && zoomOf(cur().id).scale <= 1.01) {
+      paintZoom(1, 0, 0, true);
+    }
+  }
+  document.addEventListener('pointerup', e => finishViewPointer(e, false), { passive: true });
+  document.addEventListener('pointercancel', e => finishViewPointer(e, true), { passive: true });
 
   function runProc(title, phases, ms, onDone) {
     if (S.x.proc) { toast('已有处理任务进行中'); return; }
