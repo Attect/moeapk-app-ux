@@ -356,8 +356,11 @@
   // 三页常驻轨道：拖动时只改 transform，不在松手时突然替换整页。
   // 轨道自身宽度恒等于视口，故 -100% 恰好是一屏，而不是三屏内容总宽。
   function pagerStage(list, idx) {
-    const page = (item, pos) => '<div class="av-page" data-pos="' + pos + '">' +
-      (item ? mediaStage(item, pos === 0) : '') + '</div>';
+    const page = (item, pos) => {
+      const zoomed = item && pos === 0 && item.kind === 'image' && zoomOf(item.id).scale > 1.001;
+      return '<div class="av-page' + (zoomed ? ' zoomed' : '') + '" data-pos="' + pos + '">' +
+        (item ? mediaStage(item, pos === 0) : '') + '</div>';
+    };
     return '<div class="av-pager"><div class="av-pager-track">' +
       page(list[idx - 1], -1) + page(list[idx], 0) + page(list[idx + 1], 1) +
       '</div></div>';
@@ -430,6 +433,8 @@
     if (!nx) return;
     S.x.viewId = nx.id;
     S.x.avZoom = { id: nx.id, scale: 1, x: 0, y: 0 };
+    S.x.avZoomed = false;
+    if (S.x.avZoomChrome) { S.x.avChrome = true; S.x.avZoomChrome = false; }
     if (nx.kind === 'pointcloud') startCloudLoading(nx.id);
     render();
   }
@@ -537,6 +542,7 @@
   }
   function toggleChrome() {
     if (!nav.current() || nav.current().page !== 'asset' || cur().kind !== 'image') return;
+    S.x.avZoomChrome = false; // 用户手动接管显隐；本次放大状态内不再自动抢回
     S.x.avChrome = S.x.avChrome === false;
     applyChromeVisibility();
   }
@@ -559,6 +565,17 @@
     z.scale = next.scale; z.x = next.x; z.y = next.y;
     p.media.style.transition = animate ? 'transform .22s cubic-bezier(.2,.8,.2,1)' : 'none';
     p.media.style.transform = 'translate3d(' + z.x + 'px,' + z.y + 'px,0) scale(' + z.scale + ')';
+    const page = p.media.closest('.av-page');
+    if (page) page.classList.toggle('zoomed', z.scale > 1.001);
+    const zoomed = z.scale > 1.01;
+    if (zoomed !== !!S.x.avZoomed) {
+      S.x.avZoomed = zoomed;
+      if (zoomed && S.x.avChrome !== false) {
+        S.x.avZoomChrome = true; S.x.avChrome = false; applyChromeVisibility();
+      } else if (!zoomed && S.x.avZoomChrome) {
+        S.x.avZoomChrome = false; S.x.avChrome = true; applyChromeVisibility();
+      }
+    }
   }
   function doubleZoom(clientX, clientY) {
     const p = zoomParts();

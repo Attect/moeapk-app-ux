@@ -82,7 +82,7 @@ async function metrics(width, height) {
   await sleep(250);
 }
 async function resetFirst() {
-  await evaluate(`(() => { S.x.viewId='as1'; S.x.avChrome=true; S.x.avZoom={id:'as1',scale:1,x:0,y:0}; render(); })()`);
+  await evaluate(`(() => { S.x.viewId='as1'; S.x.avChrome=true; S.x.avZoomed=false; S.x.avZoomChrome=false; S.x.avZoom={id:'as1',scale:1,x:0,y:0}; render(); })()`);
   await sleep(120);
 }
 
@@ -114,7 +114,7 @@ async function resetFirst() {
     await evaluate(`document.querySelector('.av-page[data-pos="0"] .av-media').style.background='#fff'`);
     report.contrast = await evaluate(`(() => { const n=document.querySelector('.av-nav.right'), s=getComputedStyle(n), i=getComputedStyle(n.querySelector('.ic'));
       return { bg:s.backgroundColor, border:s.borderTopColor, icon:i.color, shadow:s.boxShadow }; })()`);
-    assert(report.contrast.bg === 'rgba(10, 14, 24, 0.78)' && report.contrast.icon === 'rgb(255, 255, 255)',
+    assert(report.contrast.bg === 'rgba(10, 14, 24, 0.52)' && report.contrast.icon === 'rgb(255, 255, 255)',
       `navigation contrast regressed: ${JSON.stringify(report.contrast)}`);
     await shot('walk-asset-viewer-light-controls.png');
 
@@ -132,20 +132,27 @@ async function resetFirst() {
     assert(report.singleShow, 'second single tap did not restore chrome');
 
     await doubleClickAt(center); await sleep(320);
-    report.doubleZoom = await evaluate(`(() => ({ scale:S.x.avZoom.scale, hidden:document.querySelector('.av-stage').classList.contains('chrome-hidden'),
-      transform:document.querySelector('.av-page[data-pos="0"] .av-media').style.transform }))()`);
-    assert(report.doubleZoom.scale === 2.5 && !report.doubleZoom.hidden, `double tap zoom mismatch: ${JSON.stringify(report.doubleZoom)}`);
+    report.doubleZoom = await evaluate(`(() => { const p=document.querySelector('.av-pager'), m=document.querySelector('.av-page[data-pos="0"] .av-media');
+      return { scale:S.x.avZoom.scale, hidden:document.querySelector('.av-stage').classList.contains('chrome-hidden'),
+      transform:m.style.transform, filled:m.offsetWidth===p.clientWidth&&m.offsetHeight===p.clientHeight,
+      zoomed:document.querySelector('.av-page[data-pos="0"]').classList.contains('zoomed') }; })()`);
+    assert(report.doubleZoom.scale === 2.5 && report.doubleZoom.hidden && report.doubleZoom.filled && report.doubleZoom.zoomed,
+      `double tap zoom/full-bleed mismatch: ${JSON.stringify(report.doubleZoom)}`);
     await shot('walk-asset-viewer-double-zoom.png');
     await doubleClickAt(center); await sleep(300);
-    assert(await evaluate(`S.x.avZoom.scale===1 && S.x.avZoom.x===0 && S.x.avZoom.y===0`), 'double tap did not reset zoom');
+    assert(await evaluate(`S.x.avZoom.scale===1 && S.x.avZoom.x===0 && S.x.avZoom.y===0 && !document.querySelector('.av-stage').classList.contains('chrome-hidden')`),
+      'double tap did not reset zoom and auto-restore chrome');
 
     const rect = await evaluate(`(() => { const r=document.querySelector('.av-pager').getBoundingClientRect(); return {x:r.left,y:r.top,w:r.width,h:r.height}; })()`);
     const pinchCenter = { x: rect.x + rect.w / 2, y: rect.y + rect.h / 2 };
     await touch('touchStart', [{x:pinchCenter.x-40,y:pinchCenter.y,id:0},{x:pinchCenter.x+40,y:pinchCenter.y,id:1}]);
     await touch('touchMove', [{x:pinchCenter.x-90,y:pinchCenter.y,id:0},{x:pinchCenter.x+90,y:pinchCenter.y,id:1}]);
     await sleep(80);
-    report.pinch = await evaluate(`({scale:S.x.avZoom.scale,id:S.x.viewId})`);
-    assert(report.pinch.scale > 1.8 && report.pinch.id === 'as1', `pinch did not zoom current image: ${JSON.stringify(report.pinch)}`);
+    report.pinch = await evaluate(`({scale:S.x.avZoom.scale,id:S.x.viewId,
+      hidden:document.querySelector('.av-stage').classList.contains('chrome-hidden'),
+      filled:document.querySelector('.av-page[data-pos="0"]').classList.contains('zoomed')})`);
+    assert(report.pinch.scale > 1.8 && report.pinch.id === 'as1' && report.pinch.hidden && report.pinch.filled,
+      `pinch did not zoom current image into full-bleed mode: ${JSON.stringify(report.pinch)}`);
     await touch('touchEnd', []); await sleep(80);
     await touch('touchStart', [{x:pinchCenter.x,y:pinchCenter.y,id:0}]);
     await touch('touchMove', [{x:pinchCenter.x+42,y:pinchCenter.y+20,id:0}]);
@@ -186,7 +193,7 @@ async function resetFirst() {
     await evaluate(`document.querySelector('[data-a="theme-toggle"]').click()`); await sleep(180);
     await shot('walk-asset-viewer-dark.png');
     report.dark = await evaluate(`({theme:document.documentElement.dataset.theme,bg:getComputedStyle(document.querySelector('.av-nav.right')).backgroundColor})`);
-    assert(report.dark.theme === 'dark' && report.dark.bg === 'rgba(10, 14, 24, 0.78)', 'dark theme navigation contrast regressed');
+    assert(report.dark.theme === 'dark' && report.dark.bg === 'rgba(10, 14, 24, 0.52)', 'dark theme navigation contrast regressed');
 
     await metrics(360, 780);
     report.narrow = await evaluate(`(() => { const r=document.querySelector('.av-nav.right').getBoundingClientRect();
@@ -199,6 +206,14 @@ async function resetFirst() {
       return {width:p.width,height:p.height,navInside:n.left>=p.left&&n.right<=p.right&&n.top>=p.top&&n.bottom<=p.bottom}; })()`);
     assert(report.landscape.width > report.landscape.height && report.landscape.navInside, `landscape viewer mismatch: ${JSON.stringify(report.landscape)}`);
     await shot('walk-asset-viewer-landscape-dark.png');
+    const landCenter = await point('.av-page[data-pos="0"] .av-media');
+    await doubleClickAt(landCenter); await sleep(320);
+    report.landscapeFill = await evaluate(`(() => { const p=document.querySelector('.av-pager'), m=document.querySelector('.av-page[data-pos="0"] .av-media');
+      return {filled:m.offsetWidth===p.clientWidth&&m.offsetHeight===p.clientHeight,
+        hidden:document.querySelector('.av-stage').classList.contains('chrome-hidden')}; })()`);
+    assert(report.landscapeFill.filled && report.landscapeFill.hidden,
+      `landscape zoom left letterbox or chrome: ${JSON.stringify(report.landscapeFill)}`);
+    await shot('walk-asset-viewer-landscape-fill.png');
 
     assert(!externalRequests.length, `external requests: ${externalRequests.join(',')}`);
     assert(!exceptions.length, `browser exceptions: ${JSON.stringify(exceptions)}`);
