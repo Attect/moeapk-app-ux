@@ -347,8 +347,9 @@
   function mediaStage(a) {
     if (a.kind === 'pointcloud') return cloudStage(a);
     if (a.kind === 'audio') return audioStage(a);
+    const iw = a.pixelWidth > 0 ? a.pixelWidth : 9, ih = a.pixelHeight > 0 ? a.pixelHeight : 16;
     return '<div class="av-media' + (a.kind === 'image' ? ' av-zoomable' : '') + '">' +
-      '<div class="av-picture" style="background:linear-gradient(165deg,hsl(' + a.hue + ',62%,64%),hsl(' + ((a.hue + 60) % 360) + ',48%,30%))"></div>' +
+      '<div class="av-picture" data-pixel-width="' + iw + '" data-pixel-height="' + ih + '" style="background:linear-gradient(165deg,hsl(' + a.hue + ',62%,64%),hsl(' + ((a.hue + 60) % 360) + ',48%,30%))"></div>' +
       (a.kind === 'video' ? '<span style="width:56px;height:56px;border-radius:50%;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;color:#fff;z-index:1">' + icon('play_arrow') + '</span>' : '') + '</div>';
   }
   // 三页常驻轨道：媒体容器始终全屏，安全区只决定 1× 初始取景，不参与阈值布局切换。
@@ -550,17 +551,20 @@
     const media = frame && frame.querySelector('.av-picture');
     return media ? Object.assign({ media, frame }, p) : null;
   }
-  // 1×：宽不超过安全区，高位于顶部安全区与底栏之间；放大：中心连续过渡到全屏中心。
+  // 1×：宽不超过安全区，高位于顶部安全区与真实底栏之间；放大：中心连续过渡到全屏中心。
   function mediaLayout(parts, scale) {
     const vw = parts.pager.clientWidth, vh = parts.pager.clientHeight;
     const appStyle = getComputedStyle(document.getElementById('app'));
     const top = parseFloat(appStyle.getPropertyValue('--statusbar-h')) || 0;
     const toolbar = document.querySelector('.av-toolbar');
+    // offsetHeight 已含底部手势安全区；即使 chrome 隐藏也保持原布局，不可再重复扣 safeBottom。
     const bottom = toolbar ? toolbar.offsetHeight : 0;
     const side = vw > vh ? 24 : 0; // 原型模拟横屏圆角/挖孔；Compose 读取真实 WindowInsets。
     const safeW = Math.max(1, vw - side * 2), safeH = Math.max(1, vh - top - bottom);
-    const fit = Math.min(safeW / 9, safeH / 16); // 原型图片比例 9:16
-    const baseW = 9 * fit, baseH = 16 * fit;
+    const media = parts.media || parts.pager.querySelector('.av-page[data-pos="0"] .av-picture');
+    const iw = +(media && media.dataset.pixelWidth) || 9, ih = +(media && media.dataset.pixelHeight) || 16;
+    const fit = Math.min(safeW / iw, safeH / ih);
+    const baseW = iw * fit, baseH = ih * fit;
     const safeX = side + safeW / 2, safeY = top + safeH / 2;
     const fillZoom = Math.max(1.0001, vw / baseW, vh / baseH);
     const progress = Math.max(0, Math.min(1, (scale - 1) / (fillZoom - 1)));
@@ -598,6 +602,14 @@
       }
     }
   }
+  // 视口旋转/尺寸变化只重算同一连续几何，不切换容器或重置当前倍率。
+  window.addEventListener('resize', () => {
+    const current = nav.current();
+    if (!current || current.page !== 'asset' || cur().kind !== 'image') return;
+    const z = zoomOf(cur().id);
+    requestAnimationFrame(() => paintZoom(z.scale, z.x, z.y, false));
+  });
+
   function doubleZoom(clientX, clientY) {
     const p = zoomParts();
     if (!p) return;

@@ -226,6 +226,32 @@ async function resetFirst() {
       `landscape zoom changed base layout or chrome: ${JSON.stringify(report.landscapeFill)}`);
     await shot('walk-asset-viewer-landscape-fill.png');
 
+    // 整屏截图比例：安全区恰好容纳 1260×2800 时，底边必须贴着真实底栏，不得多出固定预留。
+    await evaluate(`document.querySelector('[data-a="frame-toggle"]').click()`);
+    await metrics(360, 780);
+    await resetFirst();
+    const fitEnv = await evaluate(`(() => { const p=document.querySelector('.av-pager'), a=getComputedStyle(document.getElementById('app'));
+      return { width:p.clientWidth, top:parseFloat(a.getPropertyValue('--statusbar-h'))||0,
+        bottom:document.querySelector('.av-toolbar').offsetHeight }; })()`);
+    await metrics(fitEnv.width, Math.ceil(fitEnv.width * 2800 / 1260 + fitEnv.top + fitEnv.bottom));
+    await sleep(220);
+    report.screenshotFit = await evaluate(`(() => { const p=document.querySelector('.av-pager').getBoundingClientRect(),
+      m=document.querySelector('.av-page[data-pos="0"] .av-picture').getBoundingClientRect(),
+      t=document.querySelector('.av-toolbar').getBoundingClientRect();
+      return { gap:t.top-m.bottom, left:m.left-p.left, right:p.right-m.right, top:m.top-p.top,
+        containerFull:p.width===document.querySelector('.av-pager').clientWidth&&p.height===document.querySelector('.av-pager').clientHeight,
+        rect:[m.left,m.top,m.width,m.height].join(';') }; })()`);
+    assert(Math.abs(report.screenshotFit.gap) <= 1.01 && Math.abs(report.screenshotFit.left) <= 1.01 &&
+      Math.abs(report.screenshotFit.right) <= 1.01 && report.screenshotFit.containerFull,
+    `screenshot bottom does not meet real toolbar: ${JSON.stringify(report.screenshotFit)}`);
+    await clickAt(await point('.av-page[data-pos="0"] .av-media')); await sleep(390);
+    report.screenshotHiddenStable = await evaluate(`(() => { const m=document.querySelector('.av-page[data-pos="0"] .av-picture').getBoundingClientRect();
+      return { hidden:document.querySelector('.av-stage').classList.contains('chrome-hidden'),
+        stable:[m.left,m.top,m.width,m.height].join(';')===${JSON.stringify(report.screenshotFit.rect)} }; })()`);
+    assert(report.screenshotHiddenStable.hidden && report.screenshotHiddenStable.stable,
+      `hiding toolbar changed screenshot geometry: ${JSON.stringify(report.screenshotHiddenStable)}`);
+    await shot('walk-asset-viewer-screenshot-fit.png');
+
     assert(!externalRequests.length, `external requests: ${externalRequests.join(',')}`);
     assert(!exceptions.length, `browser exceptions: ${JSON.stringify(exceptions)}`);
     report.externalRequests = 0; report.exceptions = 0;

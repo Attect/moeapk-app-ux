@@ -8,7 +8,7 @@
     { name: 'momori_054', note: '桃璃台词 · 2026-09-10' }
   ];
   S.x.assets = [           // 素材库（图片/视频；壁纸中心拆除后统一为素材）
-    { id: 'as1', kind: 'image', hue: 26, label: '示例·晚霞', date: '2026-09-15' },
+    { id: 'as1', kind: 'image', hue: 26, label: '示例·晚霞', date: '2026-09-15', pixelWidth: 1260, pixelHeight: 2800 },
     { id: 'as2', kind: 'image', hue: 200, label: '示例·海面', date: '2026-09-12' },
     { id: 'as3', kind: 'video', hue: 300, label: '示例·夜樱', date: '2026-09-08', meta: '0:12' },
     { id: 'as4', kind: 'image', hue: 150, label: '示例·林间', date: '2026-09-06' },
