@@ -134,6 +134,11 @@ async function auditTabs() {
     });
     const index = pathToFileURL(path.join(root, 'index.html')).href;
     await navigate(`${index}?theme=light&frame=port#apk`);
+    report.onboardLight = await evaluate(`(() => { const el=document.querySelector('.onboard'), s=getComputedStyle(el);
+      return { bg:s.backgroundColor, blur:s.backdropFilter, image:s.backgroundImage }; })()`);
+    assert(report.onboardLight.bg === 'rgba(255, 255, 255, 0.38)' && report.onboardLight.blur.includes('blur(18px)') &&
+      report.onboardLight.image.includes('linear-gradient'), `light onboard is not real frosted glass: ${JSON.stringify(report.onboardLight)}`);
+    await shot('walk-onboard-light.png');
     await dismissOnboard();
 
     report.initial = await evaluate(`(() => {
@@ -208,10 +213,25 @@ async function auditTabs() {
     assert(report.float.on && report.float.above && report.float.navVisible && report.float.blur.includes('blur'), `floating action mismatch: ${JSON.stringify(report.float)}`);
 
     report.lightTabs = await auditTabs();
-    await evaluate(`nav.goTab('apk')`);
+    // 五个 Tab 全部已读后，整页刷新仍不得再出现气泡。
+    await navigate(`${index}?theme=light&frame=port#apk`);
+    report.onboardPersistent = await evaluate(`(() => { const expected=['apk','goods','assets','ai','mine'];
+      const seen=JSON.parse(localStorage.getItem('proto-onboard-seen')||'[]').sort();
+      const absent=expected.every(id=>{ nav.goTab(id); return !document.querySelector('.onboard'); });
+      nav.goTab('apk'); return { expected, seen, absent }; })()`);
+    assert(report.onboardPersistent.absent && report.onboardPersistent.seen.join(',') === 'ai,apk,assets,goods,mine',
+      `onboard dismissal did not survive reload: ${JSON.stringify(report.onboardPersistent)}`);
+    // 暗色气泡单独保留一条视觉与模糊回归。
+    await evaluate(`localStorage.removeItem('proto-onboard-seen'); S.seen=null; nav.goTab('apk')`);
     await scrollTo(520);
     await evaluate(`document.querySelector('[data-a="theme-toggle"]').click()`);
     await sleep(250);
+    report.onboardDark = await evaluate(`(() => { const el=document.querySelector('.onboard'), s=getComputedStyle(el);
+      return { bg:s.backgroundColor, blur:s.backdropFilter, image:s.backgroundImage }; })()`);
+    assert(report.onboardDark.bg === 'rgba(58, 50, 82, 0.48)' && report.onboardDark.blur.includes('blur(18px)') &&
+      report.onboardDark.image.includes('linear-gradient'), `dark onboard is not real frosted glass: ${JSON.stringify(report.onboardDark)}`);
+    await shot('walk-onboard-dark.png');
+    await dismissOnboard();
     report.darkTabs = await auditTabs();
     await evaluate(`nav.goTab('apk')`);
     await scrollTo(520);
