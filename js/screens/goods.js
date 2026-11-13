@@ -279,9 +279,9 @@
         chip('随手翻翻', sort === 'rand', 'goods-sort', 'rand') + '</div>';
       if (ipEntries.length) {
         const quick = quickIpOptions(ipEntries, selectedIp);
-        filters += '<div class="chip-row g-ip-filter">' +
+        filters += '<div class="chip-row g-ip-filter"><div class="g-ip-quick">' +
           chip('全部 IP', !selectedIp, 'goods-cat-ip', arg + ':') +
-          quick.map(o => chip(o.entity.name, selectedIp === String(o.entity.id), 'goods-cat-ip', arg + ':' + o.entity.id)).join('') +
+          quick.map(o => chip(o.entity.name, selectedIp === String(o.entity.id), 'goods-cat-ip', arg + ':' + o.entity.id)).join('') + '</div>' +
           (ipEntries.length > quick.length
             ? chip('更多 ' + ipEntries.length + ' 个', false, 'goods-ip-picker-open', arg)
             : '') + '</div>';

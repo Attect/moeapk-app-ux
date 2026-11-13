@@ -1324,6 +1324,16 @@ body, .card, .li, .topbar, .top-chrome, .chip, .btn, .tbtn, .field-input,
 .g-cat-filters-inner { min-height: 0; overflow: hidden; }
 .g-cat-filters.hidden { grid-template-rows: 0fr; opacity: 0; pointer-events: none; }
 
+/* 展厅筛选区紧凑化：30px 标签 + 3px 行留白，不影响选择器搜索能力。 */
+.g-cat-filters .chip-row { padding: 3px 0; gap: 6px; }
+.g-cat-filters .chip { min-height: 30px; padding: 4px 12px; font-size: 12px; }
+
+/* 快捷 IP 可横滑，但“更多”固定行尾，不随快捷项被挤出屏幕。 */
+.chip-row.g-ip-filter { overflow: visible; }
+.g-ip-quick { display: flex; flex: 1; min-width: 0; gap: 8px; overflow-x: auto; scrollbar-width: none; }
+.g-ip-quick::-webkit-scrollbar { display: none; }
+.g-ip-filter > .chip { flex: none; }
+
 /* IP 完整选择器：搜索框与统计固定，只有结果列表滚动。 */
 .dlg-body.g-ip-picker-dialog { display: flex; flex-direction: column; overflow: hidden; max-height: 55vh; }
 .g-ip-picker-dialog .search-row { flex: none; margin-top: 0; }

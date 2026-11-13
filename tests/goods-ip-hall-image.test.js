@@ -246,6 +246,7 @@ test('展厅两行筛选收进可折叠容器，滚动中只切 class 且空结�
   const js = fs.readFileSync(path.join(ROOT, 'js/screens/goods.js'), 'utf8');
   assert.match(css, /\.g-cat-filters\s*\{[^}]*grid-template-rows:\s*1fr/);
   assert.match(css, /\.g-cat-filters\.hidden\s*\{[^}]*grid-template-rows:\s*0fr/);
+  assert.match(css, /\.g-cat-filters \.chip\s*\{[^}]*min-height:\s*30px/);
   assert.match(js, /function setGoodsFiltersHidden\(/);
   assert.match(js, /if \(!content\.querySelector\('\.g-falls'\)\)/);
   assert.match(js, /updateGoodsCatFilters\(t\)/);
