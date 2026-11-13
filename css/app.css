@@ -1184,7 +1184,8 @@ body, .card, .li, .topbar, .top-chrome, .chip, .btn, .tbtn, .field-input,
 @media (prefers-reduced-motion: reduce) {
   .sparkle, .login-mascot img, .av-cloud-inner.sway, .av-cloud-inner.sway-flat,
   .av-load-dot, .av-cloud.reveal { animation: none !important; }
-  .navbar, .to-top, .onboard, .toast-wrap { transition: none !important; }
+  .navbar, .to-top, .onboard, .toast-wrap, .g-cat-filters,
+  .g-cover img, .g-hero-anim, .g-hero-anim.title > * { transition: none !important; }
 }
 
 /* ============================================================
@@ -1250,7 +1251,11 @@ body, .card, .li, .topbar, .top-chrome, .chip, .btn, .tbtn, .field-input,
 .g-cover span { font-size: 44px; filter: drop-shadow(0 4px 10px rgba(60, 25, 55, .25)); transition: transform .2s; }
 /* 真实商品图（淘宝 CDN）：绝对定位覆盖渐变占位；加载失败由 onerror 移除 img 回落占位。
  * 包括首页宽扁展厅槽在内，统一 cover 填满容器，不以 contain 露出两侧渐变。 */
-.g-cover img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.g-cover img {
+  position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
+  opacity: 0; transition: opacity .18s ease;
+}
+.g-cover img.is-loaded { opacity: 1; }
 /* 焦点对齐（focus 字段，cover 裁剪时保商品主体） */
 .g-cover[data-focus="top"] img { object-position: center top; }
 .g-cover[data-focus="bottom"] img { object-position: center bottom; }
@@ -1311,6 +1316,13 @@ body, .card, .li, .topbar, .top-chrome, .chip, .btn, .tbtn, .field-input,
 .g-cat-hero { display: flex; align-items: center; gap: 8px; padding: 4px 2px 8px; }
 .g-cat-emoji { flex: none; font-size: 22px; line-height: 28px; }
 .g-cat-blurb { font-size: 12px; line-height: 17px; color: var(--on-surface-variant); }
+/* 两行筛选随滚动方向折叠，动画只改外层网格行高，不在滚动中重建列表。 */
+.g-cat-filters {
+  display: grid; grid-template-rows: 1fr; opacity: 1;
+  transition: grid-template-rows .22s ease, opacity .16s ease;
+}
+.g-cat-filters-inner { min-height: 0; overflow: hidden; }
+.g-cat-filters.hidden { grid-template-rows: 0fr; opacity: 0; pointer-events: none; }
 
 /* 响应式瀑布流：手机至少双列；更宽视口在下方断点增加列数。
  * CSS 多列按卡片自然高度排列，不强制同一行跨列对齐。 */
@@ -1588,6 +1600,11 @@ body, .card, .li, .topbar, .top-chrome, .chip, .btn, .tbtn, .field-input,
     opacity .14s ease;
 }
 .g-hero-anim.out { opacity: 0; }
+.g-hero-anim.title { z-index: 91; border-radius: 0; }
+.g-hero-anim.title > * {
+  transition: font-size .3s cubic-bezier(.2, .9, .25, 1),
+    line-height .3s cubic-bezier(.2, .9, .25, 1), color .3s ease;
+}
 
 /* 全屏查看器（挂 .phone 上，render 不销毁）：单击/X/Esc 退出，横滑切换，长按菜单 */
 .g-viewer {

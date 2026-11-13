@@ -205,6 +205,47 @@ test('宽扁物品形态展厅封面也使用 cover 填满，不再 contain 露�
   assert.doesNotMatch(css, /\.g-cover\.fit/);
 });
 
+test('展厅两行筛选收进可折叠容器，滚动中只切 class 且空结果可撤销', () => {
+  const { screens } = loadPrototype();
+  const html = screens['goods-cat'].render('badge');
+  assert.match(html, /<div class="g-cat-filters"><div class="g-cat-filters-inner"><div class="chip-row">/);
+  assert.ok(html.indexOf('g-cat-filters') < html.indexOf('g-falls'));
+
+  const css = fs.readFileSync(path.join(ROOT, 'css/app.css'), 'utf8');
+  const js = fs.readFileSync(path.join(ROOT, 'js/screens/goods.js'), 'utf8');
+  assert.match(css, /\.g-cat-filters\s*\{[^}]*grid-template-rows:\s*1fr/);
+  assert.match(css, /\.g-cat-filters\.hidden\s*\{[^}]*grid-template-rows:\s*0fr/);
+  assert.match(js, /function setGoodsFiltersHidden\(/);
+  assert.match(js, /if \(!content\.querySelector\('\.g-falls'\)\)/);
+  assert.match(js, /updateGoodsCatFilters\(t\)/);
+});
+
+test('瀑布图从干净节点淡入，当前批 eager 且预载下一批', () => {
+  const { context, screens } = loadPrototype();
+  context.DB.GOODS = context.DB.GOODS.map(g => ({ ...g, images: [LOCAL_IMAGE] }));
+  const html = screens['goods-cat'].render('badge');
+  assert.match(html, /loading="eager" decoding="async" onload="this\.classList\.add\('is-loaded'\)/);
+  assert.match(html, /onerror="this\.remove\(\)"/);
+
+  const css = fs.readFileSync(path.join(ROOT, 'css/app.css'), 'utf8');
+  const js = fs.readFileSync(path.join(ROOT, 'js/screens/goods.js'), 'utf8');
+  assert.match(css, /\.g-cover img\s*\{[^}]*opacity:\s*0;[^}]*transition:\s*opacity \.18s/);
+  assert.match(css, /\.g-cover img\.is-loaded\s*\{\s*opacity:\s*1/);
+  assert.match(js, /fallItems\(cid, batch \+ 1, sort\)/);
+  assert.match(js, /preloadFallBatch\(arg, nb, sort\)/);
+  assert.match(js, /preloadFallBatch\(cur\.arg, nb \+ 1/);
+});
+
+test('卡片到详情 FLIP 同时携带标题，非首张 pager 安全降级', () => {
+  const js = fs.readFileSync(path.join(ROOT, 'js/screens/goods.js'), 'utf8');
+  const css = fs.readFileSync(path.join(ROOT, 'css/app.css'), 'utf8');
+  assert.match(js, /titleRect:\s*title && title\.getBoundingClientRect\(\)/);
+  assert.match(js, /heroClone\(rel, hero\.titleRect, hero\.titleHtml, 'title'\)/);
+  assert.match(js, /animateHeroTitle\(titleClone, targetTitle\)/);
+  assert.match(js, /pagerRoot\.scrollLeft[\s\S]*hero = null;\s*return;/);
+  assert.match(css, /\.g-hero-anim\.title\s*\{/);
+});
+
 test('展品详情图片区域与淘宝方形商品图保持 1:1', () => {
   const { screens } = loadPrototype();
   const html = screens['goods-detail'].render('g01');
@@ -242,7 +283,8 @@ test('分类展厅与 IP 展厅真实封面加载后保持原图比例', () => {
   for (const html of [screens['goods-cat'].render('badge'), screens['goods-ip'].render('1001')]) {
     assert.match(html, /class="g-falls"/);
     assert.match(html, /aspect-ratio:(?:1\/1|4\/5|3\/4)/, '加载前保留稳定占位比例');
-    assert.match(html, /onload="this\.parentElement\.style\.aspectRatio=this\.naturalWidth\+'\/'\+this\.naturalHeight"/);
+    assert.match(html, /onload="this\.classList\.add\('is-loaded'\);this\.parentElement\.style\.aspectRatio=this\.naturalWidth\+'\/'\+this\.naturalHeight"/);
+    assert.match(html, /loading="eager" decoding="async"/);
   }
 
   const css = fs.readFileSync(path.join(ROOT, 'css/app.css'), 'utf8');

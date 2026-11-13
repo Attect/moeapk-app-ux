@@ -91,10 +91,10 @@
     const style = '--gh:' + (g.hue == null ? 300 : g.hue) + (ar ? ';aspect-ratio:' + ar : '');
     if (img) {
       const onload = natural
-        ? ' onload="this.parentElement.style.aspectRatio=this.naturalWidth+\'/\'+this.naturalHeight"'
-        : '';
+        ? ' onload="this.classList.add(\'is-loaded\');this.parentElement.style.aspectRatio=this.naturalWidth+\'/\'+this.naturalHeight"'
+        : ' onload="this.classList.add(\'is-loaded\')"';
       return '<div class="' + cls + '"' + df + ' style="' + style + '">' + ph +
-        '<img src="' + esc(img) + '" alt="" loading="lazy"' + onload + ' onerror="this.remove()"></div>';
+        '<img src="' + esc(img) + '" alt="" loading="' + (natural ? 'eager' : 'lazy') + '" decoding="async"' + onload + ' onerror="this.remove()"></div>';
     }
     return '<div class="' + cls + '"' + df + ' style="' + style + '">' + ph + '</div>';
   }
@@ -213,13 +213,31 @@
       '<div class="g-fall-meta"><span class="g-fall-price">' + fmtPrice(g.price) + '</span>' +
       '<span>' + g.days + ' 天前收录</span></div></div></div>';
   }
-  // 一批的 HTML：第 1 批按当前排序原样；第 2 批起按批号盐重洗
-  function fallBatch(cid, batch, sort) {
+  // 一批的数据：第 1 批按当前排序原样；第 2 批起按批号盐重洗。
+  function fallItems(cid, batch, sort) {
     let items = goodsByCatFiltered(cid);
     if (batch > 1) items = shuffle(items, rng(hashStr(cid) * 13 + batch * 7919));
     else if (sort === 'rand') items = shuffle(items, rng((S.x.goodsSeed || 0) * 31 + hashStr(cid)));
     else items = items.slice().sort((a, b) => a.days - b.days);
-    return items.map(g => fallCard(g, batch)).join('');
+    return items;
+  }
+  function fallBatch(cid, batch, sort) {
+    return fallItems(cid, batch, sort).map(g => fallCard(g, batch)).join('');
+  }
+  // 当前批图片改为 eager，同时提前解码下一批；同一 URL 每轮只预载一次。
+  // 公开演示没有真实商品图，因此这里不会发起网络请求；有本地测试图时才建立 Image。
+  const preloadedGoodsImages = new Set();
+  function preloadFallBatch(cid, batch, sort) {
+    if (typeof Image === 'undefined') return;
+    fallItems(cid, batch + 1, sort).forEach(g => {
+      const url = g.images && g.images[0];
+      if (!url || preloadedGoodsImages.has(url)) return;
+      preloadedGoodsImages.add(url);
+      const image = new Image();
+      image.decoding = 'async';
+      image.onerror = () => preloadedGoodsImages.delete(url);
+      image.src = url;
+    });
   }
   // 批次计数按展厅留存：切走再回来 / 同屏重渲染（回顶按钮显隐等）都不丢已加载长度
   function batchesOf(cid) {
@@ -239,15 +257,17 @@
         '<div class="g-cat-emoji">' + c.emoji + '</div>' +
         '<div class="g-cat-blurb">' + esc(c.blurb) + '</div></div>';
       if (!goodsByCat(arg).length) return h + emptyHint('这个展厅还在布置中');
-      // 只有策展向排序：不提供价格/销量排序
-      h += '<div class="chip-row">' +
+      // 只有策展向排序：不提供价格/销量排序。两行统一放入可折叠容器，
+      // 上滑浏览时隐藏；反向滑动或回顶恢复，空筛选结果始终保留以方便撤销。
+      let filters = '<div class="chip-row">' +
         chip('最近收录', sort === 'new', 'goods-sort', 'new') +
         chip('随手翻翻', sort === 'rand', 'goods-sort', 'rand') + '</div>';
       if (ipOptions.length) {
-        h += '<div class="chip-row g-ip-filter">' +
+        filters += '<div class="chip-row g-ip-filter">' +
           chip('全部 IP', !selectedIp, 'goods-cat-ip', arg + ':') +
           ipOptions.map(e => chip(e.name, selectedIp === String(e.id), 'goods-cat-ip', arg + ':' + e.id)).join('') + '</div>';
       }
+      h += '<div class="g-cat-filters"><div class="g-cat-filters-inner">' + filters + '</div></div>';
       if (!goodsByCatFiltered(arg).length) {
         return h + emptyHint('这个 IP 在本展厅还没有展品，换一个看看');
       }
@@ -260,6 +280,7 @@
         const el = document.getElementById('content');
         const cur = nav.current();
         if (!el || !cur || cur.page !== 'goods-cat' || cur.arg !== arg) return;
+        preloadFallBatch(arg, nb, sort);
         if (el.scrollHeight < el.clientHeight + 400 && batchesOf(arg) < MAX_BATCH) {
           S.x.goodsBatches[arg] = batchesOf(arg) + 1;
           render();
@@ -710,6 +731,48 @@
     } catch (e) { bad(); }
   }
 
+  // 展厅筛选栏与底部导航使用相同阈值：向前累计 >8px 且越过 96px 隐藏，
+  // 反向累计 >8px 或回到顶部 24px 内显示。只改 class，不在滚动中 render。
+  function setGoodsFiltersHidden(content, hidden) {
+    const filters = content.querySelector('.g-cat-filters');
+    if (!filters || filters.classList.contains('hidden') === hidden) return;
+    filters.classList.toggle('hidden', hidden);
+    filters.setAttribute('aria-hidden', hidden ? 'true' : 'false');
+    if (hidden) filters.setAttribute('inert', '');
+    else filters.removeAttribute('inert');
+    // 折叠动画期间浏览器 scroll anchoring 会反向补偿位置；这不是用户换向。
+    // 只重置方向计量，不补偿 scrollTop，让浏览器继续保持可见卡片的位置。
+    content.__goodsFilterAnimateUntil = performance.now() + 280;
+    content.__goodsFilterDir = 0;
+    content.__goodsFilterAnchorY = content.scrollTop;
+  }
+  function updateGoodsCatFilters(content) {
+    const filters = content.querySelector('.g-cat-filters');
+    if (!filters) return;
+    const y = content.scrollTop;
+    // 空结果没有列表可继续浏览，必须显示筛选以便撤销。
+    if (!content.querySelector('.g-falls')) {
+      setGoodsFiltersHidden(content, false);
+      return;
+    }
+    const lastY = content.__goodsFilterLastY == null ? y : content.__goodsFilterLastY;
+    const delta = y - lastY;
+    const dir = delta > 0 ? 1 : (delta < 0 ? -1 : 0);
+    if (dir && dir !== content.__goodsFilterDir) {
+      content.__goodsFilterDir = dir;
+      content.__goodsFilterAnchorY = lastY;
+    }
+    if (content.__goodsFilterAnchorY == null) content.__goodsFilterAnchorY = lastY;
+    const travel = dir === 1 ? y - content.__goodsFilterAnchorY : content.__goodsFilterAnchorY - y;
+    if (y <= 24) setGoodsFiltersHidden(content, false);
+    else if (performance.now() < (content.__goodsFilterAnimateUntil || 0)) {
+      content.__goodsFilterDir = 0;
+      content.__goodsFilterAnchorY = y;
+    } else if (dir === 1 && y > 96 && travel > 8) setGoodsFiltersHidden(content, true);
+    else if (dir === -1 && travel > 8) setGoodsFiltersHidden(content, false);
+    content.__goodsFilterLastY = y;
+  }
+
   // 无限瀑布流：接近底部（1.2 屏阈值，提前续上不露白）追加一批。
   // 只往 .g-falls 尾部插 DOM，绝不走 render——滚动途中整页重建会打断滚轮动画、
   // 主线程逐帧全量重排（滚到底冻住一拍、上下都动不了的根因）。批次计数照记 S.x，
@@ -717,6 +780,7 @@
   document.addEventListener('scroll', e => {
     const t = e.target;
     if (!t || t.id !== 'content') return;
+    updateGoodsCatFilters(t);
     if (t.scrollHeight - t.scrollTop - t.clientHeight > t.clientHeight * 1.2) return;
     const cur = nav.current();
     if (!cur || cur.page !== 'goods-cat') return;
@@ -726,6 +790,7 @@
     if (nb >= MAX_BATCH) return;
     S.x.goodsBatches[cur.arg] = nb + 1;
     falls.insertAdjacentHTML('beforeend', fallBatch(cur.arg, nb + 1, S.x.goodsSort || 'new'));
+    preloadFallBatch(cur.arg, nb + 1, S.x.goodsSort || 'new');
   }, true);
 
   // ---------- 共享元素转场（卡片 → 详情大图，FLIP） ----------
@@ -734,16 +799,26 @@
   // App 侧对应：Compose sharedBounds/sharedElement 转场。
   let hero = null; // { id, rect, html } —— 进入详情时的源卡片快照
   function phoneRect() { return document.querySelector('.phone').getBoundingClientRect(); }
-  function heroClone(rel, rect, html) {
+  function heroClone(rel, rect, html, kind) {
     // rel 为定位参照（.phone）的视口 rect；rect 为内容视口 rect → 换算成 .phone 内绝对坐标
     const clone = document.createElement('div');
-    clone.className = 'g-hero-anim';
+    clone.className = 'g-hero-anim' + (kind ? ' ' + kind : '');
     clone.innerHTML = html;
     const inner = clone.firstChild;
     inner.style.position = 'absolute';
     inner.style.inset = '0';
     inner.style.width = '100%';
     inner.style.height = '100%';
+    if (kind === 'title') {
+      inner.style.margin = '0';
+      const stale = inner.querySelector('.g-fall-stale');
+      if (stale) stale.remove();
+      const from = getComputedStyle(inner);
+      Object.assign(inner.style, {
+        fontSize: from.fontSize, lineHeight: from.lineHeight,
+        fontWeight: from.fontWeight, color: from.color,
+      });
+    }
     Object.assign(clone.style, {
       left: (rect.left - rel.left) + 'px', top: (rect.top - rel.top) + 'px',
       width: rect.width + 'px', height: rect.height + 'px',
@@ -751,59 +826,127 @@
     document.querySelector('.phone').appendChild(clone);
     return clone;
   }
+  function animateHeroTitle(clone, target) {
+    if (!clone) return;
+    const style = getComputedStyle(target);
+    Object.assign(clone.firstChild.style, {
+      fontSize: style.fontSize, lineHeight: style.lineHeight,
+      fontWeight: style.fontWeight, color: style.color,
+    });
+  }
+  function finishHeroTransition(clones, targets) {
+    setTimeout(() => {
+      targets.forEach(target => { target.style.visibility = ''; });
+      clones.forEach(clone => {
+        clone.classList.add('out');
+        setTimeout(() => clone.remove(), 140);
+      });
+    }, 300);
+  }
   action('goods-open', (ds, el) => {
     const card = el && el.closest ? el.closest('.g-fall-card, .g-fresh-card') : null;
     const cov = card ? card.querySelector('.g-cover') : null;
-    hero = cov ? { id: ds.arg, rect: cov.getBoundingClientRect(), html: cov.outerHTML } : null;
+    const title = card ? card.querySelector('.g-fall-title') : null;
+    hero = cov ? {
+      id: ds.arg, rect: cov.getBoundingClientRect(), html: cov.outerHTML,
+      titleRect: title && title.getBoundingClientRect(), titleHtml: title && title.outerHTML,
+    } : null;
     nav.push('goods-detail', ds.arg);
     if (hero) requestAnimationFrame(() => {
       const target = document.querySelector('.g-shot .g-cover');
+      const targetTitle = document.querySelector('.g-d-title');
       if (!target || !hero) return;
-      const clone = heroClone(phoneRect(), hero.rect, hero.html);
-      const tr = target.getBoundingClientRect();
       const rel = phoneRect();
+      const clone = heroClone(rel, hero.rect, hero.html);
+      const titleClone = hero.titleRect && targetTitle
+        ? heroClone(rel, hero.titleRect, hero.titleHtml, 'title') : null;
+      const tr = target.getBoundingClientRect();
+      const titleRect = targetTitle && targetTitle.getBoundingClientRect();
       target.style.visibility = 'hidden';
+      if (targetTitle) targetTitle.style.visibility = 'hidden';
       requestAnimationFrame(() => {
         Object.assign(clone.style, {
           left: (tr.left - rel.left) + 'px', top: (tr.top - rel.top) + 'px',
           width: tr.width + 'px', height: tr.height + 'px',
         });
+        if (titleClone && titleRect) {
+          Object.assign(titleClone.style, {
+            left: (titleRect.left - rel.left) + 'px', top: (titleRect.top - rel.top) + 'px',
+            width: titleRect.width + 'px', height: titleRect.height + 'px',
+          });
+          animateHeroTitle(titleClone, targetTitle);
+        }
       });
-      setTimeout(() => {
-        target.style.visibility = '';
-        clone.classList.add('out');
-        setTimeout(() => clone.remove(), 140);
-      }, 300);
+      finishHeroTransition(
+        titleClone ? [clone, titleClone] : [clone],
+        targetTitle ? [target, targetTitle] : [target],
+      );
     });
   });
-  // 返回时反向缩回源卡片（capture 拦截全局 back；无源快照或找不到卡片时走默认返回）
+  // 返回时封面与标题反向缩回源卡片；非首张 pager 不再错用首图，退化普通返回。
   document.addEventListener('click', e => {
     const b = e.target.closest('[data-a="back"]');
     if (!b || !hero) return;
     const cur = nav.current();
     if (!cur || cur.page !== 'goods-detail' || cur.arg !== hero.id) return;
+    const pagerRoot = document.querySelector('.g-pager');
+    if (pagerRoot && Math.round(pagerRoot.scrollLeft / Math.max(1, pagerRoot.clientWidth)) !== 0) {
+      hero = null;
+      return;
+    }
     const pager = document.querySelector('.g-shot .g-cover');
+    const detailTitle = document.querySelector('.g-d-title');
     if (!pager) return;
     const pr = pager.getBoundingClientRect();
+    const detailTitleRect = detailTitle && detailTitle.getBoundingClientRect();
     e.stopImmediatePropagation();
     e.preventDefault();
     const html = pager.outerHTML;
+    const titleHtml = detailTitle && detailTitle.outerHTML;
+    const sourceHero = hero;
     nav.pop();
     requestAnimationFrame(() => {
-      const card = document.querySelector('.g-fall-card[data-arg="' + hero.id + '"] .g-cover, .g-fresh-card[data-arg="' + hero.id + '"] .g-cover');
+      const card = document.querySelector('.g-fall-card[data-arg="' + sourceHero.id + '"] .g-cover, .g-fresh-card[data-arg="' + sourceHero.id + '"] .g-cover');
       if (!card) { hero = null; return; }
-      const clone = heroClone(phoneRect(), pr, html);
-      const tr = card.getBoundingClientRect();
+      const cardTitle = sourceHero.titleRect && card.closest('.g-fall-card')
+        ? card.closest('.g-fall-card').querySelector('.g-fall-title') : null;
       const rel = phoneRect();
+      const clone = heroClone(rel, pr, html);
+      const titleClone = detailTitleRect && titleHtml && cardTitle
+        ? heroClone(rel, detailTitleRect, titleHtml, 'title') : null;
+      const tr = card.getBoundingClientRect();
+      const titleRect = cardTitle && cardTitle.getBoundingClientRect();
+      card.style.visibility = 'hidden';
+      if (cardTitle) cardTitle.style.visibility = 'hidden';
       requestAnimationFrame(() => {
         Object.assign(clone.style, {
           left: (tr.left - rel.left) + 'px', top: (tr.top - rel.top) + 'px',
           width: tr.width + 'px', height: tr.height + 'px',
         });
+        if (titleClone && titleRect) {
+          Object.assign(titleClone.style, {
+            left: (titleRect.left - rel.left) + 'px', top: (titleRect.top - rel.top) + 'px',
+            width: titleRect.width + 'px', height: titleRect.height + 'px',
+          });
+          animateHeroTitle(titleClone, cardTitle);
+        }
       });
-      setTimeout(() => { clone.classList.add('out'); setTimeout(() => clone.remove(), 140); }, 300);
+      finishHeroTransition(
+        titleClone ? [clone, titleClone] : [clone],
+        cardTitle ? [card, cardTitle] : [card],
+      );
       hero = null;
     });
+  }, true);
+  // 原型桌面 Backspace 与顶栏返回共用同一 FLIP；capture 阻止 ui.js 先执行普通 nav.pop。
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Backspace' || !hero) return;
+    const cur = nav.current();
+    if (!cur || cur.page !== 'goods-detail' || cur.arg !== hero.id) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    const back = document.querySelector('[data-a="back"]');
+    if (back) back.click();
   }, true);
 
   // ---------- 全屏查看器 ----------
