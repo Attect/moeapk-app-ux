@@ -1324,6 +1324,23 @@ body, .card, .li, .topbar, .top-chrome, .chip, .btn, .tbtn, .field-input,
 .g-cat-filters-inner { min-height: 0; overflow: hidden; }
 .g-cat-filters.hidden { grid-template-rows: 0fr; opacity: 0; pointer-events: none; }
 
+/* IP 完整选择器：搜索框与统计固定，只有结果列表滚动。 */
+.dlg-body.g-ip-picker-dialog { display: flex; flex-direction: column; overflow: hidden; max-height: 55vh; }
+.g-ip-picker-dialog .search-row { flex: none; margin-top: 0; }
+.g-ip-picker-meta { flex: none; margin: 8px 4px 0; font-size: 11px; color: var(--on-surface-variant); }
+.g-ip-picker-list { min-height: 0; overflow-y: auto; margin-top: 6px; }
+.g-ip-picker-row {
+  display: flex; align-items: center; gap: 8px; width: 100%; min-height: 52px;
+  margin: 4px 0; padding: 9px 12px; border: 1px solid transparent; border-radius: 12px;
+  background: transparent; color: var(--on-surface); text-align: left; cursor: pointer;
+}
+.g-ip-picker-row.on { background: var(--grad-soft); border-color: var(--glass-brd); }
+.g-ip-picker-copy { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.g-ip-picker-copy b { font-size: 14px; line-height: 19px; }
+.g-ip-picker-copy small { color: var(--on-surface-variant); font-size: 11px; line-height: 16px; }
+.g-ip-picker-count { flex: none; font-size: 11px; color: var(--on-surface-variant); }
+.g-ip-picker-row > .ic { flex: none; width: 18px; height: 18px; color: var(--primary); }
+
 /* 响应式瀑布流：手机至少双列；更宽视口在下方断点增加列数。
  * CSS 多列按卡片自然高度排列，不强制同一行跨列对齐。 */
 .g-falls { column-count: 2; column-gap: 10px; margin-top: 4px; }

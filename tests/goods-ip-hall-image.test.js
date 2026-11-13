@@ -12,6 +12,7 @@ const LOCAL_IMAGE = 'assets/goods-ip-star-trail.svg';
 
 function loadPrototype() {
   const screens = {};
+  const actions = {};
   const window = { DB: {}, addEventListener() {} };
   const context = {
     window,
@@ -24,7 +25,9 @@ function loadPrototype() {
     clearTimeout() {},
     requestAnimationFrame() {},
     registerScreen(id, def) { screens[id] = def; },
-    action() {},
+    action(name, fn) { actions[name] = fn; },
+    showDialog(d) { context.S.dialog = d; },
+    closeDialog() { context.S.dialog = null; },
     icon() { return ''; },
     esc: s => String(s == null ? '' : s)
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'),
@@ -42,7 +45,7 @@ function loadPrototype() {
     const source = fs.readFileSync(path.join(ROOT, file), 'utf8');
     vm.runInContext(source, context, { filename: file });
   }
-  return { context, screens };
+  return { context, screens, actions };
 }
 
 function hallCard(html, id) {
@@ -203,6 +206,34 @@ test('宽扁物品形态展厅封面也使用 cover 填满，不再 contain 露�
   assert.ok(imageRule);
   assert.match(imageRule[1], /object-fit:\s*cover/);
   assert.doesNotMatch(css, /\.g-cover\.fit/);
+});
+
+test('IP 筛选提供有限快捷项与可搜索的完整选择器', () => {
+  const { context, screens, actions } = loadPrototype();
+  let html = screens['goods-cat'].render('badge');
+  assert.match(html, /更多 4 个/);
+
+  context.S.x.goodsCatIp = { badge: '1005' };
+  html = screens['goods-cat'].render('badge');
+  assert.match(html, /class="chip on" data-a="goods-cat-ip" data-arg="badge:1005"/);
+
+  actions['goods-ip-picker-open']({ arg: 'badge' });
+  assert.equal(context.S.dialog.bodyClass, 'g-ip-picker-dialog');
+  assert.match(context.S.dialog.body, /搜索 IP 名称 \/ 年份/);
+  assert.match(context.S.dialog.body, /g-ip-picker-count/);
+
+  context.S.x.keep['goods-ip-filter-q'] = '像素';
+  actions['goods-ip-filter-live']({});
+  assert.match(context.S.dialog.body, /像素勇者/);
+  assert.doesNotMatch(context.S.dialog.body, /猫耳女仆·闪底吧唧/);
+
+  context.S.x.keep['goods-ip-filter-q'] = '不存在的 IP';
+  actions['goods-ip-filter-live']({});
+  assert.match(context.S.dialog.body, /没有匹配的 IP/);
+
+  actions['goods-ip-pick']({ arg: 'badge:1005' });
+  assert.equal(context.S.x.goodsCatIp.badge, '1005');
+  assert.equal(context.S.dialog, null);
 });
 
 test('展厅两行筛选收进可折叠容器，滚动中只切 class 且空结果可撤销', () => {

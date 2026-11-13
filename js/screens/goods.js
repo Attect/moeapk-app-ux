@@ -33,6 +33,21 @@
     goodsByCat(cid).forEach(g => (g.ip_ids || []).forEach(id => ids.add(id)));
     return [...ids].map(ipById).filter(Boolean);
   }
+  function ipOptionEntriesForCat(cid) {
+    return ipOptionsForCat(cid).map(entity => ({
+      entity,
+      count: goodsByCat(cid).filter(g => (g.ip_ids || []).includes(Number(entity.id))).length,
+    })).sort((a, b) => b.count - a.count || a.entity.name.localeCompare(b.entity.name, 'zh-CN'));
+  }
+  function quickIpOptions(entries, selected) {
+    const picked = entries.find(o => String(o.entity.id) === selected);
+    return (picked ? [picked] : []).concat(entries.filter(o => o !== picked)).slice(0, 3);
+  }
+  function filteredIpOptions(entries, query) {
+    const q = query.trim().toLowerCase();
+    if (!q) return entries;
+    return entries.filter(o => (o.entity.name + ' ' + (o.entity.year || '')).toLowerCase().includes(q));
+  }
   // feed 契约中价格为字符串（"25.9"），演示数据是数字——两种都兼容
   const fmtPrice = p => {
     const n = typeof p === 'number' ? p : parseFloat(p);
@@ -252,7 +267,7 @@
       if (!c) return emptyHint('展厅不存在');
       const sort = S.x.goodsSort || 'new';
       const selectedIp = (S.x.goodsCatIp && S.x.goodsCatIp[arg]) || '';
-      const ipOptions = ipOptionsForCat(arg);
+      const ipEntries = ipOptionEntriesForCat(arg);
       let h = '<div class="g-cat-hero">' +
         '<div class="g-cat-emoji">' + c.emoji + '</div>' +
         '<div class="g-cat-blurb">' + esc(c.blurb) + '</div></div>';
@@ -262,10 +277,14 @@
       let filters = '<div class="chip-row">' +
         chip('最近收录', sort === 'new', 'goods-sort', 'new') +
         chip('随手翻翻', sort === 'rand', 'goods-sort', 'rand') + '</div>';
-      if (ipOptions.length) {
+      if (ipEntries.length) {
+        const quick = quickIpOptions(ipEntries, selectedIp);
         filters += '<div class="chip-row g-ip-filter">' +
           chip('全部 IP', !selectedIp, 'goods-cat-ip', arg + ':') +
-          ipOptions.map(e => chip(e.name, selectedIp === String(e.id), 'goods-cat-ip', arg + ':' + e.id)).join('') + '</div>';
+          quick.map(o => chip(o.entity.name, selectedIp === String(o.entity.id), 'goods-cat-ip', arg + ':' + o.entity.id)).join('') +
+          (ipEntries.length > quick.length
+            ? chip('更多 ' + ipEntries.length + ' 个', false, 'goods-ip-picker-open', arg)
+            : '') + '</div>';
       }
       h += '<div class="g-cat-filters"><div class="g-cat-filters-inner">' + filters + '</div></div>';
       if (!goodsByCatFiltered(arg).length) {
@@ -295,12 +314,69 @@
     if (cur && cur.page === 'goods-cat' && S.x.goodsBatches) S.x.goodsBatches[cur.arg] = 1;
     render();
   });
-  action('goods-cat-ip', ds => {
-    const [hall, id] = ds.arg.split(':');
+  function applyGoodsCatIp(hall, id) {
     S.x.goodsCatIp = S.x.goodsCatIp || {};
     S.x.goodsCatIp[hall] = id;
     if (S.x.goodsBatches) S.x.goodsBatches[hall] = 1;
+  }
+  action('goods-cat-ip', ds => {
+    const [hall, id] = ds.arg.split(':');
+    applyGoodsCatIp(hall, id);
     render();
+  });
+
+  // 完整 IP 选择器：名称/年份即时搜索，类型与当前展厅商品数辅助辨认。
+  function goodsIpPickerRow(hall, entity, count, selected) {
+    const arg = hall + ':' + (entity ? entity.id : '');
+    const name = entity ? entity.name : '全部 IP';
+    const sub = entity
+      ? ipTypeLabel(entity) + (entity.year ? ' · ' + entity.year : '')
+      : '清除当前筛选';
+    return '<button type="button" class="g-ip-picker-row' + (selected ? ' on' : '') + '" data-a="goods-ip-pick" data-arg="' + esc(arg) + '">' +
+      '<span class="g-ip-picker-copy"><b>' + esc(name) + '</b><small>' + esc(sub) + '</small></span>' +
+      '<span class="g-ip-picker-count">' + count + ' 件</span>' + (selected ? icon('check') : '') + '</button>';
+  }
+  function goodsIpPickerDialog(hall) {
+    const key = 'goods-ip-filter-q';
+    const query = (S.x.keep && S.x.keep[key]) || '';
+    const entries = ipOptionEntriesForCat(hall);
+    const filtered = filteredIpOptions(entries, query);
+    const selected = (S.x.goodsCatIp && S.x.goodsCatIp[hall]) || '';
+    const search = '<div class="search-row"><div class="search-box">' + icon('search') +
+      '<input class="field-input" data-keep="' + key + '" data-live="goods-ip-filter-live" placeholder="搜索 IP 名称 / 年份…" value="' + esc(query) + '">' +
+      (query ? '<button class="icbtn search-clear" data-a="goods-ip-filter-clear" title="清空">' + icon('close') + '</button>' : '') + '</div></div>';
+    const all = goodsIpPickerRow(hall, null, goodsByCat(hall).length, !selected);
+    const rows = filtered.map(o => goodsIpPickerRow(hall, o.entity, o.count, selected === String(o.entity.id))).join('');
+    return {
+      title: '筛选 IP', bodyClass: 'g-ip-picker-dialog',
+      body: search + '<div class="g-ip-picker-meta">当前展厅 ' + entries.length + ' 个 IP · ' + filtered.length + ' 个匹配</div>' +
+        '<div class="g-ip-picker-list">' + all + (rows || emptyHint('没有匹配的 IP，换个关键词试试')) + '</div>',
+      actions: [{ label: '关闭', run: closeDialog }]
+    };
+  }
+  function focusGoodsIpFilter() {
+    setTimeout(() => {
+      const el = document.querySelector('[data-keep="goods-ip-filter-q"]');
+      if (el) el.focus();
+    }, 60);
+  }
+  action('goods-ip-picker-open', ds => {
+    S.x.keep = S.x.keep || {};
+    S.x.keep['goods-ip-filter-q'] = '';
+    S.x.goodsIpPickerHall = ds.arg;
+    showDialog(goodsIpPickerDialog(ds.arg));
+    focusGoodsIpFilter();
+  });
+  action('goods-ip-filter-live', () => showDialog(goodsIpPickerDialog(S.x.goodsIpPickerHall)));
+  action('goods-ip-filter-clear', () => {
+    S.x.keep['goods-ip-filter-q'] = '';
+    showDialog(goodsIpPickerDialog(S.x.goodsIpPickerHall));
+    focusGoodsIpFilter();
+  });
+  action('goods-ip-pick', ds => {
+    const [hall, id] = ds.arg.split(':');
+    applyGoodsCatIp(hall, id);
+    closeDialog();
   });
   action('goods-open-cat', ds => nav.push('goods-cat', ds.arg));
   // goods-open 注册在下方「共享元素转场」节（带卡片快照与 FLIP 动画）
