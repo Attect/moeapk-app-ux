@@ -205,6 +205,19 @@ test('宽扁物品形态展厅封面也使用 cover 填满，不再 contain 露�
   assert.doesNotMatch(css, /\.g-cover\.fit/);
 });
 
+test('展品详情图片区域与淘宝方形商品图保持 1:1', () => {
+  const { screens } = loadPrototype();
+  const html = screens['goods-detail'].render('g01');
+  assert.match(html, /class="g-pager"/);
+  assert.match(html, /class="g-shot"/);
+
+  const css = fs.readFileSync(path.join(ROOT, 'css/app.css'), 'utf8');
+  const shotRule = css.match(/\.g-shot\s*\{([^}]*)\}/);
+  assert.ok(shotRule);
+  assert.match(shotRule[1], /aspect-ratio:\s*1\s*\/\s*1/);
+  assert.doesNotMatch(shotRule[1], /aspect-ratio:\s*3\s*\/\s*4/);
+});
+
 test('展厅列表使用手机至少双列、宽屏增列的瀑布流，长标题不截断', () => {
   const css = fs.readFileSync(path.join(ROOT, 'css/app.css'), 'utf8');
   const falls = css.match(/\.g-falls\s*\{([^}]*)\}/);

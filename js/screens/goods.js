@@ -284,7 +284,7 @@
   action('goods-open-cat', ds => nav.push('goods-cat', ds.arg));
   // goods-open 注册在下方「共享元素转场」节（带卡片快照与 FLIP 动画）
 
-  // ---------- 展品卡（详情）：3:4 大图 + 统一正文 + 相关商品 + 底部 CTA ----------
+  // ---------- 展品卡（详情）：1:1 大图 + 统一正文 + 相关商品 + 底部 CTA ----------
   // 与 Compose 当前实现一致：标题单独层级，其余信息均为同字号、默认色正文；
   // IP / 规格仅以正文末尾的 # 文本标签使用主题色，不再使用陈列备注卡、芯片或提示条。
   registerScreen('goods-detail', {
@@ -292,7 +292,7 @@
     render(arg) {
       const g = goodById(arg);
       if (!g) return emptyHint('这件展品已撤下');
-      // 顶部图片 pager：3:4 边到边大图，页码位于右上，圆点位于图下。
+      // 顶部图片 pager：1:1 边到边大图，匹配淘宝方形商品图；页码位于右上，圆点位于图下。
       // 页数 = 真实图片数（上限 5，与后端 pics 上限一致；演示数据的占位图固定 3 页）。
       // 双指撑开/双击进全屏查看器（见文件末查看器节）。
       const shots = Math.max(1, Math.min(5, (g.images && g.images.length) || 3));
