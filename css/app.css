@@ -1185,7 +1185,7 @@ body, .card, .li, .topbar, .top-chrome, .chip, .btn, .tbtn, .field-input,
   .sparkle, .login-mascot img, .av-cloud-inner.sway, .av-cloud-inner.sway-flat,
   .av-load-dot, .av-cloud.reveal { animation: none !important; }
   .navbar, .to-top, .onboard, .toast-wrap, .g-cat-filters,
-  .g-cover img, .g-hero-anim, .g-hero-anim.title > * { transition: none !important; }
+  .g-cover img, .g-hero-anim { transition: none !important; }
 }
 
 /* ============================================================
@@ -1600,12 +1600,6 @@ body, .card, .li, .topbar, .top-chrome, .chip, .btn, .tbtn, .field-input,
     opacity .14s ease;
 }
 .g-hero-anim.out { opacity: 0; }
-.g-hero-anim.title { z-index: 91; border-radius: 0; }
-.g-hero-anim.title > * {
-  transition: font-size .3s cubic-bezier(.2, .9, .25, 1),
-    line-height .3s cubic-bezier(.2, .9, .25, 1), color .3s ease;
-}
-
 /* 全屏查看器（挂 .phone 上，render 不销毁）：单击/X/Esc 退出，横滑切换，长按菜单 */
 .g-viewer {
   position: absolute; inset: 0; z-index: 60;

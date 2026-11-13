@@ -796,43 +796,25 @@
   // ---------- 共享元素转场（卡片 → 详情大图，FLIP） ----------
   // 点击卡片时克隆封面记录位置，详情渲染后克隆体从卡片位动画到 pager 位；
   // 图片本就是缓存同一张，无缝无白闪。返回时反向缩回（capture 拦截 back）。
-  // App 侧对应：Compose sharedBounds/sharedElement 转场。
+  // App 侧对应：Compose 显式 FLIP 覆盖层。只动画图片，标题不克隆、不变形。
   let hero = null; // { id, rect, html } —— 进入详情时的源卡片快照
   function phoneRect() { return document.querySelector('.phone').getBoundingClientRect(); }
-  function heroClone(rel, rect, html, kind) {
+  function heroClone(rel, rect, html) {
     // rel 为定位参照（.phone）的视口 rect；rect 为内容视口 rect → 换算成 .phone 内绝对坐标
     const clone = document.createElement('div');
-    clone.className = 'g-hero-anim' + (kind ? ' ' + kind : '');
+    clone.className = 'g-hero-anim';
     clone.innerHTML = html;
     const inner = clone.firstChild;
     inner.style.position = 'absolute';
     inner.style.inset = '0';
     inner.style.width = '100%';
     inner.style.height = '100%';
-    if (kind === 'title') {
-      inner.style.margin = '0';
-      const stale = inner.querySelector('.g-fall-stale');
-      if (stale) stale.remove();
-      const from = getComputedStyle(inner);
-      Object.assign(inner.style, {
-        fontSize: from.fontSize, lineHeight: from.lineHeight,
-        fontWeight: from.fontWeight, color: from.color,
-      });
-    }
     Object.assign(clone.style, {
       left: (rect.left - rel.left) + 'px', top: (rect.top - rel.top) + 'px',
       width: rect.width + 'px', height: rect.height + 'px',
     });
     document.querySelector('.phone').appendChild(clone);
     return clone;
-  }
-  function animateHeroTitle(clone, target) {
-    if (!clone) return;
-    const style = getComputedStyle(target);
-    Object.assign(clone.firstChild.style, {
-      fontSize: style.fontSize, lineHeight: style.lineHeight,
-      fontWeight: style.fontWeight, color: style.color,
-    });
   }
   function finishHeroTransition(clones, targets) {
     setTimeout(() => {
@@ -846,11 +828,7 @@
   action('goods-open', (ds, el) => {
     const card = el && el.closest ? el.closest('.g-fall-card, .g-fresh-card') : null;
     const cov = card ? card.querySelector('.g-cover') : null;
-    const title = card ? card.querySelector('.g-fall-title') : null;
-    hero = cov ? {
-      id: ds.arg, rect: cov.getBoundingClientRect(), html: cov.outerHTML,
-      titleRect: title && title.getBoundingClientRect(), titleHtml: title && title.outerHTML,
-    } : null;
+    hero = cov ? { id: ds.arg, rect: cov.getBoundingClientRect(), html: cov.outerHTML } : null;
     nav.push('goods-detail', ds.arg);
     if (hero) requestAnimationFrame(() => {
       const target = document.querySelector('.g-shot .g-cover');
@@ -858,32 +836,20 @@
       if (!target || !hero) return;
       const rel = phoneRect();
       const clone = heroClone(rel, hero.rect, hero.html);
-      const titleClone = hero.titleRect && targetTitle
-        ? heroClone(rel, hero.titleRect, hero.titleHtml, 'title') : null;
       const tr = target.getBoundingClientRect();
-      const titleRect = targetTitle && targetTitle.getBoundingClientRect();
       target.style.visibility = 'hidden';
+      // 标题不做共享动画；图片过渡期间暂缓显示，避免与卡片标题重影。
       if (targetTitle) targetTitle.style.visibility = 'hidden';
       requestAnimationFrame(() => {
         Object.assign(clone.style, {
           left: (tr.left - rel.left) + 'px', top: (tr.top - rel.top) + 'px',
           width: tr.width + 'px', height: tr.height + 'px',
         });
-        if (titleClone && titleRect) {
-          Object.assign(titleClone.style, {
-            left: (titleRect.left - rel.left) + 'px', top: (titleRect.top - rel.top) + 'px',
-            width: titleRect.width + 'px', height: titleRect.height + 'px',
-          });
-          animateHeroTitle(titleClone, targetTitle);
-        }
       });
-      finishHeroTransition(
-        titleClone ? [clone, titleClone] : [clone],
-        targetTitle ? [target, targetTitle] : [target],
-      );
+      finishHeroTransition([clone], targetTitle ? [target, targetTitle] : [target]);
     });
   });
-  // 返回时封面与标题反向缩回源卡片；非首张 pager 不再错用首图，退化普通返回。
+  // 返回时仅封面反向缩回源卡片；非首张 pager 不错用首图，退化普通返回。
   document.addEventListener('click', e => {
     const b = e.target.closest('[data-a="back"]');
     if (!b || !hero) return;
@@ -895,46 +861,27 @@
       return;
     }
     const pager = document.querySelector('.g-shot .g-cover');
-    const detailTitle = document.querySelector('.g-d-title');
     if (!pager) return;
     const pr = pager.getBoundingClientRect();
-    const detailTitleRect = detailTitle && detailTitle.getBoundingClientRect();
     e.stopImmediatePropagation();
     e.preventDefault();
     const html = pager.outerHTML;
-    const titleHtml = detailTitle && detailTitle.outerHTML;
     const sourceHero = hero;
     nav.pop();
     requestAnimationFrame(() => {
       const card = document.querySelector('.g-fall-card[data-arg="' + sourceHero.id + '"] .g-cover, .g-fresh-card[data-arg="' + sourceHero.id + '"] .g-cover');
       if (!card) { hero = null; return; }
-      const cardTitle = sourceHero.titleRect && card.closest('.g-fall-card')
-        ? card.closest('.g-fall-card').querySelector('.g-fall-title') : null;
       const rel = phoneRect();
       const clone = heroClone(rel, pr, html);
-      const titleClone = detailTitleRect && titleHtml && cardTitle
-        ? heroClone(rel, detailTitleRect, titleHtml, 'title') : null;
       const tr = card.getBoundingClientRect();
-      const titleRect = cardTitle && cardTitle.getBoundingClientRect();
       card.style.visibility = 'hidden';
-      if (cardTitle) cardTitle.style.visibility = 'hidden';
       requestAnimationFrame(() => {
         Object.assign(clone.style, {
           left: (tr.left - rel.left) + 'px', top: (tr.top - rel.top) + 'px',
           width: tr.width + 'px', height: tr.height + 'px',
         });
-        if (titleClone && titleRect) {
-          Object.assign(titleClone.style, {
-            left: (titleRect.left - rel.left) + 'px', top: (titleRect.top - rel.top) + 'px',
-            width: titleRect.width + 'px', height: titleRect.height + 'px',
-          });
-          animateHeroTitle(titleClone, cardTitle);
-        }
       });
-      finishHeroTransition(
-        titleClone ? [clone, titleClone] : [clone],
-        cardTitle ? [card, cardTitle] : [card],
-      );
+      finishHeroTransition([clone], [card]);
       hero = null;
     });
   }, true);

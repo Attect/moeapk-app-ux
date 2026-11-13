@@ -236,14 +236,15 @@ test('瀑布图从干净节点淡入，当前批 eager 且预载下一批', () =
   assert.match(js, /preloadFallBatch\(cur\.arg, nb \+ 1/);
 });
 
-test('卡片到详情 FLIP 同时携带标题，非首张 pager 安全降级', () => {
+test('卡片到详情 FLIP 只动画图片，标题延后显示且非首张安全降级', () => {
   const js = fs.readFileSync(path.join(ROOT, 'js/screens/goods.js'), 'utf8');
   const css = fs.readFileSync(path.join(ROOT, 'css/app.css'), 'utf8');
-  assert.match(js, /titleRect:\s*title && title\.getBoundingClientRect\(\)/);
-  assert.match(js, /heroClone\(rel, hero\.titleRect, hero\.titleHtml, 'title'\)/);
-  assert.match(js, /animateHeroTitle\(titleClone, targetTitle\)/);
+  assert.match(js, /const clone = heroClone\(rel, hero\.rect, hero\.html\)/);
+  assert.match(js, /targetTitle\.style\.visibility = 'hidden'/);
+  assert.match(js, /finishHeroTransition\(\[clone\], targetTitle \? \[target, targetTitle\] : \[target\]\)/);
   assert.match(js, /pagerRoot\.scrollLeft[\s\S]*hero = null;\s*return;/);
-  assert.match(css, /\.g-hero-anim\.title\s*\{/);
+  assert.doesNotMatch(js, /titleClone|titleRect|titleHtml|animateHeroTitle/);
+  assert.doesNotMatch(css, /\.g-hero-anim\.title/);
 });
 
 test('展品详情图片区域与淘宝方形商品图保持 1:1', () => {
