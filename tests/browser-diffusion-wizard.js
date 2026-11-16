@@ -159,7 +159,8 @@ async function swipe(direction) {
       return { height:p.height, textButtons:[...document.querySelectorAll('.diff-prompt-actions .diff-text-btn')].map(x=>x.textContent.trim()),
         vocabularySize:DB.TAGS_DEMO.length }; })()`);
     assert(report.promptLayout.height>=150 && report.promptLayout.vocabularySize>=40, `prompt layout: ${JSON.stringify(report.promptLayout)}`);
-    assert(report.promptLayout.textButtons.some(x=>x.includes('提示词库')) && report.promptLayout.textButtons.some(x=>x.includes('提示词词表')) && report.promptLayout.textButtons.some(x=>x.includes('图像反推')) && report.promptLayout.textButtons.some(x=>x.includes('检查提示词')));
+    assert(report.promptLayout.textButtons.some(x=>x.includes('提示词库')) && report.promptLayout.textButtons.some(x=>x.includes('提示词词表')) && report.promptLayout.textButtons.some(x=>x.includes('图像反推')));
+    assert(!report.promptLayout.textButtons.some(x=>x.includes('检查提示词')), '检查结果改为内联状态条，不再有独立按钮');
     ok('大提示词输入框与四个文字操作按钮', report.promptLayout);
 
     // 真实触摸横滑：第 3 步 → 第 4 步，再向右滑回。
@@ -189,22 +190,43 @@ async function swipe(direction) {
     assert(await evaluate(`document.querySelector('.dlg').textContent.includes('我的收藏')`));
     await click('.dlg [data-a="plib-use"]');
     await setValue('#diff-prompt', '1girl, (masterpiece:abc');
-    await click('[data-a="diff-prompt-check"]');
-    report.promptValidation = await evaluate(`document.querySelector('.dlg').textContent`);
-    assert(report.promptValidation.includes('未闭合') && report.promptValidation.includes('不是有效数字'));
-    await click('.dlg [data-dlg="0"]');
+    report.inlineStatus = await evaluate(`(() => { const s=document.querySelector('.diff-prompt-status'), f=document.querySelector('.diff-focus');
+      const shell=document.querySelector('.diff-prompt-shell');
+      return { insideShell: !!shell && shell.contains(s), right: s.querySelector('.diff-check').textContent.trim(),
+        left: f.textContent.trim(), dialog: !!document.querySelector('.dlg'),
+        divider: getComputedStyle(s).borderTopWidth }; })()`);
+    assert(report.inlineStatus.insideShell && !report.inlineStatus.dialog, `status must be inline: ${JSON.stringify(report.inlineStatus)}`);
+    assert.match(report.inlineStatus.right, /处语法问题/);
+    assert.equal(report.inlineStatus.divider, '1px');
+    // 点击状态条展开明细（不是弹窗）
+    await click('[data-a="diff-status-toggle"]');
+    report.inlineIssues = await evaluate(`(() => { const ul=document.querySelector('.diff-prompt-issues');
+      return { has: !!ul, text: ul ? ul.textContent : '', dialog: !!document.querySelector('.dlg') }; })()`);
+    assert(report.inlineIssues.has && !report.inlineIssues.dialog, `issues must expand inline: ${JSON.stringify(report.inlineIssues)}`);
+    assert(report.inlineIssues.text.includes('未闭合') && report.inlineIssues.text.includes('不是有效数字'));
+    await click('[data-a="diff-status-toggle"]');
     await setValue('#diff-prompt', '1girl, (masterpiece:1.2), best quality');
-    await click('[data-a="diff-prompt-check"]');
-    assert(await evaluate(`document.querySelector('.dlg-title').textContent.includes('检查通过')`));
-    await click('.dlg [data-dlg="0"]');
+    assert.equal(await evaluate(`document.querySelector('.diff-check').textContent.trim()`), '语法正常');
+    // 焦点词与翻译：光标停在 best quality 上，右侧同时显示检查结果
+    await evaluate(`(() => { const el=document.getElementById('diff-prompt'); el.focus();
+      const i=el.value.lastIndexOf('best quality'); el.setSelectionRange(i+4, i+4); el.dispatchEvent(new Event('input',{bubbles:true})); })()`);
+    await sleep(150);
+    report.focusInfo = await evaluate(`(() => { const f=document.querySelector('.diff-focus');
+      return { text: f.textContent.trim(), hasTag: !!f.querySelector('b'), check: document.querySelector('.diff-check').textContent.trim() }; })()`);
+    assert(report.focusInfo.text.includes('best quality') && report.focusInfo.hasTag, `focus term missing: ${JSON.stringify(report.focusInfo)}`);
+    await shot('walk-diff-wizard-prompt-status-light.png');
     await setValue('#diff-prompt', '1girl, brand_new_tag');
-    await click('[data-a="diff-prompt-check"]');
-    assert(await evaluate(`document.querySelector('.dlg').textContent.includes('brand_new_tag') && document.querySelector('.dlg').textContent.includes('未收录（需确认）')`));
-    await click('.dlg [data-dlg="0"]');
+    report.unknownStatus = await evaluate(`document.querySelector('.diff-check').textContent.trim()`);
+    assert.match(report.unknownStatus, /个词未收录/);
+    await click('[data-a="diff-status-toggle"]');
+    assert(await evaluate(`document.querySelector('.diff-prompt-issues').textContent.includes('brand_new_tag')`));
+    await click('[data-a="diff-status-toggle"]');
     await setValue('#diff-prompt', '1girl, (masterpiece:1.2), best quality');
-    ok('词表搜索追加、页内收藏、语法错误与未收录分类检查', report.promptValidation);
+    ok('检查结果内联状态条与焦点词翻译', { status: report.inlineStatus, focus: report.focusInfo, unknown: report.unknownStatus });
     await click('[data-a="diff-neg-toggle"]');
-    assert(await evaluate(`!!document.querySelector('[data-keep="diff-neg"]')`));
+    report.negCollapse = await evaluate(`(() => { const b=document.querySelector('.diff-collapse');
+      return { expanded: b.getAttribute('aria-expanded'), hasIcon: !!b.querySelector('.ic'), textarea: !!document.querySelector('[data-keep="diff-neg"]') }; })()`);
+    assert(report.negCollapse.expanded === 'true' && report.negCollapse.hasIcon && report.negCollapse.textarea, `negative collapse: ${JSON.stringify(report.negCollapse)}`);
     await click('[data-a="diff-caption"]');
     await click('.dlg [data-a="diff-caption-img"]');
     await waitFor(() => evaluate(`!!document.querySelector('.dlg-title') && document.querySelector('.dlg-title').textContent.includes('反推结果')`), 7000, 'caption result');
@@ -240,7 +262,7 @@ async function swipe(direction) {
       return { editor:css(document.querySelector('.diff-media-editor')).backgroundColor,
         prompt:css(document.querySelector('.diff-prompt-block')).backgroundColor,
         stage:css(document.querySelector('.diff-workstage')).backgroundColor,
-        input:css(document.querySelector('.diff-prompt')).backgroundColor,
+        input:css(document.querySelector('.diff-prompt-shell')).backgroundColor,
         hintBg:css(document.querySelector('.diff-mask-label')).backgroundColor,
         hintColor:css(document.querySelector('.diff-mask-label')).color,
         onSurface:css(document.querySelector('.diff-workhead h2')).color }; })()`);

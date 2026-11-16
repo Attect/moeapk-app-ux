@@ -110,11 +110,13 @@ test('创作页使用大输入框、文字按钮、页内收藏和真实提示�
   const css = read('css/app.css');
   assert.match(css, /textarea\.diff-prompt\s*\{[^}]*min-height:\s*156px/s);
   assert.match(css, /\.diff-media-editor \.mask-toolbar\s*\{[^}]*padding:\s*0 10px/s);
-  for (const label of ['提示词库', '提示词词表', '图像反推', '检查提示词']) assert.ok(screen.includes(label), label);
-  for (const action of ['plib-save-current', 'plib-use-append', 'plib-delete', 'diff-prompt-check', 'diff-vocabulary', 'vocab-download', 'vocab-query', 'vocab-use']) {
+  for (const label of ['提示词库', '提示词词表', '图像反推']) assert.ok(screen.includes(label), label);
+  for (const action of ['plib-save-current', 'plib-use-append', 'plib-delete', 'diff-vocabulary', 'vocab-download', 'vocab-query', 'vocab-use']) {
     assert.ok(screen.includes(`action('${action}'`), action);
   }
-  assert.ok(screen.includes('未收录（需确认）'));
+  assert.ok(!screen.includes("action('diff-prompt-check'"));
+  assert.ok(screen.includes('个词未收录'));
+  assert.ok(screen.includes('未收录：'));
   assert.ok(screen.includes('Danbooru 中文标签'));
   assert.ok(screen.includes('尚未下载完整标签词表'));
   assert.ok(screen.includes('约 194KB'));
@@ -124,11 +126,29 @@ test('创作页使用大输入框、文字按钮、页内收藏和真实提示�
   assert.ok(!screen.includes('当前模型推荐'));
 });
 
+test('检查结果与焦点词进入输入框底部状态条，负向提示词为可折叠项', () => {
+  const css = read('css/app.css');
+  // 状态条在输入框容器内部，用淡分割线与真实输入区隔开
+  assert.match(screen, /<div class="diff-prompt-shell">/);
+  assert.match(css, /\.diff-prompt-shell\s*\{[^}]*border:\s*1px solid var\(--outline-variant\)[^}]*border-radius:\s*8px/s);
+  assert.match(css, /\.diff-prompt-status\s*\{[^}]*border-top:\s*1px solid color-mix\(in srgb, var\(--outline-variant\) 60%/s);
+  assert.match(css, /\.diff-prompt-status\s*\{[^}]*justify-content:\s*space-between/s);
+  // 左焦点词+翻译，右检查结果；点击展开明细而不是弹窗
+  assert.match(screen, /class="diff-focus"/);
+  assert.match(screen, /class="diff-check/);
+  assert.match(screen, /action\('diff-status-toggle'/);
+  assert.doesNotMatch(screen, /showDialog\(\{\s*title:\s*issues\.length/);
+  // 负向提示词改为整行可折叠项
+  assert.match(screen, /class="diff-collapse[^"]*"\s+data-a="diff-neg-toggle"\s+aria-expanded=/);
+  assert.match(css, /\.diff-collapse\s*\{[^}]*width:\s*100%[^}]*cursor:\s*pointer/s);
+  assert.ok(!screen.includes('diff-neg-head'));
+});
+
 test('生图原型保持纯静态，无网络或模块依赖', () => {
   assert.doesNotMatch(screen, /\bfetch\s*\(|\bimport\s*\(|https?:\/\//);
   assert.doesNotMatch(read('js/data/ai.js'), /\bfetch\s*\(|https?:\/\//);
   const html = read('index.html');
   const versions = [...html.matchAll(/\?v=(\d+)/g)].map(m => m[1]);
   assert.ok(versions.length >= 20);
-  assert.ok(versions.every(v => v === '86'));
+  assert.ok(versions.every(v => v === '87'));
 });

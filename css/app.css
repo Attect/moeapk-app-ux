@@ -1887,7 +1887,27 @@ textarea.field-input { min-height: 84px; resize: vertical; font-family: inherit;
 .diff-field-label { margin-top: 7px; }
 .diff-inline-tools { display: flex; }
 .diff-prompt-count { color: var(--on-surface-variant); font-size: 10px; }
-textarea.diff-prompt { min-height: 156px; resize: vertical; border-radius: 6px; padding: 12px; font-size: 14px; line-height: 22px; }
+textarea.diff-prompt { min-height: 156px; resize: vertical; border-radius: 0; border: 0; padding: 12px; font-size: 14px; line-height: 22px; background: transparent; }
+.diff-prompt-shell { border: 1px solid var(--outline-variant); border-radius: 8px; overflow: hidden; background: var(--surface-container); }
+.diff-prompt-shell:focus-within { border-color: var(--primary); }
+.diff-prompt-status {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 6px 10px; border-top: 1px solid color-mix(in srgb, var(--outline-variant) 60%, transparent);
+  background: var(--surface-container); font-size: 10px; line-height: 15px; cursor: pointer;
+}
+.diff-focus { display: flex; align-items: baseline; gap: 5px; min-width: 0; }
+.diff-focus b { font-size: 11px; font-weight: 600; overflow-wrap: anywhere; }
+.diff-focus span { color: var(--on-surface-variant); overflow-wrap: anywhere; }
+.diff-check { flex: none; color: var(--on-surface-variant); }
+.diff-check.bad { color: var(--error); font-weight: 600; }
+.diff-prompt-issues { margin: 0; padding: 6px 10px 8px 26px; border-top: 1px solid color-mix(in srgb, var(--outline-variant) 45%, transparent); color: var(--error); font-size: 10px; line-height: 16px; }
+.diff-collapse {
+  display: flex; align-items: center; gap: 4px; width: 100%; margin-top: 6px; padding: 7px 8px;
+  border: 1px solid transparent; border-radius: 6px; background: var(--surface-container);
+  color: var(--on-surface-variant); font-size: 11px; text-align: left; cursor: pointer;
+}
+.diff-collapse .ic { width: 16px; height: 16px; }
+.diff-collapse.open { color: var(--on-surface); }
 .diff-prompt-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin-top: 7px; }
 .diff-text-btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-height: 34px; padding: 5px 10px;

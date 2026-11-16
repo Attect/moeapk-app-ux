@@ -373,25 +373,59 @@
   });
 
   // ---------- 3：创作输入（图类步骤上舞台、下工具栏） ----------
+  function focusTermInfo(d) {
+    const el = promptEl();
+    const text = el ? el.value : (d.prompt || '');
+    const pos = el && document.activeElement === el ? el.selectionStart : text.length;
+    const raw = tagRangeAt(text, pos).text.trim();
+    if (!raw) return null;
+    const term = raw.replace(/^[(\[]+/, '').replace(/[\])]+$/, '').split(':')[0].trim();
+    if (!term) return null;
+    const hit = DB.TAGS_DEMO.find(t => t.tag.toLowerCase() === term.toLowerCase().replace(/_/g, ' '));
+    return { term, cn: hit ? hit.cn : '' };
+  }
+  function promptStatus(d) {
+    const text = currentPromptText();
+    const issues = validatePromptSyntax(text);
+    if (issues.length) return { text: issues.length + ' 处语法问题', bad: true, issues };
+    const unknown = d.vocabReady ? unknownPromptTerms(text) : [];
+    if (unknown.length) return { text: unknown.length + ' 个词未收录', bad: true, unknown };
+    return { text: '语法正常', bad: false };
+  }
+  function statusHtml(d) {
+    const focus = focusTermInfo(d), status = promptStatus(d);
+    const left = focus
+      ? '<b>' + esc(focus.term) + '</b><span>' + esc(focus.cn || '未收录') + '</span>'
+      : '<span class="muted">光标未在标签上</span>';
+    let h = '<div class="diff-prompt-status" data-a="diff-status-toggle" role="status">' +
+      '<div class="diff-focus">' + left + '</div>' +
+      '<div class="diff-check' + (status.bad ? ' bad' : '') + '">' + esc(status.text) + '</div></div>';
+    if (S.x.diffCheckOpen && status.bad) {
+      const rows = (status.issues || []).map(x => '<li>' + esc(x) + '</li>').join('') +
+        (status.unknown ? '<li>未收录：' + status.unknown.map(esc).join('、') + '</li>' : '');
+      h += '<ul class="diff-prompt-issues">' + rows + '</ul>';
+    }
+    return h;
+  }
   function inputStep(d) {
     let h = stepTitle('描述画面，完成创作输入', '提示词草稿自动保存；反推与提示词库仍可在此直接使用。');
     h += selectionSummary(d);
     if (d.mode === 'img' || d.mode === 'inpaint') h += baseEditor(d);
     h += '<section class="diff-block diff-prompt-block"><div class="diff-field-head"><label for="diff-prompt">正向提示词</label><span class="diff-prompt-count">' + d.prompt.length + ' 字</span></div>' +
+      '<div class="diff-prompt-shell">' +
       '<textarea id="diff-prompt" class="field-input diff-prompt" data-keep="diff-prompt" placeholder="描述画面内容、主体、风格与细节；可用逗号分隔 tag">' + esc(d.prompt) + '</textarea>' +
+      statusHtml(d) + '</div>' +
       '<div class="diff-prompt-actions"><button class="diff-text-btn" data-a="diff-prompt-lib">' + icon('bookmark') + '提示词库</button>' +
       '<button class="diff-text-btn" data-a="diff-vocabulary">' + icon('menu_book') + '提示词词表</button>' +
-      '<button class="diff-text-btn" data-a="diff-caption">' + icon('zoom_in') + '图像反推</button>' +
-      '<button class="diff-text-btn" data-a="diff-prompt-check">' + icon('check_circle') + '检查提示词</button></div>' +
-      '<div class="diff-caption">' + (d.vocabReady ? '标签词表已下载' : '标签词表未下载') + '</div>' +
+      '<button class="diff-text-btn" data-a="diff-caption">' + icon('zoom_in') + '图像反推</button></div>' +
       '<div class="tag-toolbar"><button class="tbtn" data-a="tag-dec">权重−</button><button class="tbtn" data-a="tag-inc">权重＋</button>' +
       '<button class="tbtn" data-a="tag-del">删除 tag</button><button class="icbtn" data-a="tag-undo" title="撤销">' + icon('undo') + '</button>' +
       '<button class="icbtn" data-a="tag-redo" title="重做">' + icon('redo') + '</button></div>';
     const sug = currentSuggestions();
     if (sug.length) h += '<div class="suggest-row">' + sug.map(t =>
       '<button class="chip" data-a="tag-complete" data-arg="' + esc(t.tag) + '">' + esc(t.tag) + '<span class="sug-cn">' + esc(t.cn) + '</span></button>').join('') + '</div>';
-    h += '<div class="diff-neg-head"><button class="diff-icon" data-a="diff-neg-toggle" title="负向提示词">' + icon(S.x.diffNegOpen ? 'expand_less' : 'expand_more') + '</button>' +
-      '<span>负向提示词' + (d.neg ? '（已设置）' : '') + '</span></div>';
+    h += '<button class="diff-collapse' + (S.x.diffNegOpen ? ' open' : '') + '" data-a="diff-neg-toggle" aria-expanded="' + (S.x.diffNegOpen ? 'true' : 'false') + '">' +
+      icon(S.x.diffNegOpen ? 'expand_less' : 'expand_more') + '<span>负向提示词' + (d.neg ? '（已设置）' : '') + '</span></button>';
     if (S.x.diffNegOpen) h += '<textarea class="field-input diff-neg" data-keep="diff-neg" placeholder="负向提示词（如 lowres, bad anatomy）">' + esc(d.neg || '') + '</textarea><div class="diff-caption">描述不想出现的内容。</div>';
     return h + '</section>';
   }
@@ -870,18 +904,10 @@
     if (trailingSlashes % 2 === 1) issues.push('末尾转义符 \\ 后缺少字符');
     return issues;
   }
-  action('diff-prompt-check', () => {
-    const text = currentPromptText(), issues = validatePromptSyntax(text), model = modelOf(D().modelId);
-    const family = ((model && model.diffusion && (model.diffusion.architecture + ' ' + model.diffusion.family)) || '');
-    const naturalLanguage = /DiT|Flux|Qwen|Krea|Z-Image|Klein/i.test(family);
-    const unknown = naturalLanguage || issues.length || !D().vocabReady ? [] : unknownPromptTerms(text);
-    showDialog({
-      title: issues.length ? '发现 ' + issues.length + ' 处语法问题' : (unknown.length ? '检查完成：' + unknown.length + ' 个词未收录' : (D().vocabReady && !naturalLanguage ? '提示词检查通过' : '语法检查通过')),
-      body: (issues.length ? '<ul class="prompt-check-list">' + issues.map(x => '<li>' + esc(x) + '</li>').join('') + '</ul>' :
-        '<div class="prompt-check-ok">' + icon('check_circle') + '<span>语法正常</span></div>') +
-        (unknown.length ? '<h3 class="prompt-lib-heading">未收录（需确认）</h3><div class="vocab-unknown">' + unknown.map(esc).join('、') + '</div>' : ''),
-      actions: [{ label: '知道了' }]
-    });
+  action('diff-status-toggle', () => {
+    S.x.diffCheckOpen = !S.x.diffCheckOpen;
+    render();
+    setTimeout(() => { const el = promptEl(); if (el) el.focus(); }, 0);
   });
   function promptEl() { return document.querySelector('[data-keep="diff-prompt"]'); }
   function tagRangeAt(text, pos) {
