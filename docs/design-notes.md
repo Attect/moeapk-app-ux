@@ -64,13 +64,13 @@
 | 采样步数滑杆 | 数字输入 + 减 / 加按钮，范围 1–150，LCM 4–8 步不再被旧滑杆下限挡住 |
 | 结果图片只是卡片，保存操作在图片下方 | 结果步上方大画面、下方信息 / 模板 / 重跑工具；保存素材、保存相册、分享在标题栏右侧 |
 | 历史 / 结果图不能统一放大 | 二者均进入 `diff-image` 全屏查看页；上方大画面、下方查看工具栏，支持查看态再放大和返回原结果 |
-| 计算方式与模型名称容易混用 | 计算模式严格只有 **CPU / GPU / NPU**，分别是 **CPU 计算 / MNN 计算 / QNN 或 Hexagon 计算**；Anima 只存在于模型家族元数据 |
+| 计算方式与模型名称容易混用 | 计算模式严格只有 **CPU / GPU / NPU**，分别是 **CPU 计算 / MNN 计算 / QNN 或 Hexagon 计算**；Anima 是模型家族而非计算模式，当前 native 仅有 QNN `PipelineAnima` |
 
 **流程与保留能力**：模型仍需下载并选择后才自动前进；图生图 / 局部重绘继续从素材库选底图，局部重绘为上方大 canvas、下方画笔 / 橡皮 / 撤销 / 清空 / 粗细工具。提示词库、负向词、tag 权重 / 删除 / 撤销重做、补全、图片反推三档结果、9 种采样器、CFG、seed 锁、尺寸 / 宽高比、批量、双轴扫描与预计张数、跑完本张后停止、过程预览、高清修复与 UltraFix tile、按模型独立配置、bad_alloc 就地错误、换载成本、分阶段耗时、模板 / 原样重跑均保留。原 `diff-config` 独立子页不删除，与第 4 步共用控件和真实配置。
 
 **SoC 与模型后端契约**：
 1. 原型提供高通骁龙 8 Gen 3、联发科天玑 9300、其它通用 ARM 三种识别演示，明确标注是设备模拟，浏览器不冒充真实硬件探针。
-2. 每个生图模型在目录中声明 `diffusion.family / architecture / backends / packageNote`；QNN 包另声明 `npuVendor=Qualcomm` 与 `minGeneration`。通用 Anima XL 演示包只有 CPU / GPU（MNN），两条既有 QNN 包只有 NPU，不能因为设备有 CPU 就给 QNN 权重虚构 CPU 路径。
+2. 每个生图模型在目录中声明 `diffusion.family / architecture / backends / packageNote`；QNN 包另声明 `npuVendor=Qualcomm` 与 `minGeneration`。Anything V5（SD1.5 MNN）演示包提供 CPU / GPU 两种路径，两条既有 QNN 包只有 NPU，不能因为设备有 CPU 就给 QNN 权重虚构 CPU 路径。**同日纠正**：真实 native 的 Anima 只有 QNN `PipelineAnima`，初版的 `anima-xl-universal` / Anima CPU·MNN 通用包已删除；如以后展示 Anima，只能另列明确标注「当前仅本地导入」的 NPU QNN 包。
 3. 不兼容项仍可点选，用于显示明确的「**无法计算**」与可行动原因；只有可计算项才自动进入下一步。判定先报当前 SoC 根本限制，再报模型包缺失：联发科 / 其它 SoC 的 NPU 不得被描述为 QNN；其它设备未识别 MNN GPU 驱动时 GPU 同样无法计算。
 4. 生成结果记录 `compute / soc`，历史信息直接显示 CPU / MNN / QNN 路径，模板与原样重跑会回填这些字段并再次校验兼容性。
 
@@ -80,7 +80,7 @@
 - 设备识别可读取 `Build.SOC_MANUFACTURER / SOC_MODEL`，但最终可用性必须结合真实后端动态库 / 驱动探针与模型 manifest，不得只按芯片名称硬编码。NPU 不等于通用 NPU 框架：本流程只代表 QNN / Hexagon；联发科 APU 不能伪装成 QNN。Anima 是模型家族而非推理引擎。
 - 结果顶栏动作与全屏查看器共享当前 result id；返回要恢复原向导页、当前结果与抽屉状态语义。图片、遮罩编辑和结果页都采用上方大画面、下方工具栏，不能在 Compose 迁移时又退回小缩略图 + 大按钮卡片。
 
-**原型同步与走查**：`ai-diffusion.js` 重构为五步向导和 `diff-image`；`js/data/ai.js` 新增 Anima 通用包与后端元数据；`app.css` 新增紧凑工作台、全屏查看和横竖屏样式；新增 `tests/browser-diffusion-wizard.js` 与 `tests/ai-diffusion-wizard.test.js`。覆盖模型下载自动前进、三类 SoC / 后端不兼容、双向真实触摸、提示词与反推、遮罩、数字步数、双图扫描、结果 / 历史全屏、独立设置、明暗、360px 窄屏、1024×680 横屏、`file://` 零外部请求与浏览器异常。全部资源版本号 **v=80**。
+**原型同步与走查**：`ai-diffusion.js` 重构为五步向导和 `diff-image`；`js/data/ai.js` 新增 Anything V5 SD1.5 MNN 演示模型与后端元数据；`app.css` 新增紧凑工作台、全屏查看和横竖屏样式；新增 `tests/browser-diffusion-wizard.js` 与 `tests/ai-diffusion-wizard.test.js`。覆盖模型下载自动前进、三类 SoC / 后端不兼容、双向真实触摸、提示词与反推、遮罩、数字步数、双图扫描、结果 / 历史全屏、独立设置、明暗、360px 窄屏、1024×680 横屏、`file://` 零外部请求与浏览器异常。初版全部资源版本号为 v=80；Anima 后端真实性纠正后统一递增为 **v=81**，并增加「SD1.5 不显示 SDXL 宽高比」「结果不得出现虚构 Anima CPU/MNN」回归断言。
 
 ### 第三十四轮（2026-11-11，主页面引导气泡真实透明磨砂）
 

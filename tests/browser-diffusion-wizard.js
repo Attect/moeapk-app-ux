@@ -123,15 +123,15 @@ async function swipe(direction) {
     ok('独立全屏五步且无主底栏', report.initial);
     await shot('walk-diff-wizard-model-light.png');
 
-    await click('[data-a="diff-pick-dl"][data-arg="anima-xl-universal"]');
-    await waitFor(() => evaluate(`window._diffusion.state().modelId==='anima-xl-universal' && window._diffusion.state().step===1`), 10000, 'download then auto advance');
+    await click('[data-a="diff-pick-dl"][data-arg="anything-v5-mnn"]');
+    await waitFor(() => evaluate(`window._diffusion.state().modelId==='anything-v5-mnn' && window._diffusion.state().step===1`), 10000, 'download then auto advance');
     await sleep(450);
     report.autoAdvance = await evaluate(`({step:window._diffusion.state().step,left:document.querySelector('#diff-pager').scrollLeft,
       width:document.querySelector('#diff-pager').clientWidth})`);
     assert(Math.abs(report.autoAdvance.left-report.autoAdvance.width)<3, `auto pager did not settle: ${JSON.stringify(report.autoAdvance)}`);
     ok('模型下载选择后自动横滑', report.autoAdvance);
 
-    report.backends = await evaluate(`(() => { const d=window._diffusion, generic=d.models.find(m=>m.id==='anima-xl-universal'),
+    report.backends = await evaluate(`(() => { const d=window._diffusion, generic=d.models.find(m=>m.id==='anything-v5-mnn'),
       qnn=d.models.find(m=>m.id==='chillout-mix-qnn');
       return { genericNpu:d.compatibility(generic,'npu','qcom-8g3'), genericCpu:d.compatibility(generic,'cpu','other-arm'),
         genericOtherGpu:d.compatibility(generic,'gpu','other-arm'), qnnCpu:d.compatibility(qnn,'cpu','qcom-8g3'),
@@ -215,7 +215,8 @@ async function swipe(direction) {
       sweep:!!document.querySelector('[data-a="diff-sweep-open"]'),hires:!!document.querySelector('[data-a="diff-hires"]'),
       aspect:document.querySelectorAll('[data-a="dc-ar"]').length})`);
     assert.equal(report.params.numeric,'number'); assert(!report.params.range);
-    assert.equal(report.params.samplers,9); assert(report.params.sweep&&report.params.hires); assert.equal(report.params.aspect,5);
+    assert.equal(report.params.samplers,9); assert(report.params.sweep&&report.params.hires);
+    assert.equal(report.params.aspect,0,'SD1.5 Anything V5 不得套用 SDXL 宽高比');
     await click('[data-a="diff-sweep-open"]');
     await setValue('.dlg [data-keep="sw-v1"]', '1..2');
     assert(await evaluate(`document.querySelector('.dlg').textContent.includes('预计 2 张')`));
@@ -235,6 +236,8 @@ async function swipe(direction) {
         share:!!document.querySelector('.diff-head [data-a="diff-share"]'),template:!!document.querySelector('[data-a="diff-as-template"]'),
         rerun:!!document.querySelector('[data-a="diff-rerun"]') }; })()`);
     assert.equal(report.result.count,2); assert(report.result.info.includes('MNN 计算'));
+    assert(report.result.info.startsWith('Anything V5'),'结果必须来自真实 SD1.5 MNN 演示模型');
+    assert(!report.result.info.includes('Anima'),'不得再出现虚构 Anima CPU/MNN 结果');
     assert(report.result.save&&report.result.share&&report.result.template&&report.result.rerun);
     await shot('walk-diff-wizard-result-light.png');
     ok('扫描结果与标题栏保存/分享', report.result);

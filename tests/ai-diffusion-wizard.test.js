@@ -29,7 +29,7 @@ test('生图是独立全屏五步向导，并提供独立图片查看页', () =>
   assert.match(css, /\.diff-step\s*\{[^}]*flex:\s*0 0 100%/s);
 });
 
-test('计算模式只有 CPU/GPU/NPU，Anima 仅作为模型家族元数据', () => {
+test('计算模式只有 CPU/GPU/NPU，CPU/MNN 路径使用真实 SD1.5 演示模型', () => {
   const block = screen.match(/const COMPUTE = \[(.*?)\];/s)[1];
   const ids = [...block.matchAll(/\{ id: '([^']+)'/g)].map(m => m[1]);
   assert.deepEqual(ids, ['cpu', 'gpu', 'npu']);
@@ -38,9 +38,16 @@ test('计算模式只有 CPU/GPU/NPU，Anima 仅作为模型家族元数据', ()
   assert.ok(block.includes("engine: 'QNN / Hexagon 计算'"));
   assert.ok(!ids.includes('anima'));
 
-  const generic = diffusionModels().find(m => m.id === 'anima-xl-universal');
-  assert.equal(generic.diffusion.family, 'Anima');
+  const generic = diffusionModels().find(m => m.id === 'anything-v5-mnn');
+  assert.equal(generic.diffusion.family, 'Anything V5');
+  assert.equal(generic.diffusion.architecture, 'SD1.5');
   assert.deepEqual(Array.from(generic.diffusion.backends), ['cpu', 'gpu']);
+  assert.ok(!read('js/data/ai.js').includes('anima-xl-universal'));
+  assert.ok(!read('js/data/ai.js').includes('Anima-XL-CPU-MNN'));
+  for (const m of diffusionModels().filter(m => m.diffusion.family === 'Anima')) {
+    assert.deepEqual(Array.from(m.diffusion.backends), ['npu'], '真实 Anima 仅允许 QNN PipelineAnima');
+    assert.equal(m.diffusion.localImportOnly, true, 'Anima 展示只能来自明确标注的本地导入包');
+  }
 });
 
 test('每个生图模型显式声明真实后端与高通代际约束', () => {
@@ -74,6 +81,7 @@ test('原有生图细节能力在向导中仍有真实动作入口', () => {
     'diff-save-asset', 'diff-save-album', 'diff-share', 'dc-debug-fail'
   ]) assert.ok(screen.includes(`action('${action}'`), action);
   assert.ok(screen.includes("['DPM++ 2M', 'DPM++ 2M Karras', 'DPM++ 2M SDE'"));
+  assert.ok(screen.includes("['1:1', '4:3', '3:4', '16:9', '9:16']"), 'SDXL 模型宽高比能力仍保留');
   assert.match(screen, /nav\.push\('diff-image', ds\.arg\)/);
   assert.match(screen, /nav\.push\('diff-image', 'base:' \+ ds\.arg\)/);
 });
@@ -84,5 +92,5 @@ test('生图原型保持纯静态，无网络或模块依赖', () => {
   const html = read('index.html');
   const versions = [...html.matchAll(/\?v=(\d+)/g)].map(m => m[1]);
   assert.ok(versions.length >= 20);
-  assert.ok(versions.every(v => v === '80'));
+  assert.ok(versions.every(v => v === '81'));
 });
