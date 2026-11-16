@@ -29,6 +29,26 @@ test('生图是独立全屏五步向导，并提供独立图片查看页', () =>
   assert.match(css, /\.diff-step\s*\{[^}]*flex:\s*0 0 100%/s);
 });
 
+test('创作与结果画布使用主题表面，只有全屏查看器保留黑底', () => {
+  const css = read('css/app.css');
+  assert.match(css, /\.diff-workstage\s*\{[^}]*background:\s*var\(--surface-container\)/s);
+  assert.doesNotMatch(css, /\.diff-workstage\s*\{[^}]*inverse-surface/s);
+  assert.match(css, /\.diff-art-frame\s*\{[^}]*background:\s*var\(--surface-container\)/s);
+  assert.match(css, /\.diff-art\s*\{[^}]*background:\s*var\(--surface-container\);[^}]*color:\s*var\(--on-surface\)/s);
+  assert.match(css, /\.diff-stage-empty\s*\{[^}]*background:\s*var\(--surface-container\);[^}]*color:\s*var\(--on-surface-variant\)/s);
+  assert.match(css, /\.diff-empty\s*\{[^}]*color:\s*var\(--on-surface-variant\)/s);
+  assert.match(css, /\.diff-empty strong\s*\{[^}]*color:\s*var\(--on-surface\)/s);
+  for (const selector of ['diff-stage-view > span', 'diff-mask-label', 'diff-zoom-badge', 'diff-fav']) {
+    const rule = css.match(new RegExp('\\.' + selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*\\{([^}]*)\\}'));
+    assert.ok(rule, selector);
+    assert.match(rule[1], /background:\s*var\(--surface-highest\)/, selector);
+    assert.match(rule[1], /color:\s*var\(--on-surface\)/, selector);
+    assert.doesNotMatch(rule[1], /rgba\(10,14,24|#fff/i, selector);
+  }
+  assert.ok(screen.includes('diff-block diff-prompt-block'));
+  assert.match(css, /\.diff-viewer\s*\{[^}]*background:\s*#0a0712/s);
+});
+
 test('计算模式只有 CPU/GPU/NPU，CPU/MNN 路径使用真实 SD1.5 演示模型', () => {
   const block = screen.match(/const COMPUTE = \[(.*?)\];/s)[1];
   const ids = [...block.matchAll(/\{ id: '([^']+)'/g)].map(m => m[1]);
@@ -92,5 +112,5 @@ test('生图原型保持纯静态，无网络或模块依赖', () => {
   const html = read('index.html');
   const versions = [...html.matchAll(/\?v=(\d+)/g)].map(m => m[1]);
   assert.ok(versions.length >= 20);
-  assert.ok(versions.every(v => v === '81'));
+  assert.ok(versions.every(v => v === '82'));
 });

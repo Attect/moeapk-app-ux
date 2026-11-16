@@ -376,7 +376,7 @@
     let h = stepTitle('描述画面，完成创作输入', '提示词草稿自动保存；反推与提示词库仍可在此直接使用。');
     h += selectionSummary(d);
     if (d.mode === 'img' || d.mode === 'inpaint') h += baseEditor(d);
-    h += '<section class="diff-block"><div class="diff-field-head"><label for="diff-prompt">正向提示词</label><div class="diff-inline-tools">' +
+    h += '<section class="diff-block diff-prompt-block"><div class="diff-field-head"><label for="diff-prompt">正向提示词</label><div class="diff-inline-tools">' +
       '<button class="diff-icon" data-a="diff-caption" title="从图片反推提示词">' + icon('zoom_in') + '</button>' +
       '<button class="diff-icon" data-a="diff-prompt-lib" title="从提示词库选取">' + icon('bookmark') + '</button></div></div>' +
       '<textarea id="diff-prompt" class="field-input diff-prompt" data-keep="diff-prompt" placeholder="提示词（英文，逗号分隔）">' + esc(d.prompt) + '</textarea>' +

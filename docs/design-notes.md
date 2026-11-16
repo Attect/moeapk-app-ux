@@ -82,6 +82,8 @@
 
 **原型同步与走查**：`ai-diffusion.js` 重构为五步向导和 `diff-image`；`js/data/ai.js` 新增 Anything V5 SD1.5 MNN 演示模型与后端元数据；`app.css` 新增紧凑工作台、全屏查看和横竖屏样式；新增 `tests/browser-diffusion-wizard.js` 与 `tests/ai-diffusion-wizard.test.js`。覆盖模型下载自动前进、三类 SoC / 后端不兼容、双向真实触摸、提示词与反推、遮罩、数字步数、双图扫描、结果 / 历史全屏、独立设置、明暗、360px 窄屏、1024×680 横屏、`file://` 零外部请求与浏览器异常。初版全部资源版本号为 v=80；Anima 后端真实性纠正后统一递增为 **v=81**，并增加「SD1.5 不显示 SDXL 宽高比」「结果不得出现虚构 Anima CPU/MNN」回归断言。
 
+**同日主题修正（真机「一块黑一块白」）**：原型创作舞台曾使用 `inverse-surface`，底图 / 遮罩标签、结果收藏与放大角标也固定黑底白字，和浅色工具卡形成硬拼接。现创作工具区与提示词块统一主题 surface；创作及结果画布使用 `surface-container`（对应 Compose `surfaceVariant`），空态、底图 / 遮罩标签、收藏与放大提示使用主题表面及 `onSurface` / `onSurfaceVariant`。仅 `diff-image` 全屏图片查看器保留 `#0a0712` 黑底、深色顶栏与查看工具栏，不能把这次修正扩大到全屏看图。Compose 同样以主题 surface / surfaceVariant 区分工具和画布，不再在向导内混入固定黑色舞台。新增亮色 / 暗色计算样式与全屏查看器黑底回归断言，全部资源版本号 **v=82**。
+
 ### 第三十四轮（2026-11-11，主页面引导气泡真实透明磨砂）
 
 **起因**：五个主 Tab 的一次性「知道了」气泡虽然声明了 backdrop blur，但原先悬浮底色和额外粉紫渐变使其观感比底部导航更深。用户明确要求气泡也必须具有背景模糊、与底栏观感一致，并且点击后不再出现。

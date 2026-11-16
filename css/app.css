@@ -1891,17 +1891,17 @@ textarea.field-input { min-height: 84px; resize: vertical; font-family: inherit;
 .diff-neg-head { display: flex; align-items: center; gap: 4px; margin-top: 5px; color: var(--on-surface-variant); font-size: 11px; }
 .diff-workstage {
   position: relative; height: min(38vh, 330px); min-height: 180px; overflow: hidden;
-  border: 1px solid var(--outline-variant); border-radius: 6px; background: var(--inverse-surface);
+  border: 1px solid var(--outline-variant); border-radius: 6px; background: var(--surface-container);
 }
-.diff-stage-view, .diff-stage-empty { width: 100%; height: 100%; border: 0; cursor: pointer; color: #fff; }
-.diff-stage-view > span { display: inline-flex; align-items: center; gap: 5px; padding: 5px 8px; border-radius: 5px; background: rgba(10,14,24,.52); font-size: 11px; }
+.diff-stage-view, .diff-stage-empty { width: 100%; height: 100%; border: 0; cursor: pointer; color: var(--on-surface); }
+.diff-stage-view > span { display: inline-flex; align-items: center; gap: 5px; padding: 5px 8px; border-radius: 5px; background: var(--surface-highest); color: var(--on-surface); font-size: 11px; }
 .diff-stage-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; background: var(--surface-container); color: var(--on-surface-variant); }
 .diff-stage-empty .ic { width: 34px; height: 34px; }
 .diff-stage-empty strong { color: var(--on-surface); font-size: 13px; }
 .diff-stage-empty span { font-size: 11px; }
 .diff-stage-tools { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; padding-top: 6px; }
 .diff-mask-stage .mask-wrap { height: 100%; aspect-ratio: auto; margin: 0; border-radius: 0; }
-.diff-mask-label { position: absolute; left: 6px; bottom: 6px; padding: 2px 5px; border-radius: 4px; background: rgba(10,14,24,.52); color: #fff; font-size: 9px; pointer-events: none; }
+.diff-mask-label { position: absolute; left: 6px; bottom: 6px; padding: 2px 5px; border-radius: 4px; background: var(--surface-highest); color: var(--on-surface); font-size: 9px; pointer-events: none; }
 .diff-media-editor .mask-toolbar { margin-top: 5px; }
 .diff-media-editor .mask-toolbar .slider-row { flex: 1; min-width: 80px; padding: 0 4px; }
 .diff-media-editor .mask-toolbar .li-title { font-size: 10px; }
@@ -1932,18 +1932,19 @@ textarea.field-input { min-height: 84px; resize: vertical; font-family: inherit;
 .diff-switch-row small { display: block; margin-top: 2px; color: var(--on-surface-variant); font-size: 10px; line-height: 15px; }
 .diff-note { margin-top: 5px; padding: 6px; border-radius: 5px; background: var(--surface-container); color: var(--on-surface-variant); font-size: 10px; line-height: 15px; }
 .diff-result-stage { position: relative; width: 100%; max-width: 620px; margin: 0 auto; }
-.diff-art-frame { position: relative; width: fit-content; max-width: 100%; margin: 0 auto; }
+.diff-art-frame { position: relative; width: fit-content; max-width: 100%; margin: 0 auto; border-radius: 6px; background: var(--surface-container); color: var(--on-surface); }
 .diff-art-frame .diff-art-button { width: auto; max-width: 100%; }
 .diff-art-button { position: relative; display: block; width: 100%; border: 0; background: transparent; cursor: zoom-in; }
 .diff-art {
   position: relative; height: min(44vh, 390px); max-width: 100%; margin: 0 auto; display: flex; flex-direction: column;
-  align-items: center; justify-content: center; gap: 6px; overflow: hidden; border-radius: 6px; color: rgba(255,255,255,.92);
+  align-items: center; justify-content: center; gap: 6px; overflow: hidden; border-radius: 6px;
+  background: var(--surface-container); color: var(--on-surface);
 }
-.diff-art span { font-size: 12px; text-shadow: 0 1px 4px rgba(0,0,0,.35); }
+.diff-art span { font-size: 12px; }
 .diff-art small { font-size: 10px; opacity: .8; }
-.diff-zoom-badge { position: absolute; right: 6px; bottom: 6px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border-radius: 5px; background: rgba(10,14,24,.52); color: #fff; }
+.diff-zoom-badge { position: absolute; right: 6px; bottom: 6px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border-radius: 5px; background: var(--surface-highest); color: var(--on-surface); }
 .diff-zoom-badge .ic { width: 17px; height: 17px; }
-.diff-fav { position: absolute; top: 6px; right: 6px; background: rgba(10,14,24,.52); color: #fff; }
+.diff-fav { position: absolute; top: 6px; right: 6px; background: var(--surface-highest); color: var(--on-surface); }
 .diff-result-info { color: var(--on-surface); font-size: 11px; line-height: 17px; }
 .diff-result-prompt, .diff-result-neg { margin-top: 5px; color: var(--on-surface-variant); font-size: 11px; line-height: 16px; overflow-wrap: anywhere; }
 .diff-result-tools { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }

@@ -199,8 +199,21 @@ async function swipe(direction) {
     await sleep(120);
     assert(await evaluate(`window._diffusion.state().mask.strokes.length>0`), 'mask pointer drawing missing');
     assert(await evaluate(`document.querySelector('.diff-strokes').textContent.trim()==='1 笔'`), 'mask stroke count did not update on pointer up');
+    report.creativeLight = await evaluate(`(() => { const css=el=>getComputedStyle(el);
+      return { editor:css(document.querySelector('.diff-media-editor')).backgroundColor,
+        prompt:css(document.querySelector('.diff-prompt-block')).backgroundColor,
+        stage:css(document.querySelector('.diff-workstage')).backgroundColor,
+        input:css(document.querySelector('.diff-prompt')).backgroundColor,
+        hintBg:css(document.querySelector('.diff-mask-label')).backgroundColor,
+        hintColor:css(document.querySelector('.diff-mask-label')).color,
+        onSurface:css(document.querySelector('.diff-workhead h2')).color }; })()`);
+    assert.equal(report.creativeLight.editor,report.creativeLight.prompt,'创作工具与提示词必须统一主题 surface');
+    assert.equal(report.creativeLight.stage,report.creativeLight.input,'创作画布必须使用主题 surfaceVariant 对应色');
+    assert.equal(report.creativeLight.hintColor,report.creativeLight.onSurface,'遮罩提示必须随主题前景色');
+    assert(!/rgba?\(10, 14, 24|rgba?\(56, 44, 72/.test(report.creativeLight.stage+report.creativeLight.hintBg));
     await shot('walk-diff-wizard-inpaint-light.png');
     ok('局部重绘上画面下工具栏与真实涂抹', maskLayout);
+    ok('亮色创作画布/工具/提示统一主题', report.creativeLight);
 
     await click('#diff-foot [data-a="diff-next"]');
     await waitFor(() => evaluate(`window._diffusion.state().step===3`), 3000, 'params step');
@@ -239,12 +252,23 @@ async function swipe(direction) {
     assert(report.result.info.startsWith('Anything V5'),'结果必须来自真实 SD1.5 MNN 演示模型');
     assert(!report.result.info.includes('Anima'),'不得再出现虚构 Anima CPU/MNN 结果');
     assert(report.result.save&&report.result.share&&report.result.template&&report.result.rerun);
+    report.resultSurfaceLight = await evaluate(`(() => { const css=el=>getComputedStyle(el);
+      return { frame:css(document.querySelector('.diff-art-frame')).backgroundColor,
+        zoomBg:css(document.querySelector('.diff-zoom-badge')).backgroundColor,
+        zoomColor:css(document.querySelector('.diff-zoom-badge')).color,
+        favBg:css(document.querySelector('.diff-fav')).backgroundColor,
+        onSurface:css(document.querySelector('.diff-result-info')).color }; })()`);
+    assert.equal(report.resultSurfaceLight.frame,report.creativeLight.stage,'结果画布必须使用主题 surfaceVariant 对应色');
+    assert.equal(report.resultSurfaceLight.zoomColor,report.resultSurfaceLight.onSurface);
+    assert.equal(report.resultSurfaceLight.zoomBg,report.resultSurfaceLight.favBg);
+    assert(!/rgba?\(10, 14, 24/.test(report.resultSurfaceLight.frame+report.resultSurfaceLight.zoomBg+report.resultSurfaceLight.favBg));
     await shot('walk-diff-wizard-result-light.png');
     ok('扫描结果与标题栏保存/分享', report.result);
 
     await click('.diff-result-stage [data-a="diff-open-result"]');
     await waitFor(() => evaluate(`!!document.querySelector('.diff-viewer') && nav.current().page==='diff-image'`), 3000, 'result fullscreen viewer');
     assert(await evaluate(`!!document.querySelector('.diff-viewer-stage') && !!document.querySelector('.diff-viewer-tools') && !document.querySelector('.navbar')`));
+    assert.equal(await evaluate(`getComputedStyle(document.querySelector('.diff-viewer')).backgroundColor`),'rgb(10, 7, 18)','只有全屏查看器保留黑底');
     await click('[data-a="diff-view-zoom"]');
     assert(await evaluate(`document.querySelector('.diff-viewer-stage').classList.contains('zoomed')`));
     await click('.diff-viewer-head [data-a="back"]');
@@ -267,6 +291,14 @@ async function swipe(direction) {
 
     await sleep(2750); // 结果暗色 / 横屏走查图不被人为堆叠的 toast 遮挡。
     await evaluate(`theme.toggle()`); await sleep(250);
+    report.resultSurfaceDark = await evaluate(`(() => { const css=el=>getComputedStyle(el);
+      return { frame:css(document.querySelector('.diff-art-frame')).backgroundColor,
+        zoomBg:css(document.querySelector('.diff-zoom-badge')).backgroundColor,
+        zoomColor:css(document.querySelector('.diff-zoom-badge')).color,
+        onSurface:css(document.querySelector('.diff-result-info')).color }; })()`);
+    assert.notEqual(report.resultSurfaceDark.frame,report.resultSurfaceLight.frame,'暗色画布必须切换主题表面');
+    assert.notEqual(report.resultSurfaceDark.zoomBg,report.resultSurfaceLight.zoomBg,'暗色放大提示必须切换主题表面');
+    assert.equal(report.resultSurfaceDark.zoomColor,report.resultSurfaceDark.onSurface);
     await shot('walk-diff-wizard-result-dark.png');
     assert.equal(await evaluate(`document.documentElement.dataset.theme`),'dark');
     await evaluate(`document.querySelector('[data-a="frame-toggle"]').click()`);
@@ -275,9 +307,19 @@ async function swipe(direction) {
     await shot('walk-diff-wizard-result-landscape-dark.png');
     await goStep(2); await sleep(450);
     await shot('walk-diff-wizard-inpaint-landscape-dark.png');
-    report.landscape = await evaluate(`({overflow:document.documentElement.scrollWidth>innerWidth,
-      stage:!!document.querySelector('#mask-canvas'),nav:!!document.querySelector('.navbar')})`);
+    report.landscape = await evaluate(`(() => { const css=el=>getComputedStyle(el);
+      return { overflow:document.documentElement.scrollWidth>innerWidth,
+        stage:!!document.querySelector('#mask-canvas'),nav:!!document.querySelector('.navbar'),
+        editor:css(document.querySelector('.diff-media-editor')).backgroundColor,
+        prompt:css(document.querySelector('.diff-prompt-block')).backgroundColor,
+        canvas:css(document.querySelector('.diff-workstage')).backgroundColor,
+        hintColor:css(document.querySelector('.diff-mask-label')).color,
+        onSurface:css(document.querySelector('.diff-workhead h2')).color }; })()`);
     assert(!report.landscape.overflow&&report.landscape.stage&&!report.landscape.nav);
+    assert.equal(report.landscape.editor,report.landscape.prompt,'暗色创作工具和提示词必须同 surface');
+    assert.notEqual(report.landscape.canvas,report.creativeLight.stage,'暗色创作画布必须切换主题表面');
+    assert.equal(report.landscape.hintColor,report.landscape.onSurface);
+    ok('暗色创作与结果表面随主题', { result:report.resultSurfaceDark, creative:report.landscape });
     ok('暗色与 1024×680 横屏');
 
     await evaluate(`document.querySelector('[data-a="frame-toggle"]').click()`);
