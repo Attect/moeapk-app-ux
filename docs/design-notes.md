@@ -29,7 +29,7 @@
 | `js/screens/assets.js`（tab:assets 素材网格 + asset 查看器 + pcwall 点云壁纸设置页） | `ui/assets/AssetsScreen.kt`、`AssetViewerScreen.kt`、`AssetDialogs.kt`、`AssetOps.kt`、`ui/wallpaper/PointCloudPreviewScreen.kt`（点云查看器舞台）、`PointCloudSetupScreen.kt`（设为壁纸/壁纸管理页）+ `:assets`（`AssetStore`/`AssetImporter`/`AssetThumbnails`/`AssetMigrator`） |
 | `js/screens/ai.js`（tab:ai 入口枢纽 + ai-queue 任务队列子页） | `ui/ai/AiHubScreen.kt`、`AiQueueScreen.kt` + `:ai InferenceHub`/`InferenceQueue` |
 | `js/screens/ai-llm.js`（llm / llm-config 子页） | `ui/ai/LlmScreen.kt`、`LlmConfigScreen.kt` |
-| `js/screens/ai-diffusion.js`（diffusion / diff-config 子页） | `ui/ai/DiffusionScreen.kt`、`DiffConfigScreen.kt` |
+| `js/screens/ai-diffusion.js`（diffusion 五步全屏向导 / diff-config 设置子页 / diff-image 图片查看页） | `ui/ai/DiffusionScreen.kt`、`DiffConfigScreen.kt`；结果全屏查看与向导 Compose 同步约束见第三十五轮 |
 | `js/screens/ai-tts.js`（tts / tts-voices 子页） | `ui/ai/TtsScreen.kt`、`TtsVoicesScreen.kt` |
 | `js/screens/ai-models.js`（models / model-search） | `ui/ai/ModelHubScreen.kt`、`ModelSearchScreen.kt` |
 | `js/screens/ai-prompt.js`（prompts 提示词库 / prompt-edit 提示词编辑） | （规划中）`ui/ai/PromptLibraryScreen.kt`、`PromptEditScreen.kt` |
@@ -48,6 +48,39 @@
 > **App 侧对齐状态（2026-09-18）**：上表所列全部页面已按原型落到 Compose（壳层/素材/AI/APK + 主题过渡）。原型仍是 UX 的唯一变更入口（见「工作约定」第 1 条）。
 
 ## 设计沿革
+
+### 第三十五轮（2026-11-16，独立全屏生图向导与真实计算后端）
+
+**起因**：手机端生图原先是 App 主界面里的「结果区 + 大型底部 composer」，模型、提示词、底图、参数与历史混在一屏，既挤压创作画面，也让计算后端与模型家族的概念容易混淆。本轮要求把生图从主 Scaffold 中独立出来，按依赖顺序逐步完成，同时不能为重做而删掉既有高级能力。
+
+**旧 → 新对照**：
+
+| 旧结构 / 口径 | 第三十五轮定案 |
+|---|---|
+| 普通子页，宽屏还受主 NavigationRail / 双栏影响 | `diffusion` 使用 `full:true`，所有宽度均无 App 主底栏 / Rail；自有标题栏、五步条与紧凑底部分步栏 |
+| 单页长 composer，模型 / 输入 / 参数同时挤占一屏 | ①模型与生成方式 → ②计算模式 → ③创作输入 → ④生成参数 → ⑤生成结果，每步一屏；有效选择后自动横滑，左右跟手滑动只定居相邻一步 |
+| 大圆角卡片、44–48px 主按钮与较大留白 | 工作台密度：6–8px 圆角、30–34px 工具键、8–10px 页面间距；步骤内容各自纵向滚动 |
+| 历史藏在泛化菜单，宽屏常驻左栏 | 生成历史固定在全屏向导标题栏；各宽度均用覆盖抽屉，保留搜索、新建、扫描分组、收藏、删除撤销和独立生成设置入口 |
+| 采样步数滑杆 | 数字输入 + 减 / 加按钮，范围 1–150，LCM 4–8 步不再被旧滑杆下限挡住 |
+| 结果图片只是卡片，保存操作在图片下方 | 结果步上方大画面、下方信息 / 模板 / 重跑工具；保存素材、保存相册、分享在标题栏右侧 |
+| 历史 / 结果图不能统一放大 | 二者均进入 `diff-image` 全屏查看页；上方大画面、下方查看工具栏，支持查看态再放大和返回原结果 |
+| 计算方式与模型名称容易混用 | 计算模式严格只有 **CPU / GPU / NPU**，分别是 **CPU 计算 / MNN 计算 / QNN 或 Hexagon 计算**；Anima 只存在于模型家族元数据 |
+
+**流程与保留能力**：模型仍需下载并选择后才自动前进；图生图 / 局部重绘继续从素材库选底图，局部重绘为上方大 canvas、下方画笔 / 橡皮 / 撤销 / 清空 / 粗细工具。提示词库、负向词、tag 权重 / 删除 / 撤销重做、补全、图片反推三档结果、9 种采样器、CFG、seed 锁、尺寸 / 宽高比、批量、双轴扫描与预计张数、跑完本张后停止、过程预览、高清修复与 UltraFix tile、按模型独立配置、bad_alloc 就地错误、换载成本、分阶段耗时、模板 / 原样重跑均保留。原 `diff-config` 独立子页不删除，与第 4 步共用控件和真实配置。
+
+**SoC 与模型后端契约**：
+1. 原型提供高通骁龙 8 Gen 3、联发科天玑 9300、其它通用 ARM 三种识别演示，明确标注是设备模拟，浏览器不冒充真实硬件探针。
+2. 每个生图模型在目录中声明 `diffusion.family / architecture / backends / packageNote`；QNN 包另声明 `npuVendor=Qualcomm` 与 `minGeneration`。通用 Anima XL 演示包只有 CPU / GPU（MNN），两条既有 QNN 包只有 NPU，不能因为设备有 CPU 就给 QNN 权重虚构 CPU 路径。
+3. 不兼容项仍可点选，用于显示明确的「**无法计算**」与可行动原因；只有可计算项才自动进入下一步。判定先报当前 SoC 根本限制，再报模型包缺失：联发科 / 其它 SoC 的 NPU 不得被描述为 QNN；其它设备未识别 MNN GPU 驱动时 GPU 同样无法计算。
+4. 生成结果记录 `compute / soc`，历史信息直接显示 CPU / MNN / QNN 路径，模板与原样重跑会回填这些字段并再次校验兼容性。
+
+**Compose 同步约束**：
+- 生图应是主导航之上的独立 full-screen destination，而不是把 HorizontalPager 塞进 AI Tab 的内容区；自含 TopAppBar、步骤指示、底部上一步 / 下一步与 `statusBarsPadding` / `navigationBarsPadding`，任何宽度都不显示主 NavigationBar / NavigationRail。
+- 用 `HorizontalPager` + 每页独立 `verticalScroll` 表达同一流程；自动前进与用户手势共用 `pagerState.animateScrollToPage`，一步完成后才触发。输入框、按钮与遮罩绘制指针优先，Canvas 绘制期间不能让 Pager 抢手势。原型另外抑制浏览器快滑惯性，Compose 也应避免一次手势越过多个依赖步骤。
+- 设备识别可读取 `Build.SOC_MANUFACTURER / SOC_MODEL`，但最终可用性必须结合真实后端动态库 / 驱动探针与模型 manifest，不得只按芯片名称硬编码。NPU 不等于通用 NPU 框架：本流程只代表 QNN / Hexagon；联发科 APU 不能伪装成 QNN。Anima 是模型家族而非推理引擎。
+- 结果顶栏动作与全屏查看器共享当前 result id；返回要恢复原向导页、当前结果与抽屉状态语义。图片、遮罩编辑和结果页都采用上方大画面、下方工具栏，不能在 Compose 迁移时又退回小缩略图 + 大按钮卡片。
+
+**原型同步与走查**：`ai-diffusion.js` 重构为五步向导和 `diff-image`；`js/data/ai.js` 新增 Anima 通用包与后端元数据；`app.css` 新增紧凑工作台、全屏查看和横竖屏样式；新增 `tests/browser-diffusion-wizard.js` 与 `tests/ai-diffusion-wizard.test.js`。覆盖模型下载自动前进、三类 SoC / 后端不兼容、双向真实触摸、提示词与反推、遮罩、数字步数、双图扫描、结果 / 历史全屏、独立设置、明暗、360px 窄屏、1024×680 横屏、`file://` 零外部请求与浏览器异常。全部资源版本号 **v=80**。
 
 ### 第三十四轮（2026-11-11，主页面引导气泡真实透明磨砂）
 
@@ -679,7 +712,7 @@ LLM 对话输入框聚焦时弹出模拟键盘面板（仅原型演示用），�
 | ≥920 | 平板横屏 / 桌面全屏 | Rail + **双栏 master-detail** + 多列网格 |
 
 ≥920 具体规则：
-- **LLM 对话 / 图片生成 / 语音生成**：会话列表 / 生成历史 / 合成历史常驻左栏（300px，含搜索、新建、设置入口），右栏对话区与输入区；输入区限宽 640 居中。窄屏的 overlay 抽屉保留（同一 `drawerListHtml/diffHistHtml/ttsHistHtml` 主体复用）。
+- **LLM 对话 / 语音生成**：会话列表 / 合成历史常驻左栏（300px，含搜索、新建、设置入口），右栏对话区与输入区；输入区限宽 640 居中。窄屏的 overlay 抽屉保留（同一 `drawerListHtml/ttsHistHtml` 主体复用）。**图片生成自第三十五轮起例外**：任何宽度均为独立五步全屏向导，不显示 Rail 或主底栏，历史统一由向导标题栏打开覆盖抽屉。
 - **APK 首页与应用/游戏/开源列表**：卡片两列（`.two-col`，`sectionColumn` 统一包装）。
 - **AI 枢纽**：任务队列全宽，四个入口 2×2（`.ai-grid`）。
 - **素材**：网格 `auto-fill minmax(150px,1fr)` 自适应列数；排序/视图工具行不变。
