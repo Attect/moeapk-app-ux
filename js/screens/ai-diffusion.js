@@ -90,7 +90,7 @@
     return { ok: true, reason: '可计算 · ' + c.engine + ' · ' + soc.name };
   }
   // 供零依赖契约测试与浏览器走查读取真实判定，不另写一套测试规则。
-  window._diffusion = { state: D, models: DIFF_MODELS, computeModes: COMPUTE, socs: SOCS, compatibility, backendsOf, modelPromptSuggestions, validatePromptSyntax };
+  window._diffusion = { state: D, models: DIFF_MODELS, computeModes: COMPUTE, socs: SOCS, compatibility, backendsOf, validatePromptSyntax, promptTerms, unknownPromptTerms };
 
   const isSdxl = m => !!(m && (m.diffusion && m.diffusion.architecture ? m.diffusion.architecture === 'SDXL' : /sdxl/i.test(m.id + ' ' + m.name)));
   function dimsOf(size, ar) {
@@ -376,13 +376,13 @@
     let h = stepTitle('描述画面，完成创作输入', '提示词草稿自动保存；反推与提示词库仍可在此直接使用。');
     h += selectionSummary(d);
     if (d.mode === 'img' || d.mode === 'inpaint') h += baseEditor(d);
-    const modelPrompts = modelPromptSuggestions(modelOf(d.modelId));
     h += '<section class="diff-block diff-prompt-block"><div class="diff-field-head"><label for="diff-prompt">正向提示词</label><span class="diff-prompt-count">' + d.prompt.length + ' 字</span></div>' +
       '<textarea id="diff-prompt" class="field-input diff-prompt" data-keep="diff-prompt" placeholder="描述画面内容、主体、风格与细节；可用逗号分隔 tag">' + esc(d.prompt) + '</textarea>' +
       '<div class="diff-prompt-actions"><button class="diff-text-btn" data-a="diff-prompt-lib">' + icon('bookmark') + '提示词库</button>' +
+      '<button class="diff-text-btn" data-a="diff-vocabulary">' + icon('menu_book') + '提示词词表</button>' +
       '<button class="diff-text-btn" data-a="diff-caption">' + icon('zoom_in') + '图像反推</button>' +
       '<button class="diff-text-btn" data-a="diff-prompt-check">' + icon('check_circle') + '检查提示词</button></div>' +
-      '<div class="diff-caption">当前模型' + (modelPrompts.length ? '提供 ' + modelPrompts.length + ' 条推荐提示词，可在提示词库中直接填入。' : '未声明推荐提示词；仍可使用自己的收藏。') + ' 检查仅覆盖括号、权重与控制字符，不把未收录 tag 误判为无效。</div>' +
+      '<div class="diff-caption">词表来自真实 Danbooru / WD tag 数据，可搜索并插入。语法错误与词表未收录分开提示；未收录不等于无效。</div>' +
       '<div class="tag-toolbar"><button class="tbtn" data-a="tag-dec">权重−</button><button class="tbtn" data-a="tag-inc">权重＋</button>' +
       '<button class="tbtn" data-a="tag-del">删除 tag</button><button class="icbtn" data-a="tag-undo" title="撤销">' + icon('undo') + '</button>' +
       '<button class="icbtn" data-a="tag-redo" title="重做">' + icon('redo') + '</button></div>';
@@ -752,21 +752,6 @@
   action('diff-rerun', ds => { const r = D().history.find(x => x.id === ds.arg); if (!r || !r.params) return; loadParams(r); startGen(); });
 
   // ---------- 提示词库 / tag 工具栏 / 补全 / 图片反推 ----------
-  function modelPromptSuggestions(model) {
-    if (!model || !model.defaults) return [];
-    const out = [], seen = new Set();
-    function add(title, text, kind) {
-      if (typeof text !== 'string' || !text.trim() || seen.has(text.trim())) return;
-      seen.add(text.trim()); out.push({ title, text: text.trim(), kind: kind || '模型推荐' });
-    }
-    add('默认提示词', model.defaults.prompt, '模型默认');
-    (model.defaults.suggested_prompts || []).forEach((p, i) => {
-      if (typeof p === 'string') add('推荐提示词 ' + (i + 1), p);
-      else if (p) add(p.title || ('推荐提示词 ' + (i + 1)), p.text || p.prompt);
-    });
-    (model.defaults.trigger_words || []).forEach((p, i) => add('触发词 ' + (i + 1), p, '模型触发词'));
-    return out;
-  }
   function promptEntries() {
     const d = D();
     if (!d.promptLibrary) d.promptLibrary = DB.PROMPTS.map(p => Object.assign({}, p));
@@ -784,13 +769,11 @@
       (deletable ? '<button class="tbtn danger" data-a="plib-delete" data-arg="' + esc(arg) + '">删除</button>' : '') + '</div></div>';
   }
   function openPromptLibrary() {
-    const d = D(), model = modelOf(d.modelId), suggestions = modelPromptSuggestions(model), saved = promptEntries();
+    const saved = promptEntries();
     showDialog({
       title: '提示词库',
       body: '<div class="prompt-lib-current"><strong>当前草稿</strong><span>' + esc(currentPromptText() || '（空）') + '</span>' +
         '<button class="diff-btn small" data-a="plib-save-current" ' + (currentPromptText().trim() ? '' : 'disabled') + '>一键收藏当前提示词</button></div>' +
-        '<h3 class="prompt-lib-heading">当前模型推荐</h3><div class="diff-caption">' + esc(model ? model.name : '尚未选择模型') + ' · 仅显示目录或模型包明确声明的内容</div>' +
-        (suggestions.length ? suggestions.map((p, i) => libraryItem(p, 'plib-model-use', String(i), false)).join('') : emptyHint('当前模型未声明默认提示词、推荐提示词或触发词')) +
         '<h3 class="prompt-lib-heading">我的收藏</h3>' +
         (saved.length ? saved.map(p => libraryItem(p, 'plib-use', p.id, true)).join('') : emptyHint('还没有收藏，点击上方“一键收藏当前提示词”即可添加，无需离开创作页')),
       actions: [{ label: '关闭' }]
@@ -805,12 +788,50 @@
   });
   action('plib-use', ds => { const p = promptEntries().find(x => x.id === ds.arg); if (p) useLibraryPrompt(p.text, false); });
   action('plib-use-append', ds => { const p = promptEntries().find(x => x.id === ds.arg); if (p) useLibraryPrompt(p.text, true); });
-  action('plib-model-use', ds => { const p = modelPromptSuggestions(modelOf(D().modelId))[+ds.arg]; if (p) useLibraryPrompt(p.text, false); });
-  action('plib-model-use-append', ds => { const p = modelPromptSuggestions(modelOf(D().modelId))[+ds.arg]; if (p) useLibraryPrompt(p.text, true); });
   action('plib-delete', ds => {
     const d = D(); d.promptLibrary = promptEntries().filter(x => x.id !== ds.arg);
     toast('已删除收藏'); closeDialog(); openPromptLibrary();
   });
+  function vocabularyResults() {
+    const q = (S.x.vocabQuery || '').trim().toLowerCase();
+    const list = DB.TAGS_DEMO.filter(t => !q || t.tag.toLowerCase().includes(q) || (t.cn || '').includes(q));
+    if (!list.length) return emptyHint('词表中没有匹配项；可换关键词，未收录不代表词语无效');
+    return list.map(t => '<div class="vocab-item"><div><strong>' + esc(t.tag) + '</strong><span>' + esc(t.cn || '暂无中文译名') + '</span></div>' +
+      '<button class="tbtn" data-a="vocab-use" data-arg="' + esc(t.tag) + '">追加</button></div>').join('');
+  }
+  function vocabularyBody() {
+    return '<div class="diff-caption">Danbooru / WD tag 演示词表 · 共 ' + DB.TAGS_DEMO.length + ' 条；App 可从 selected_tags.csv 加载完整词表。</div>' +
+      '<input class="field-input vocab-search" data-live="vocab-query" placeholder="搜索英文 tag 或中文含义" value="' + esc(S.x.vocabQuery || '') + '">' +
+      '<div id="vocab-results">' + vocabularyResults() + '</div>';
+  }
+  action('diff-vocabulary', () => {
+    S.x.vocabQuery = '';
+    showDialog({ title: '提示词词表', body: vocabularyBody(), actions: [{ label: '关闭' }] });
+  });
+  action('vocab-query', (ds, el) => {
+    S.x.vocabQuery = el.value;
+    const results = document.getElementById('vocab-results');
+    if (results) results.innerHTML = vocabularyResults();
+  });
+  action('vocab-use', ds => useLibraryPrompt(ds.arg, true));
+  function promptTerms(text) {
+    return text.split(/[,，\n]/).map(part => {
+      let t = part.trim();
+      if (!t) return '';
+      if ((t.startsWith('(') && t.endsWith(')')) || (t.startsWith('[') && t.endsWith(']'))) t = t.slice(1, -1).trim();
+      t = t.replace(/:\s*-?(?:\d+(?:\.\d+)?|\.\d+)\s*$/, '').trim();
+      return t.replace(/\\([()[\]{}])/g, '$1');
+    }).filter(Boolean);
+  }
+  function unknownPromptTerms(text) {
+    const known = new Set(DB.TAGS_DEMO.map(t => t.tag.toLowerCase().replace(/_/g, ' ')));
+    const seen = new Set();
+    return promptTerms(text).filter(t => {
+      const key = t.toLowerCase().replace(/_/g, ' ').replace(/\s+/g, ' ');
+      if (known.has(key) || seen.has(key)) return false;
+      seen.add(key); return true;
+    });
+  }
   function validatePromptSyntax(text) {
     const issues = [];
     if (!text.trim()) issues.push('提示词为空');
@@ -835,16 +856,21 @@
       else if (+raw <= 0 || +raw > 10) issues.push('权重 ' + raw + ' 超出建议范围 0.1–10');
     }
     if (/(?:^|[,，])\s*[,，]/.test(text)) issues.push('存在连续逗号形成的空 tag');
-    if (/\\$/.test(text)) issues.push('末尾转义符 \\ 后缺少字符');
+    const trailingSlashes = (text.match(/\\+$/) || [''])[0].length;
+    if (trailingSlashes % 2 === 1) issues.push('末尾转义符 \\ 后缺少字符');
     return issues;
   }
   action('diff-prompt-check', () => {
-    const issues = validatePromptSyntax(currentPromptText());
+    const text = currentPromptText(), issues = validatePromptSyntax(text), model = modelOf(D().modelId);
+    const family = ((model && model.diffusion && (model.diffusion.architecture + ' ' + model.diffusion.family)) || '');
+    const naturalLanguage = /DiT|Flux|Qwen|Krea|Z-Image|Klein/i.test(family);
+    const unknown = naturalLanguage || issues.length ? [] : unknownPromptTerms(text);
     showDialog({
-      title: issues.length ? '发现 ' + issues.length + ' 处语法问题' : '提示词语法正常',
+      title: issues.length ? '发现 ' + issues.length + ' 处语法问题' : (unknown.length ? '检查完成：' + unknown.length + ' 个词未收录' : '提示词检查通过'),
       body: (issues.length ? '<ul class="prompt-check-list">' + issues.map(x => '<li>' + esc(x) + '</li>').join('') + '</ul>' :
         '<div class="prompt-check-ok">' + icon('check_circle') + '<span>未发现括号、权重或控制字符问题。</span></div>') +
-        '<div class="diff-caption">这里只检查可确定的语法问题，不检查模型是否认识每个 tag；模型未提供词表时，不能据此判定词语无效。</div>',
+        (unknown.length ? '<h3 class="prompt-lib-heading">词表未收录（需人工确认）</h3><div class="vocab-unknown">' + unknown.map(esc).join('、') + '</div>' : '') +
+        '<div class="diff-caption">' + (naturalLanguage ? '当前是自然语言模型，不用 Danbooru 词表硬判完整句子。' : '词表未收录不等于无效，只表示无法确认；命中也不保证模型一定按预期理解。') + '</div>',
       actions: [{ label: '知道了' }]
     });
   });

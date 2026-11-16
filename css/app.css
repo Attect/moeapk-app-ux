@@ -1888,7 +1888,7 @@ textarea.field-input { min-height: 84px; resize: vertical; font-family: inherit;
 .diff-inline-tools { display: flex; }
 .diff-prompt-count { color: var(--on-surface-variant); font-size: 10px; }
 textarea.diff-prompt { min-height: 156px; resize: vertical; border-radius: 6px; padding: 12px; font-size: 14px; line-height: 22px; }
-.diff-prompt-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 7px; }
+.diff-prompt-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin-top: 7px; }
 .diff-text-btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-height: 34px; padding: 5px 10px;
   border: 1px solid var(--outline-variant); border-radius: 6px; background: var(--surface-container);
@@ -1907,6 +1907,13 @@ textarea.diff-prompt { min-height: 156px; resize: vertical; border-radius: 6px; 
 .prompt-lib-tools .tbtn.danger { color: var(--error); }
 .prompt-check-list { display: grid; gap: 6px; margin: 0; padding-left: 20px; color: var(--error); font-size: 12px; line-height: 18px; }
 .prompt-check-ok { display: flex; align-items: center; gap: 7px; padding: 8px; border-radius: 6px; background: var(--surface-container); color: var(--c-mint); font-size: 12px; }
+.vocab-search { width: 100%; height: 38px; margin: 8px 0; padding: 6px 10px; border-radius: 6px; }
+.vocab-item { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--outline-variant); }
+.vocab-item > div { flex: 1; min-width: 0; }
+.vocab-item strong, .vocab-item span { display: block; overflow-wrap: anywhere; }
+.vocab-item strong { font-size: 12px; }
+.vocab-item span { color: var(--on-surface-variant); font-size: 10px; }
+.vocab-unknown { color: var(--error); font-size: 12px; line-height: 18px; overflow-wrap: anywhere; }
 .diff-neg { min-height: 64px; resize: vertical; border-radius: 6px; padding: 8px 10px; font-size: 13px; }
 .diff-neg-head { display: flex; align-items: center; gap: 4px; margin-top: 5px; color: var(--on-surface-variant); font-size: 11px; }
 .diff-workstage {

@@ -157,10 +157,10 @@ async function swipe(direction) {
 
     report.promptLayout = await evaluate(`(() => { const p=document.querySelector('.diff-prompt').getBoundingClientRect();
       return { height:p.height, textButtons:[...document.querySelectorAll('.diff-prompt-actions .diff-text-btn')].map(x=>x.textContent.trim()),
-        modelHints:window._diffusion.modelPromptSuggestions(window._diffusion.models.find(x=>x.id==='anything-v5-mnn')).length }; })()`);
-    assert(report.promptLayout.height>=150 && report.promptLayout.modelHints===1, `prompt layout: ${JSON.stringify(report.promptLayout)}`);
-    assert(report.promptLayout.textButtons.some(x=>x.includes('提示词库')) && report.promptLayout.textButtons.some(x=>x.includes('图像反推')) && report.promptLayout.textButtons.some(x=>x.includes('检查提示词')));
-    ok('大提示词输入框与三个文字操作按钮', report.promptLayout);
+        vocabularySize:DB.TAGS_DEMO.length }; })()`);
+    assert(report.promptLayout.height>=150 && report.promptLayout.vocabularySize>=40, `prompt layout: ${JSON.stringify(report.promptLayout)}`);
+    assert(report.promptLayout.textButtons.some(x=>x.includes('提示词库')) && report.promptLayout.textButtons.some(x=>x.includes('提示词词表')) && report.promptLayout.textButtons.some(x=>x.includes('图像反推')) && report.promptLayout.textButtons.some(x=>x.includes('检查提示词')));
+    ok('大提示词输入框与四个文字操作按钮', report.promptLayout);
 
     // 真实触摸横滑：第 3 步 → 第 4 步，再向右滑回。
     await swipe(-1);
@@ -173,11 +173,14 @@ async function swipe(direction) {
     assert.equal(report.swipePrev, 2, `touch swipe previous failed: ${JSON.stringify(report.swipePrevDetails)}`);
     ok('真实触摸左右滑动切步', { next:report.swipeNext, previous:report.swipePrev });
 
+    await click('[data-a="diff-vocabulary"]');
+    assert(await evaluate(`document.querySelector('.dlg-title').textContent.includes('提示词词表') && document.querySelectorAll('.dlg [data-a="vocab-use"]').length>=40`));
+    await setValue('.dlg [data-live="vocab-query"]', '蓝眼');
+    assert.equal(await evaluate(`document.querySelectorAll('.dlg [data-a="vocab-use"]').length`), 1);
+    await click('.dlg [data-a="vocab-use"]');
+    assert(await evaluate(`window._diffusion.state().prompt.includes('blue eyes')`));
     await click('[data-a="diff-prompt-lib"]');
-    assert(await evaluate(`document.querySelector('.dlg-title').textContent.includes('提示词库') && document.querySelectorAll('.dlg [data-a="plib-model-use"]').length===1`));
-    await click('.dlg [data-a="plib-model-use-append"]');
-    assert(await evaluate(`window._diffusion.state().prompt.includes('white hair')`));
-    await click('[data-a="diff-prompt-lib"]');
+    assert(await evaluate(`document.querySelector('.dlg-title').textContent.includes('提示词库') && !document.querySelector('.dlg').textContent.includes('模型推荐')`));
     const savedBefore = await evaluate(`document.querySelectorAll('.dlg [data-a="plib-use"]').length`);
     await click('.dlg [data-a="plib-save-current"]');
     assert.equal(await evaluate(`document.querySelectorAll('.dlg [data-a="plib-use"]').length`), savedBefore+1);
@@ -190,10 +193,14 @@ async function swipe(direction) {
     await click('.dlg [data-dlg="0"]');
     await setValue('#diff-prompt', '1girl, (masterpiece:1.2), best quality');
     await click('[data-a="diff-prompt-check"]');
-    assert(await evaluate(`document.querySelector('.dlg-title').textContent.includes('语法正常')`));
+    assert(await evaluate(`document.querySelector('.dlg-title').textContent.includes('检查通过')`));
     await click('.dlg [data-dlg="0"]');
-    assert.deepEqual(await evaluate(`window._diffusion.modelPromptSuggestions(window._diffusion.models.find(x=>x.id==='chillout-mix-qnn'))`), []);
-    ok('模型推荐直接追加、当前草稿页内收藏与语法检查', report.promptValidation);
+    await setValue('#diff-prompt', '1girl, brand_new_tag');
+    await click('[data-a="diff-prompt-check"]');
+    assert(await evaluate(`document.querySelector('.dlg').textContent.includes('brand_new_tag') && document.querySelector('.dlg').textContent.includes('未收录不等于无效')`));
+    await click('.dlg [data-dlg="0"]');
+    await setValue('#diff-prompt', '1girl, (masterpiece:1.2), best quality');
+    ok('词表搜索追加、页内收藏、语法错误与未收录分类检查', report.promptValidation);
     await click('[data-a="diff-neg-toggle"]');
     assert(await evaluate(`!!document.querySelector('[data-keep="diff-neg"]')`));
     await click('[data-a="diff-caption"]');
