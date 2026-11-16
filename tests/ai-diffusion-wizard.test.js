@@ -106,11 +106,25 @@ test('原有生图细节能力在向导中仍有真实动作入口', () => {
   assert.match(screen, /nav\.push\('diff-image', 'base:' \+ ds\.arg\)/);
 });
 
+test('创作页使用大输入框、文字按钮、页内收藏和模型推荐提示词', () => {
+  const css = read('css/app.css');
+  assert.match(css, /textarea\.diff-prompt\s*\{[^}]*min-height:\s*156px/s);
+  assert.match(css, /\.diff-media-editor \.mask-toolbar\s*\{[^}]*padding:\s*0 10px/s);
+  for (const label of ['提示词库', '图像反推', '检查提示词']) assert.ok(screen.includes(label), label);
+  for (const action of ['plib-save-current', 'plib-use-append', 'plib-model-use', 'plib-delete', 'diff-prompt-check']) {
+    assert.ok(screen.includes(`action('${action}'`), action);
+  }
+  assert.ok(screen.includes('当前模型未声明默认提示词、推荐提示词或触发词'));
+  assert.ok(screen.includes('不检查模型是否认识每个 tag'));
+  const anything = diffusionModels().find(m => m.id === 'anything-v5-mnn');
+  assert.equal(anything.defaults.prompt, 'masterpiece, best quality, 1girl, solo, cute, white hair,');
+});
+
 test('生图原型保持纯静态，无网络或模块依赖', () => {
   assert.doesNotMatch(screen, /\bfetch\s*\(|\bimport\s*\(|https?:\/\//);
   assert.doesNotMatch(read('js/data/ai.js'), /\bfetch\s*\(|https?:\/\//);
   const html = read('index.html');
   const versions = [...html.matchAll(/\?v=(\d+)/g)].map(m => m[1]);
   assert.ok(versions.length >= 20);
-  assert.ok(versions.every(v => v === '82'));
+  assert.ok(versions.every(v => v === '83'));
 });

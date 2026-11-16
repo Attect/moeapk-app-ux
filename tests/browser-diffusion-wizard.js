@@ -155,6 +155,13 @@ async function swipe(direction) {
     await click('[data-a="diff-compute"][data-arg="gpu"]');
     await waitFor(() => evaluate(`window._diffusion.state().step===2`), 3000, 'compute auto advance');
 
+    report.promptLayout = await evaluate(`(() => { const p=document.querySelector('.diff-prompt').getBoundingClientRect();
+      return { height:p.height, textButtons:[...document.querySelectorAll('.diff-prompt-actions .diff-text-btn')].map(x=>x.textContent.trim()),
+        modelHints:window._diffusion.modelPromptSuggestions(window._diffusion.models.find(x=>x.id==='anything-v5-mnn')).length }; })()`);
+    assert(report.promptLayout.height>=150 && report.promptLayout.modelHints===1, `prompt layout: ${JSON.stringify(report.promptLayout)}`);
+    assert(report.promptLayout.textButtons.some(x=>x.includes('提示词库')) && report.promptLayout.textButtons.some(x=>x.includes('图像反推')) && report.promptLayout.textButtons.some(x=>x.includes('检查提示词')));
+    ok('大提示词输入框与三个文字操作按钮', report.promptLayout);
+
     // 真实触摸横滑：第 3 步 → 第 4 步，再向右滑回。
     await swipe(-1);
     report.swipeNext = await evaluate(`({step:window._diffusion.state().step,index:document.querySelector('#diff-pager').scrollLeft/document.querySelector('#diff-pager').clientWidth})`);
@@ -167,8 +174,26 @@ async function swipe(direction) {
     ok('真实触摸左右滑动切步', { next:report.swipeNext, previous:report.swipePrev });
 
     await click('[data-a="diff-prompt-lib"]');
-    assert(await evaluate(`document.querySelector('.dlg-title').textContent.includes('提示词库')`));
+    assert(await evaluate(`document.querySelector('.dlg-title').textContent.includes('提示词库') && document.querySelectorAll('.dlg [data-a="plib-model-use"]').length===1`));
+    await click('.dlg [data-a="plib-model-use-append"]');
+    assert(await evaluate(`window._diffusion.state().prompt.includes('white hair')`));
+    await click('[data-a="diff-prompt-lib"]');
+    const savedBefore = await evaluate(`document.querySelectorAll('.dlg [data-a="plib-use"]').length`);
+    await click('.dlg [data-a="plib-save-current"]');
+    assert.equal(await evaluate(`document.querySelectorAll('.dlg [data-a="plib-use"]').length`), savedBefore+1);
+    assert(await evaluate(`document.querySelector('.dlg').textContent.includes('我的收藏')`));
     await click('.dlg [data-a="plib-use"]');
+    await setValue('#diff-prompt', '1girl, (masterpiece:abc');
+    await click('[data-a="diff-prompt-check"]');
+    report.promptValidation = await evaluate(`document.querySelector('.dlg').textContent`);
+    assert(report.promptValidation.includes('未闭合') && report.promptValidation.includes('不是有效数字'));
+    await click('.dlg [data-dlg="0"]');
+    await setValue('#diff-prompt', '1girl, (masterpiece:1.2), best quality');
+    await click('[data-a="diff-prompt-check"]');
+    assert(await evaluate(`document.querySelector('.dlg-title').textContent.includes('语法正常')`));
+    await click('.dlg [data-dlg="0"]');
+    assert.deepEqual(await evaluate(`window._diffusion.modelPromptSuggestions(window._diffusion.models.find(x=>x.id==='chillout-mix-qnn'))`), []);
+    ok('模型推荐直接追加、当前草稿页内收藏与语法检查', report.promptValidation);
     await click('[data-a="diff-neg-toggle"]');
     assert(await evaluate(`!!document.querySelector('[data-keep="diff-neg"]')`));
     await click('[data-a="diff-caption"]');
@@ -190,9 +215,12 @@ async function swipe(direction) {
     await click('.dlg [data-a="diff-pick-base"]');
     await sleep(550);
     const maskLayout = await evaluate(`(() => { const c=document.querySelector('#mask-canvas'), t=document.querySelector('.mask-toolbar');
-      if(!c||!t) return null; const a=c.getBoundingClientRect(), b=t.getBoundingClientRect();
-      return { canvasHeight:a.height, stacked:a.bottom<=b.top+1, x:a.left+a.width*.45, y:a.top+a.height*.45 }; })()`);
+      if(!c||!t) return null; const a=c.getBoundingClientRect(), b=t.getBoundingClientRect(), app=document.getElementById('app').getBoundingClientRect();
+      const first=t.querySelector('button').getBoundingClientRect(), last=t.querySelector('.diff-strokes').getBoundingClientRect();
+      return { canvasHeight:a.height, stacked:a.bottom<=b.top+1, leftInset:first.left-app.left, rightInset:app.right-last.right,
+        x:a.left+a.width*.45, y:a.top+a.height*.45 }; })()`);
     assert(maskLayout && maskLayout.canvasHeight>=180 && maskLayout.stacked, `mask stage/toolbar mismatch: ${JSON.stringify(maskLayout)}`);
+    assert(maskLayout.leftInset>=8 && maskLayout.rightInset>=8, `mask controls touch screen edge: ${JSON.stringify(maskLayout)}`);
     await send('Input.dispatchMouseEvent', {type:'mousePressed',x:maskLayout.x,y:maskLayout.y,button:'left',clickCount:1});
     await send('Input.dispatchMouseEvent', {type:'mouseMoved',x:maskLayout.x+45,y:maskLayout.y+30,button:'left',clickCount:1});
     await send('Input.dispatchMouseEvent', {type:'mouseReleased',x:maskLayout.x+45,y:maskLayout.y+30,button:'left',clickCount:1});

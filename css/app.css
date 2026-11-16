@@ -1886,7 +1886,27 @@ textarea.field-input { min-height: 84px; resize: vertical; font-family: inherit;
 .diff-field-head > label, .diff-field-label { color: var(--on-surface-variant); font-size: 11px; line-height: 16px; }
 .diff-field-label { margin-top: 7px; }
 .diff-inline-tools { display: flex; }
-.diff-prompt { min-height: 96px; resize: vertical; border-radius: 6px; padding: 9px 10px; font-size: 13px; }
+.diff-prompt-count { color: var(--on-surface-variant); font-size: 10px; }
+textarea.diff-prompt { min-height: 156px; resize: vertical; border-radius: 6px; padding: 12px; font-size: 14px; line-height: 22px; }
+.diff-prompt-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 7px; }
+.diff-text-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-height: 34px; padding: 5px 10px;
+  border: 1px solid var(--outline-variant); border-radius: 6px; background: var(--surface-container);
+  color: var(--primary); font-size: 12px; cursor: pointer;
+}
+.diff-text-btn .ic { width: 16px; height: 16px; }
+.prompt-lib-current { display: grid; gap: 6px; padding: 9px; border-radius: 7px; background: var(--surface-container); }
+.prompt-lib-current > span { max-height: 66px; overflow: auto; color: var(--on-surface-variant); font-size: 11px; line-height: 16px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.prompt-lib-current .diff-btn { justify-self: start; }
+.prompt-lib-heading { margin: 13px 0 3px; font-size: 13px; line-height: 18px; }
+.prompt-lib-item { display: grid; gap: 6px; margin-top: 7px; padding: 9px; border: 1px solid var(--outline-variant); border-radius: 7px; background: var(--surface-low); }
+.prompt-lib-copy { display: grid; gap: 3px; min-width: 0; }
+.prompt-lib-copy strong { font-size: 12px; }
+.prompt-lib-copy span { color: var(--on-surface-variant); font-size: 11px; line-height: 17px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.prompt-lib-tools { display: flex; flex-wrap: wrap; gap: 5px; }
+.prompt-lib-tools .tbtn.danger { color: var(--error); }
+.prompt-check-list { display: grid; gap: 6px; margin: 0; padding-left: 20px; color: var(--error); font-size: 12px; line-height: 18px; }
+.prompt-check-ok { display: flex; align-items: center; gap: 7px; padding: 8px; border-radius: 6px; background: var(--surface-container); color: var(--c-mint); font-size: 12px; }
 .diff-neg { min-height: 64px; resize: vertical; border-radius: 6px; padding: 8px 10px; font-size: 13px; }
 .diff-neg-head { display: flex; align-items: center; gap: 4px; margin-top: 5px; color: var(--on-surface-variant); font-size: 11px; }
 .diff-workstage {
@@ -1902,8 +1922,9 @@ textarea.field-input { min-height: 84px; resize: vertical; font-family: inherit;
 .diff-stage-tools { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; padding-top: 6px; }
 .diff-mask-stage .mask-wrap { height: 100%; aspect-ratio: auto; margin: 0; border-radius: 0; }
 .diff-mask-label { position: absolute; left: 6px; bottom: 6px; padding: 2px 5px; border-radius: 4px; background: var(--surface-highest); color: var(--on-surface); font-size: 9px; pointer-events: none; }
-.diff-media-editor .mask-toolbar { margin-top: 5px; }
+.diff-media-editor .mask-toolbar { margin-top: 5px; padding: 0 10px; }
 .diff-media-editor .mask-toolbar .slider-row { flex: 1; min-width: 80px; padding: 0 4px; }
+.diff-media-editor .mask-toolbar + .diff-caption { margin-left: 10px; margin-right: 10px; }
 .diff-media-editor .mask-toolbar .li-title { font-size: 10px; }
 .diff-media-editor .mask-toolbar .slider { margin-top: 5px; }
 .diff-strokes { flex: none; color: var(--on-surface-variant); font-size: 10px; }

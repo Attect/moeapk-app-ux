@@ -90,7 +90,7 @@
     return { ok: true, reason: '可计算 · ' + c.engine + ' · ' + soc.name };
   }
   // 供零依赖契约测试与浏览器走查读取真实判定，不另写一套测试规则。
-  window._diffusion = { state: D, models: DIFF_MODELS, computeModes: COMPUTE, socs: SOCS, compatibility, backendsOf };
+  window._diffusion = { state: D, models: DIFF_MODELS, computeModes: COMPUTE, socs: SOCS, compatibility, backendsOf, modelPromptSuggestions, validatePromptSyntax };
 
   const isSdxl = m => !!(m && (m.diffusion && m.diffusion.architecture ? m.diffusion.architecture === 'SDXL' : /sdxl/i.test(m.id + ' ' + m.name)));
   function dimsOf(size, ar) {
@@ -376,11 +376,13 @@
     let h = stepTitle('描述画面，完成创作输入', '提示词草稿自动保存；反推与提示词库仍可在此直接使用。');
     h += selectionSummary(d);
     if (d.mode === 'img' || d.mode === 'inpaint') h += baseEditor(d);
-    h += '<section class="diff-block diff-prompt-block"><div class="diff-field-head"><label for="diff-prompt">正向提示词</label><div class="diff-inline-tools">' +
-      '<button class="diff-icon" data-a="diff-caption" title="从图片反推提示词">' + icon('zoom_in') + '</button>' +
-      '<button class="diff-icon" data-a="diff-prompt-lib" title="从提示词库选取">' + icon('bookmark') + '</button></div></div>' +
-      '<textarea id="diff-prompt" class="field-input diff-prompt" data-keep="diff-prompt" placeholder="提示词（英文，逗号分隔）">' + esc(d.prompt) + '</textarea>' +
-      '<div class="diff-caption">光标处的 tag 可调整权重；补全按前缀、包含、中文别名排序。</div>' +
+    const modelPrompts = modelPromptSuggestions(modelOf(d.modelId));
+    h += '<section class="diff-block diff-prompt-block"><div class="diff-field-head"><label for="diff-prompt">正向提示词</label><span class="diff-prompt-count">' + d.prompt.length + ' 字</span></div>' +
+      '<textarea id="diff-prompt" class="field-input diff-prompt" data-keep="diff-prompt" placeholder="描述画面内容、主体、风格与细节；可用逗号分隔 tag">' + esc(d.prompt) + '</textarea>' +
+      '<div class="diff-prompt-actions"><button class="diff-text-btn" data-a="diff-prompt-lib">' + icon('bookmark') + '提示词库</button>' +
+      '<button class="diff-text-btn" data-a="diff-caption">' + icon('zoom_in') + '图像反推</button>' +
+      '<button class="diff-text-btn" data-a="diff-prompt-check">' + icon('check_circle') + '检查提示词</button></div>' +
+      '<div class="diff-caption">当前模型' + (modelPrompts.length ? '提供 ' + modelPrompts.length + ' 条推荐提示词，可在提示词库中直接填入。' : '未声明推荐提示词；仍可使用自己的收藏。') + ' 检查仅覆盖括号、权重与控制字符，不把未收录 tag 误判为无效。</div>' +
       '<div class="tag-toolbar"><button class="tbtn" data-a="tag-dec">权重−</button><button class="tbtn" data-a="tag-inc">权重＋</button>' +
       '<button class="tbtn" data-a="tag-del">删除 tag</button><button class="icbtn" data-a="tag-undo" title="撤销">' + icon('undo') + '</button>' +
       '<button class="icbtn" data-a="tag-redo" title="重做">' + icon('redo') + '</button></div>';
@@ -750,22 +752,101 @@
   action('diff-rerun', ds => { const r = D().history.find(x => x.id === ds.arg); if (!r || !r.params) return; loadParams(r); startGen(); });
 
   // ---------- 提示词库 / tag 工具栏 / 补全 / 图片反推 ----------
-  action('diff-prompt-lib', () => {
-    const cats = ['全部', '人物', '场景', '风格', '负面', '收藏'];
-    const cur = S.x.plibCat || '全部';
-    const list = DB.PROMPTS.filter(p => cur === '全部' || (cur === '收藏' ? p.fav : p.cat === cur));
-    showDialog({
-      title: '从提示词库选取',
-      body: '<div class="chip-row" style="padding-top:0">' + cats.map(c => chip(c, cur === c, 'plib-cat', c)).join('') + '</div>' +
-        list.map(p => '<div class="li" data-a="plib-use" data-arg="' + p.id + '"><div class="li-body"><div class="li-title" style="font-weight:400">' + esc(p.title) + (p.fav ? ' ★' : '') + '</div><div class="li-sub" style="white-space:normal">' + esc(p.text) + '</div></div><span class="achip">' + esc(p.cat) + '</span></div>').join('') + (list.length ? '' : emptyHint('该分类暂无条目')),
-      actions: [{ label: '取消' }]
+  function modelPromptSuggestions(model) {
+    if (!model || !model.defaults) return [];
+    const out = [], seen = new Set();
+    function add(title, text, kind) {
+      if (typeof text !== 'string' || !text.trim() || seen.has(text.trim())) return;
+      seen.add(text.trim()); out.push({ title, text: text.trim(), kind: kind || '模型推荐' });
+    }
+    add('默认提示词', model.defaults.prompt, '模型默认');
+    (model.defaults.suggested_prompts || []).forEach((p, i) => {
+      if (typeof p === 'string') add('推荐提示词 ' + (i + 1), p);
+      else if (p) add(p.title || ('推荐提示词 ' + (i + 1)), p.text || p.prompt);
     });
+    (model.defaults.trigger_words || []).forEach((p, i) => add('触发词 ' + (i + 1), p, '模型触发词'));
+    return out;
+  }
+  function promptEntries() {
+    const d = D();
+    if (!d.promptLibrary) d.promptLibrary = DB.PROMPTS.map(p => Object.assign({}, p));
+    return d.promptLibrary;
+  }
+  function useLibraryPrompt(text, append) {
+    const old = currentPromptText();
+    const next = append && old.trim() ? old.replace(/[,，\s]+$/, '') + ', ' + text : text;
+    keepSet('diff-prompt', next); D().prompt = next; closeDialog(); toast(append ? '已追加到提示词' : '已替换提示词'); render();
+  }
+  function libraryItem(p, action, arg, deletable) {
+    return '<div class="prompt-lib-item"><div class="prompt-lib-copy"><strong>' + esc(p.title || '未命名') + '</strong><span>' + esc(p.text) + '</span></div>' +
+      '<div class="prompt-lib-tools"><button class="tbtn" data-a="' + action + '" data-arg="' + esc(arg) + '">替换</button>' +
+      '<button class="tbtn" data-a="' + action + '-append" data-arg="' + esc(arg) + '">追加</button>' +
+      (deletable ? '<button class="tbtn danger" data-a="plib-delete" data-arg="' + esc(arg) + '">删除</button>' : '') + '</div></div>';
+  }
+  function openPromptLibrary() {
+    const d = D(), model = modelOf(d.modelId), suggestions = modelPromptSuggestions(model), saved = promptEntries();
+    showDialog({
+      title: '提示词库',
+      body: '<div class="prompt-lib-current"><strong>当前草稿</strong><span>' + esc(currentPromptText() || '（空）') + '</span>' +
+        '<button class="diff-btn small" data-a="plib-save-current" ' + (currentPromptText().trim() ? '' : 'disabled') + '>一键收藏当前提示词</button></div>' +
+        '<h3 class="prompt-lib-heading">当前模型推荐</h3><div class="diff-caption">' + esc(model ? model.name : '尚未选择模型') + ' · 仅显示目录或模型包明确声明的内容</div>' +
+        (suggestions.length ? suggestions.map((p, i) => libraryItem(p, 'plib-model-use', String(i), false)).join('') : emptyHint('当前模型未声明默认提示词、推荐提示词或触发词')) +
+        '<h3 class="prompt-lib-heading">我的收藏</h3>' +
+        (saved.length ? saved.map(p => libraryItem(p, 'plib-use', p.id, true)).join('') : emptyHint('还没有收藏，点击上方“一键收藏当前提示词”即可添加，无需离开创作页')),
+      actions: [{ label: '关闭' }]
+    });
+  }
+  action('diff-prompt-lib', openPromptLibrary);
+  action('plib-save-current', () => {
+    const text = currentPromptText().trim(); if (!text) return;
+    const clean = text.replace(/\s+/g, ' ');
+    promptEntries().unshift({ id: 'custom-' + Date.now(), title: clean.slice(0, 24) + (clean.length > 24 ? '…' : ''), text, cat: '收藏', fav: true });
+    toast('已收藏到提示词库'); closeDialog(); openPromptLibrary();
   });
-  action('plib-cat', ds => { S.x.plibCat = ds.arg; closeDialog(); ACTIONS['diff-prompt-lib'](); });
-  action('plib-use', ds => {
-    const p = DB.PROMPTS.find(x => x.id === ds.arg);
-    if (!p) return;
-    keepSet('diff-prompt', p.text); D().prompt = p.text; closeDialog(); toast('已填入提示词'); render();
+  action('plib-use', ds => { const p = promptEntries().find(x => x.id === ds.arg); if (p) useLibraryPrompt(p.text, false); });
+  action('plib-use-append', ds => { const p = promptEntries().find(x => x.id === ds.arg); if (p) useLibraryPrompt(p.text, true); });
+  action('plib-model-use', ds => { const p = modelPromptSuggestions(modelOf(D().modelId))[+ds.arg]; if (p) useLibraryPrompt(p.text, false); });
+  action('plib-model-use-append', ds => { const p = modelPromptSuggestions(modelOf(D().modelId))[+ds.arg]; if (p) useLibraryPrompt(p.text, true); });
+  action('plib-delete', ds => {
+    const d = D(); d.promptLibrary = promptEntries().filter(x => x.id !== ds.arg);
+    toast('已删除收藏'); closeDialog(); openPromptLibrary();
+  });
+  function validatePromptSyntax(text) {
+    const issues = [];
+    if (!text.trim()) issues.push('提示词为空');
+    const control = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.exec(text);
+    if (control) issues.push('位置 ' + (control.index + 1) + ' 含有不可见控制字符');
+    const stack = [], pairs = { ')': '(', ']': '[', '}': '{' };
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i];
+      if (c === '\\') { i++; continue; }
+      if (c === '(' || c === '[' || c === '{') stack.push({ c, i });
+      else if (pairs[c]) {
+        const open = stack.pop();
+        if (!open || open.c !== pairs[c]) issues.push('位置 ' + (i + 1) + ' 的 ' + c + ' 没有匹配的起始符号');
+      }
+    }
+    stack.forEach(x => issues.push('位置 ' + (x.i + 1) + ' 的 ' + x.c + ' 未闭合'));
+    const weight = /\(\s*[^()]*?:\s*([^()]*?)(?:\)|$)/g;
+    let m;
+    while ((m = weight.exec(text))) {
+      const raw = m[1].trim();
+      if (!/^-?(?:\d+(?:\.\d+)?|\.\d+)$/.test(raw)) issues.push('权重“' + raw + '”不是有效数字');
+      else if (+raw <= 0 || +raw > 10) issues.push('权重 ' + raw + ' 超出建议范围 0.1–10');
+    }
+    if (/(?:^|[,，])\s*[,，]/.test(text)) issues.push('存在连续逗号形成的空 tag');
+    if (/\\$/.test(text)) issues.push('末尾转义符 \\ 后缺少字符');
+    return issues;
+  }
+  action('diff-prompt-check', () => {
+    const issues = validatePromptSyntax(currentPromptText());
+    showDialog({
+      title: issues.length ? '发现 ' + issues.length + ' 处语法问题' : '提示词语法正常',
+      body: (issues.length ? '<ul class="prompt-check-list">' + issues.map(x => '<li>' + esc(x) + '</li>').join('') + '</ul>' :
+        '<div class="prompt-check-ok">' + icon('check_circle') + '<span>未发现括号、权重或控制字符问题。</span></div>') +
+        '<div class="diff-caption">这里只检查可确定的语法问题，不检查模型是否认识每个 tag；模型未提供词表时，不能据此判定词语无效。</div>',
+      actions: [{ label: '知道了' }]
+    });
   });
   function promptEl() { return document.querySelector('[data-keep="diff-prompt"]'); }
   function tagRangeAt(text, pos) {
