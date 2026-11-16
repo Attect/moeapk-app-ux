@@ -383,7 +383,7 @@
       '<button class="diff-text-btn" data-a="diff-vocabulary">' + icon('menu_book') + '提示词词表</button>' +
       '<button class="diff-text-btn" data-a="diff-caption">' + icon('zoom_in') + '图像反推</button>' +
       '<button class="diff-text-btn" data-a="diff-prompt-check">' + icon('check_circle') + '检查提示词</button></div>' +
-      '<div class="diff-caption">' + (d.vocabReady ? '完整演示词表已就绪，可搜索并插入；语法错误与未收录分开提示。' : '完整词表未下载。打开提示词词表可下载标签（约 248KB）；未下载时不做未收录检查。') + '</div>' +
+      '<div class="diff-caption">' + (d.vocabReady ? '标签词表已下载' : '标签词表未下载') + '</div>' +
       '<div class="tag-toolbar"><button class="tbtn" data-a="tag-dec">权重−</button><button class="tbtn" data-a="tag-inc">权重＋</button>' +
       '<button class="tbtn" data-a="tag-del">删除 tag</button><button class="icbtn" data-a="tag-undo" title="撤销">' + icon('undo') + '</button>' +
       '<button class="icbtn" data-a="tag-redo" title="重做">' + icon('redo') + '</button></div>';
@@ -776,7 +776,7 @@
       body: '<div class="prompt-lib-current"><strong>当前草稿</strong><span>' + esc(currentPromptText() || '（空）') + '</span>' +
         '<button class="diff-btn small" data-a="plib-save-current" ' + (currentPromptText().trim() ? '' : 'disabled') + '>一键收藏当前提示词</button></div>' +
         '<h3 class="prompt-lib-heading">我的收藏</h3>' +
-        (saved.length ? saved.map(p => libraryItem(p, 'plib-use', p.id, true)).join('') : emptyHint('还没有收藏，点击上方“一键收藏当前提示词”即可添加，无需离开创作页')),
+        (saved.length ? saved.map(p => libraryItem(p, 'plib-use', p.id, true)).join('') : emptyHint('还没有收藏，可先收藏当前草稿')),
       actions: [{ label: '关闭' }]
     });
   }
@@ -796,16 +796,16 @@
   function vocabularyResults() {
     const q = (S.x.vocabQuery || '').trim().toLowerCase();
     const list = DB.TAGS_DEMO.filter(t => !q || t.tag.toLowerCase().includes(q) || (t.cn || '').includes(q));
-    if (!list.length) return emptyHint('词表中没有匹配项；可换关键词，未收录不代表词语无效');
+    if (!list.length) return emptyHint('没有匹配的标签');
     return list.map(t => '<div class="vocab-item"><div><strong>' + esc(t.tag) + '</strong><span>' + esc(t.cn || '暂无中文译名') + '</span></div>' +
       '<button class="tbtn" data-a="vocab-use" data-arg="' + esc(t.tag) + '">追加</button></div>').join('');
   }
   function vocabularyBody() {
     if (!D().vocabReady) {
-      return '<div class="prompt-lib-current"><strong>完整词表未下载</strong><span>下载 WD Tagger 随附的 selected_tags.csv（253,906 字节，约 248KB），获得约 9000 条 Danbooru 标签；只下载标签，不下载 388MB 反推模型。内置 50 条仅用于输入补全，不冒充完整词表。</span>' +
-        '<button class="diff-btn small" data-a="vocab-download">下载完整标签词表</button></div>';
+      return '<div class="prompt-lib-current"><strong>尚未下载完整标签词表</strong><span>下载 Danbooru 中文标签（约 194KB），用于搜索、插入和收录检查。</span>' +
+        '<button class="diff-btn small" data-a="vocab-download">下载标签词表</button></div>';
     }
-    return '<div class="diff-caption">完整 Danbooru / WD tag 演示词表 · 共 ' + DB.TAGS_DEMO.length + ' 条；App 实际下载约 9000 条。</div>' +
+    return '<div class="diff-caption">共 ' + DB.TAGS_DEMO.length + ' 条标签 <button class="tbtn" data-a="vocab-download">更新词表</button></div>' +
       '<input class="field-input vocab-search" data-live="vocab-query" placeholder="搜索英文 tag 或中文含义" value="' + esc(S.x.vocabQuery || '') + '">' +
       '<div id="vocab-results">' + vocabularyResults() + '</div>';
   }
@@ -876,11 +876,10 @@
     const naturalLanguage = /DiT|Flux|Qwen|Krea|Z-Image|Klein/i.test(family);
     const unknown = naturalLanguage || issues.length || !D().vocabReady ? [] : unknownPromptTerms(text);
     showDialog({
-      title: issues.length ? '发现 ' + issues.length + ' 处语法问题' : (unknown.length ? '检查完成：' + unknown.length + ' 个词未收录' : (D().vocabReady ? '提示词检查通过' : '语法检查通过')),
+      title: issues.length ? '发现 ' + issues.length + ' 处语法问题' : (unknown.length ? '检查完成：' + unknown.length + ' 个词未收录' : (D().vocabReady && !naturalLanguage ? '提示词检查通过' : '语法检查通过')),
       body: (issues.length ? '<ul class="prompt-check-list">' + issues.map(x => '<li>' + esc(x) + '</li>').join('') + '</ul>' :
-        '<div class="prompt-check-ok">' + icon('check_circle') + '<span>未发现括号、权重或控制字符问题。</span></div>') +
-        (unknown.length ? '<h3 class="prompt-lib-heading">词表未收录（需人工确认）</h3><div class="vocab-unknown">' + unknown.map(esc).join('、') + '</div>' : '') +
-        '<div class="diff-caption">' + (!D().vocabReady ? '完整词表未下载，本次仅做语法检查，未进行词表收录核对。' : (naturalLanguage ? '当前是自然语言模型，不用 Danbooru 词表硬判完整句子。' : '词表未收录不等于无效，只表示无法确认；命中也不保证模型一定按预期理解。')) + '</div>',
+        '<div class="prompt-check-ok">' + icon('check_circle') + '<span>语法正常</span></div>') +
+        (unknown.length ? '<h3 class="prompt-lib-heading">未收录（需确认）</h3><div class="vocab-unknown">' + unknown.map(esc).join('、') + '</div>' : ''),
       actions: [{ label: '知道了' }]
     });
   });

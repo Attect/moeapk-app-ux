@@ -3,7 +3,7 @@
 // 原型版本约定：PROTO_COMMIT / PROTO_DATE 记录本原型自身的 git 提交，
 // 由维护者在每次提交前更新为当前 HEAD（提交者无需处理）。
 // App 关于页显示同形态的一行，值为其 UX 同步所依据的原型提交。
-const PROTO_COMMIT = '29ddf56';
+const PROTO_COMMIT = '3cc540d';
 const PROTO_DATE = '2026-11-16';
 const PROTO_COMMIT_URL = 'https://github.com/Attect/moeapk-app-ux/commit/';
 
@@ -16,6 +16,7 @@ const PROTO_COMMIT_URL = 'https://github.com/Attect/moeapk-app-ux/commit/';
     ['llama.cpp', 'MIT', 'Georgi Gerganov 的纯 C/C++ LLM 推理。'],
     ['ONNX Runtime', 'MIT', '微软出品的跨平台推理引擎。'],
     ['MNN', 'Apache-2.0', '阿里巴巴开源的轻量深度学习框架（扩散 CPU / 点云）。'],
+    ['Danbooru Tag Chinese-English Translation Table', 'MIT', 'ffdkj 的 Danbooru 中文标签翻译数据。'],
     ['Kotlin', 'Apache-2.0', 'JetBrains 出品的现代 JVM 语言。'],
     ['AndroidX', 'Apache-2.0', 'Android Jetpack 扩展库。'],
     ['Jetpack Compose', 'Apache-2.0', 'Android 声明式 UI 工具包。'],

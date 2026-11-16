@@ -174,9 +174,9 @@ async function swipe(direction) {
     ok('真实触摸左右滑动切步', { next:report.swipeNext, previous:report.swipePrev });
 
     await click('[data-a="diff-vocabulary"]');
-    assert(await evaluate(`document.querySelector('.dlg-title').textContent.includes('提示词词表') && document.querySelector('.dlg').textContent.includes('完整词表未下载') && !!document.querySelector('.dlg [data-a="vocab-download"]')`));
+    assert(await evaluate(`document.querySelector('.dlg-title').textContent.includes('提示词词表') && document.querySelector('.dlg').textContent.includes('尚未下载完整标签词表') && !!document.querySelector('.dlg [data-a="vocab-download"]')`));
     await click('.dlg [data-a="vocab-download"]');
-    assert(await evaluate(`document.querySelectorAll('.dlg [data-a="vocab-use"]').length>=40 && document.querySelector('.dlg').textContent.includes('完整 Danbooru')`));
+    assert(await evaluate(`document.querySelectorAll('.dlg [data-a="vocab-use"]').length>=40 && document.querySelector('.dlg').textContent.includes('共 50 条标签')`));
     await setValue('.dlg [data-live="vocab-query"]', '蓝眼');
     assert.equal(await evaluate(`document.querySelectorAll('.dlg [data-a="vocab-use"]').length`), 1);
     await click('.dlg [data-a="vocab-use"]');
@@ -199,7 +199,7 @@ async function swipe(direction) {
     await click('.dlg [data-dlg="0"]');
     await setValue('#diff-prompt', '1girl, brand_new_tag');
     await click('[data-a="diff-prompt-check"]');
-    assert(await evaluate(`document.querySelector('.dlg').textContent.includes('brand_new_tag') && document.querySelector('.dlg').textContent.includes('未收录不等于无效')`));
+    assert(await evaluate(`document.querySelector('.dlg').textContent.includes('brand_new_tag') && document.querySelector('.dlg').textContent.includes('未收录（需确认）')`));
     await click('.dlg [data-dlg="0"]');
     await setValue('#diff-prompt', '1girl, (masterpiece:1.2), best quality');
     ok('词表搜索追加、页内收藏、语法错误与未收录分类检查', report.promptValidation);
