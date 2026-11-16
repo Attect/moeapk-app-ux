@@ -111,12 +111,15 @@ test('创作页使用大输入框、文字按钮、页内收藏和真实提示�
   assert.match(css, /textarea\.diff-prompt\s*\{[^}]*min-height:\s*156px/s);
   assert.match(css, /\.diff-media-editor \.mask-toolbar\s*\{[^}]*padding:\s*0 10px/s);
   for (const label of ['提示词库', '提示词词表', '图像反推', '检查提示词']) assert.ok(screen.includes(label), label);
-  for (const action of ['plib-save-current', 'plib-use-append', 'plib-delete', 'diff-prompt-check', 'diff-vocabulary', 'vocab-query', 'vocab-use']) {
+  for (const action of ['plib-save-current', 'plib-use-append', 'plib-delete', 'diff-prompt-check', 'diff-vocabulary', 'vocab-download', 'vocab-query', 'vocab-use']) {
     assert.ok(screen.includes(`action('${action}'`), action);
   }
   assert.ok(screen.includes('词表未收录（需人工确认）'));
   assert.ok(screen.includes('未收录不等于无效'));
   assert.ok(screen.includes('Danbooru / WD tag'));
+  assert.ok(screen.includes('完整词表未下载'));
+  assert.ok(screen.includes('253,906 字节'));
+  assert.ok(screen.includes('不下载 388MB 反推模型'));
   assert.ok(!screen.includes('模型PromptSuggestions') && !screen.includes('modelPromptSuggestions'));
   assert.ok(!screen.includes('当前模型推荐'));
 });
@@ -127,5 +130,5 @@ test('生图原型保持纯静态，无网络或模块依赖', () => {
   const html = read('index.html');
   const versions = [...html.matchAll(/\?v=(\d+)/g)].map(m => m[1]);
   assert.ok(versions.length >= 20);
-  assert.ok(versions.every(v => v === '84'));
+  assert.ok(versions.every(v => v === '85'));
 });

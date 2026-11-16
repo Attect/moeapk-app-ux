@@ -174,7 +174,9 @@ async function swipe(direction) {
     ok('真实触摸左右滑动切步', { next:report.swipeNext, previous:report.swipePrev });
 
     await click('[data-a="diff-vocabulary"]');
-    assert(await evaluate(`document.querySelector('.dlg-title').textContent.includes('提示词词表') && document.querySelectorAll('.dlg [data-a="vocab-use"]').length>=40`));
+    assert(await evaluate(`document.querySelector('.dlg-title').textContent.includes('提示词词表') && document.querySelector('.dlg').textContent.includes('完整词表未下载') && !!document.querySelector('.dlg [data-a="vocab-download"]')`));
+    await click('.dlg [data-a="vocab-download"]');
+    assert(await evaluate(`document.querySelectorAll('.dlg [data-a="vocab-use"]').length>=40 && document.querySelector('.dlg').textContent.includes('完整 Danbooru')`));
     await setValue('.dlg [data-live="vocab-query"]', '蓝眼');
     assert.equal(await evaluate(`document.querySelectorAll('.dlg [data-a="vocab-use"]').length`), 1);
     await click('.dlg [data-a="vocab-use"]');

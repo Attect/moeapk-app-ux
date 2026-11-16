@@ -42,6 +42,7 @@
     if (d.step == null) d.step = 0;
     if (!d.soc) d.soc = 'qcom-8g3';
     if (d.compute === undefined) d.compute = null;
+    if (d.vocabReady == null) d.vocabReady = false;
     return d;
   }
   function diffCfgOf(id) {
@@ -382,7 +383,7 @@
       '<button class="diff-text-btn" data-a="diff-vocabulary">' + icon('menu_book') + '提示词词表</button>' +
       '<button class="diff-text-btn" data-a="diff-caption">' + icon('zoom_in') + '图像反推</button>' +
       '<button class="diff-text-btn" data-a="diff-prompt-check">' + icon('check_circle') + '检查提示词</button></div>' +
-      '<div class="diff-caption">词表来自真实 Danbooru / WD tag 数据，可搜索并插入。语法错误与词表未收录分开提示；未收录不等于无效。</div>' +
+      '<div class="diff-caption">' + (d.vocabReady ? '完整演示词表已就绪，可搜索并插入；语法错误与未收录分开提示。' : '完整词表未下载。打开提示词词表可下载标签（约 248KB）；未下载时不做未收录检查。') + '</div>' +
       '<div class="tag-toolbar"><button class="tbtn" data-a="tag-dec">权重−</button><button class="tbtn" data-a="tag-inc">权重＋</button>' +
       '<button class="tbtn" data-a="tag-del">删除 tag</button><button class="icbtn" data-a="tag-undo" title="撤销">' + icon('undo') + '</button>' +
       '<button class="icbtn" data-a="tag-redo" title="重做">' + icon('redo') + '</button></div>';
@@ -800,13 +801,22 @@
       '<button class="tbtn" data-a="vocab-use" data-arg="' + esc(t.tag) + '">追加</button></div>').join('');
   }
   function vocabularyBody() {
-    return '<div class="diff-caption">Danbooru / WD tag 演示词表 · 共 ' + DB.TAGS_DEMO.length + ' 条；App 可从 selected_tags.csv 加载完整词表。</div>' +
+    if (!D().vocabReady) {
+      return '<div class="prompt-lib-current"><strong>完整词表未下载</strong><span>下载 WD Tagger 随附的 selected_tags.csv（253,906 字节，约 248KB），获得约 9000 条 Danbooru 标签；只下载标签，不下载 388MB 反推模型。内置 50 条仅用于输入补全，不冒充完整词表。</span>' +
+        '<button class="diff-btn small" data-a="vocab-download">下载完整标签词表</button></div>';
+    }
+    return '<div class="diff-caption">完整 Danbooru / WD tag 演示词表 · 共 ' + DB.TAGS_DEMO.length + ' 条；App 实际下载约 9000 条。</div>' +
       '<input class="field-input vocab-search" data-live="vocab-query" placeholder="搜索英文 tag 或中文含义" value="' + esc(S.x.vocabQuery || '') + '">' +
       '<div id="vocab-results">' + vocabularyResults() + '</div>';
   }
   action('diff-vocabulary', () => {
     S.x.vocabQuery = '';
     showDialog({ title: '提示词词表', body: vocabularyBody(), actions: [{ label: '关闭' }] });
+  });
+  action('vocab-download', () => {
+    D().vocabReady = true;
+    toast('完整标签词表已下载（原型模拟）');
+    if (S.dialog) { S.dialog.body = vocabularyBody(); render(); }
   });
   action('vocab-query', (ds, el) => {
     S.x.vocabQuery = el.value;
@@ -864,13 +874,13 @@
     const text = currentPromptText(), issues = validatePromptSyntax(text), model = modelOf(D().modelId);
     const family = ((model && model.diffusion && (model.diffusion.architecture + ' ' + model.diffusion.family)) || '');
     const naturalLanguage = /DiT|Flux|Qwen|Krea|Z-Image|Klein/i.test(family);
-    const unknown = naturalLanguage || issues.length ? [] : unknownPromptTerms(text);
+    const unknown = naturalLanguage || issues.length || !D().vocabReady ? [] : unknownPromptTerms(text);
     showDialog({
-      title: issues.length ? '发现 ' + issues.length + ' 处语法问题' : (unknown.length ? '检查完成：' + unknown.length + ' 个词未收录' : '提示词检查通过'),
+      title: issues.length ? '发现 ' + issues.length + ' 处语法问题' : (unknown.length ? '检查完成：' + unknown.length + ' 个词未收录' : (D().vocabReady ? '提示词检查通过' : '语法检查通过')),
       body: (issues.length ? '<ul class="prompt-check-list">' + issues.map(x => '<li>' + esc(x) + '</li>').join('') + '</ul>' :
         '<div class="prompt-check-ok">' + icon('check_circle') + '<span>未发现括号、权重或控制字符问题。</span></div>') +
         (unknown.length ? '<h3 class="prompt-lib-heading">词表未收录（需人工确认）</h3><div class="vocab-unknown">' + unknown.map(esc).join('、') + '</div>' : '') +
-        '<div class="diff-caption">' + (naturalLanguage ? '当前是自然语言模型，不用 Danbooru 词表硬判完整句子。' : '词表未收录不等于无效，只表示无法确认；命中也不保证模型一定按预期理解。') + '</div>',
+        '<div class="diff-caption">' + (!D().vocabReady ? '完整词表未下载，本次仅做语法检查，未进行词表收录核对。' : (naturalLanguage ? '当前是自然语言模型，不用 Danbooru 词表硬判完整句子。' : '词表未收录不等于无效，只表示无法确认；命中也不保证模型一定按预期理解。')) + '</div>',
       actions: [{ label: '知道了' }]
     });
   });
