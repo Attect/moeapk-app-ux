@@ -42,15 +42,24 @@ test('上下文按模型元数据开放到训练上限', () => {
   assert.ok(!screen.includes("sl('上下文长度', 'ctxLen', 2048, 32768"));
 });
 
-test('视觉令牌使用低饱和主色、轻量阴影和统一更新卡', () => {
+test('浅绿主色使用同色系文字渐变并保留控件阴影参数', () => {
   const css = read('css/app.css');
   const apk = read('js/screens/apk.js');
-  assert.ok(css.includes('--c-pink: #E5A8C0'));
-  assert.ok(css.includes('--grad-primary: linear-gradient(135deg, #F4D2DF 0%, #E5A8C0 100%)'));
-  assert.ok(css.includes('--on-primary: #4F2738'));
-  assert.ok(css.includes('#E7DFE8'));
+  assert.ok(css.includes('--c-leaf: #A9D6A9'));
+  assert.ok(css.includes('--primary: var(--c-leaf-deep)'));
+  assert.ok(css.includes('--grad-primary: linear-gradient(135deg, #E2F3E2 0%, #A9D6A9 100%)'));
+  assert.ok(css.includes('--grad-text: linear-gradient(120deg, #83AA83 10%, #4A724A 90%)'));
+  assert.ok(css.includes('--grad-text: linear-gradient(120deg, #D0E4D0 10%, #83AA83 90%)'));
+  assert.ok(css.includes('--grad-hero: linear-gradient(118deg, #D9ECD9 0%, #DFF3EA 52%, #DCE8FB 100%)'));
+  assert.ok(css.includes('--on-primary: #2E462E'));
+  assert.ok(css.includes('#E7ECE7'));
   assert.ok(css.includes('var(--fill, 50%)'));
   assert.ok(css.includes('--glow-primary: 0 4px 10px -3px'));
+  assert.ok(css.includes('--shadow-card: 0 4px 14px -6px'));
+  assert.ok(css.includes('--shadow-float: 0 8px 22px -10px'));
+  assert.ok(!css.includes('--bubble-relief'));
+  assert.ok(!css.includes('--glass-relief'));
+  assert.ok(!css.includes('--c-pink'));
   assert.ok(!css.includes('box-shadow: var(--shadow-card), var(--glow-soft);'));
   assert.ok(apk.includes('class="update-icon"'));
 });
@@ -59,5 +68,5 @@ test('所有静态资源统一使用本轮版本号', () => {
   const html = read('index.html');
   const versions = [...html.matchAll(/\?v=(\d+)/g)].map(m => m[1]);
   assert.ok(versions.length >= 20);
-  assert.ok(versions.every(v => v === '87'));
+  assert.ok(versions.every(v => v === '96'));
 });

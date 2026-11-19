@@ -1,5 +1,5 @@
-// 主题：MoeApk（二次元）双主题。App 侧为动态取色（Android 12+），fallback 种子色为樱粉 #E94E8A，
-// 原型以该 fallback 方案为基准：primary 渐变樱粉，辅助色抹茶绿/天空蓝/紫藤（取自吉祥物设定图）。
+// 主题：MoeApk（二次元）双主题。App 侧为动态取色（Android 12+），fallback 种子色为浅纯绿 #8FBC91。
+// 原型以浅绿为主色，文字按主题使用当前绿 → 深绿的同色系渐变；原控件参数不变。
 // 明/暗跟随系统，也可在原型内手动切换（App 无手动切换，此为原型调试便利）。
 (function () {
   const root = document.documentElement;
