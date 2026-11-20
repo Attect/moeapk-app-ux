@@ -222,7 +222,7 @@
     const width = Math.max(0, Number(containerWidth) || 0);
     const base = width >= 1040 ? 5 : width >= 760 ? 4 : width >= 520 ? 3 : 2;
     const contentWidth = Math.max(0, width - 32); // 内容左右各 16px
-    const byMaxCover = Math.ceil((contentWidth + 10) / (240 + 10));
+    const byMaxCover = width >= 1040 ? Math.ceil((contentWidth + 10) / (240 + 10)) : 2;
     return Math.max(2, base, byMaxCover);
   }
   function fallsStart() {

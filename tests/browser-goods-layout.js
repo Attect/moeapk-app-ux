@@ -103,7 +103,7 @@ async function listMetrics() {
 }
 function expectedColumns(width) {
   const base = width >= 1040 ? 5 : width >= 760 ? 4 : width >= 520 ? 3 : 2;
-  return Math.max(2, base, Math.ceil((Math.max(0, width - 32) + 10) / 250));
+  return Math.max(2, base, width >= 1040 ? Math.ceil((Math.max(0, width - 32) + 10) / 250) : 2);
 }
 async function mosaicRatio() {
   return evaluate(`(() => {
@@ -130,7 +130,7 @@ async function mosaicRatio() {
     await navigate(`${index}?theme=light&frame=port#goods`);
     assert(await evaluate(`location.protocol === 'file:'`), 'prototype must run over file://');
 
-    for (const width of [360, 520, 760, 1040, 1280, 1600, 1920]) {
+    for (const width of [360, 520, 760, 1024, 1040, 1280, 1600, 1920]) {
       await frame(width, 900);
       await showCat(false);
       const placeholder = await listMetrics();
