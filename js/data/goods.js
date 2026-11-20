@@ -43,7 +43,8 @@ window.DB.GOODS_CATS = [
 // App 首页布局（对应 feed 的 home 对象；后台「展厅与首页」动态配置，此处为默认快照）：
 //   hero        首页大标题
 //   fresh_count 新入荷横滑条件数（0 = 隐藏该区块）
-//   mosaic      展厅墙槽位（顺序=显示顺序；span 为 6 列网格跨列数，height 卡片像素高）
+//   mosaic      展厅墙槽位（span 为 6 列网格跨列数；aspect_ratio 为可选宽/高比）
+//   height      旧版客户端的固定像素高；新版只把它按 412px 设计稿换算成稳定比例
 // 「换一批」不打乱布局，只在每个槽位的展厅内重抽封面展品。
 window.DB.GOODS_HOME = {
   hero: '看看有什么好东西',

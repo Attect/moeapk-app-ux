@@ -88,28 +88,23 @@
   }
   function hashStr(s) { let h = 0; for (const c of s) h = (h * 31 + c.charCodeAt(0)) >>> 0; return h; }
 
-  // 展品封面：优先真实商品图（images，淘宝 CDN；失败移除 img 回落 emoji 渐变占位）。
-  // 无图时用 emoji + 色相渐变占位（演示数据形态）。v 0/1/2… 取多图/变体，详情页 pager 用。
-  // 淘宝图基本 1:1 方形：focus（top/center/bottom，AI 选封面时返回）决定 cover 裁剪的纵向对齐；
-  // 首页展厅墙等所有真实封面都以 cover 填满容器，宽扁槽也居中裁切，不留渐变侧边。
-  // ar 为可选的占位容器宽高比（瀑布流卡片用）。natural 模式下原图加载成功后
-  // 把容器校正为 naturalWidth/naturalHeight，保持图片比例，不为瀑布高差强行裁图。
+  // 展品封面：真实商品图使用固定容器，加载只改透明度，不再改容器比例。
+  // product 模式在方形图片区内完整显示商品；首页展厅墙等装饰封面仍 cover 填满。
+  // eager 仅用于当前瀑布批次的图片加载与下一批预解码，不影响布局尺寸。
   function cover(g, v, opts) {
     const vi = v || 0;
-    const ar = opts && opts.ar;
-    const natural = opts && opts.natural;
+    const product = !!(opts && opts.product);
+    const eager = !!(opts && opts.eager);
     const img = g.images && g.images.length ? g.images[Math.min(vi, g.images.length - 1)] : null;
     const ph = '<span>' + (g.emoji || '🎁') + '</span>';
-    const cls = 'g-cover v' + vi;
+    const cls = 'g-cover v' + vi + (product ? ' product' : '');
     const focus = (g.focus === 'top' || g.focus === 'bottom') ? g.focus : 'center';
     const df = ' data-focus="' + focus + '"';
-    const style = '--gh:' + (g.hue == null ? 300 : g.hue) + (ar ? ';aspect-ratio:' + ar : '');
+    const style = '--gh:' + (g.hue == null ? 300 : g.hue);
     if (img) {
-      const onload = natural
-        ? ' onload="this.classList.add(\'is-loaded\');this.parentElement.style.aspectRatio=this.naturalWidth+\'/\'+this.naturalHeight"'
-        : ' onload="this.classList.add(\'is-loaded\')"';
       return '<div class="' + cls + '"' + df + ' style="' + style + '">' + ph +
-        '<img src="' + esc(img) + '" alt="" loading="' + (natural ? 'eager' : 'lazy') + '" decoding="async"' + onload + ' onerror="this.remove()"></div>';
+        '<img src="' + esc(img) + '" alt="" loading="' + (eager ? 'eager' : 'lazy') + '" decoding="async"' +
+        ' onload="this.classList.add(\'is-loaded\')" onerror="this.remove()"></div>';
     }
     return '<div class="' + cls + '"' + df + ' style="' + style + '">' + ph + '</div>';
   }
@@ -144,6 +139,17 @@
       (work ? hall.character_count + ' 位角色' : '仅此角色') + '</span></button>';
   }
 
+  // 旧 feed 的 height 以 412px 竖屏设计稿为基准；换算成比例后不再随容器宽度漂移。
+  // 新数据可直接给 aspect_ratio（宽/高），height 仅保留给旧版客户端。
+  function mosaicAspectRatio(slot) {
+    const explicit = Number(slot.aspect_ratio);
+    if (Number.isFinite(explicit) && explicit > 0) return explicit;
+    const span = Math.max(1, Math.min(6, Number(slot.span) || 2));
+    const height = Number(slot.height);
+    const referenceWidth = 65 * span - 10; // (412 - 32 内容边距 + 10 间距) / 6 × span - 10
+    return height > 0 ? referenceWidth / height : 1;
+  }
+
   // ---------- 主页：杂志式错落分类墙 ----------
   registerScreen('tab:goods', {
     title: '宅物',
@@ -174,7 +180,7 @@
           '<div class="g-fresh">' + fresh.map(g => {
             const c = catById(g.cat);
             return '<div class="g-fresh-card" data-a="goods-open" data-arg="' + g.id + '">' +
-              cover(g) +
+              cover(g, 0, { product: true }) +
               '<div class="g-fresh-name">' + esc(g.title) + '</div>' +
               '<div class="g-fresh-cat">' + esc(c ? c.name : '') + ' · ' + g.days + ' 天前</div></div>';
           }).join('') + '</div>';
@@ -195,7 +201,7 @@
         const g = items.length
           ? items[Math.floor(rand() * items.length)]
           : { emoji: c.emoji, hue: hashStr(c.id) % 360 };
-        h += '<div class="g-mos-card" style="grid-column:span ' + slot.span + ';height:' + slot.height + 'px" data-a="goods-open-cat" data-arg="' + c.id + '">' +
+        h += '<div class="g-mos-card" style="grid-column:span ' + slot.span + ';aspect-ratio:' + mosaicAspectRatio(slot) + '" data-a="goods-open-cat" data-arg="' + c.id + '">' +
           cover(g) +
           '<div class="g-mos-label"><div class="g-mos-name">' + esc(c.name) + '</div>' +
           '<div class="g-mos-sub">' + esc(c.sub) + '</div></div></div>';
@@ -210,19 +216,42 @@
     toast('每个展厅都换了件展品露脸');
   });
 
-  // ---------- 展厅（分类页）：无限双列瀑布流，偏小红书 ----------
-  // 滚动接近底部自动追加下一批（对应 App 侧 Paging 懒加载 + 服务端分页下发；
-  // 真机数据耗尽自然到底，没有"到底啦"提示，底部也不放任何说明文字）。
-  // 原型数据有限：批次循环复用本厅展品，批间换序换比例，避免机械重复感。
-  // 比例只留竖向（1/1、4/5、3/4）作缺图/加载中的占位节奏；真实图片加载后
-  // 立即改用自身宽高比，不为了瀑布高差裁成固定比例。
-  const ARS = ['1/1', '4/5', '3/4'];
+  // ---------- 展厅（分类页）：固定方图的信息流 ----------
+  // 手机保留 2 / 3 / 4 / 5 列断点；更宽时按 240px 最大封面边长继续增列，不封顶。
+  function goodsFallColumnCount(containerWidth) {
+    const width = Math.max(0, Number(containerWidth) || 0);
+    const base = width >= 1040 ? 5 : width >= 760 ? 4 : width >= 520 ? 3 : 2;
+    const contentWidth = Math.max(0, width - 32); // 内容左右各 16px
+    const byMaxCover = Math.ceil((contentWidth + 10) / (240 + 10));
+    return Math.max(2, base, byMaxCover);
+  }
+  function fallsStart() {
+    const width = typeof frameW === 'function' ? frameW() : 360;
+    return '<div class="g-falls" style="--g-fall-columns:' + goodsFallColumnCount(width) + '">';
+  }
+  function syncGoodsFallColumns() {
+    if (typeof document.querySelectorAll !== 'function') return;
+    document.querySelectorAll('.g-falls').forEach(falls => {
+      // falls.clientWidth 是扣除内容边距后的宽度，补回 32 与首帧/Compose 使用同一口径。
+      falls.style.setProperty('--g-fall-columns', goodsFallColumnCount(falls.clientWidth + 32));
+    });
+  }
+  if (typeof document.querySelector === 'function') {
+    const app = document.querySelector('#app');
+    const phone = document.querySelector('.phone');
+    if (typeof MutationObserver !== 'undefined' && app) {
+      const observer = new MutationObserver(syncGoodsFallColumns);
+      observer.observe(app, { childList: true });
+    }
+    if (typeof ResizeObserver !== 'undefined' && phone) {
+      const observer = new ResizeObserver(syncGoodsFallColumns);
+      observer.observe(phone);
+    }
+  }
   const MAX_BATCH = 40; // 原型安全上限（防 DOM 无限增长），真机无此概念
   function fallCard(g, batch) {
-    // 第 1 批占位比例按 id 固定（首屏稳定）；后续批次叠加批号盐，同件展品每批高差不同
-    const ar = ARS[(hashStr(g.id) + (batch > 1 ? batch * 7 : 0)) % ARS.length];
     return '<div class="g-fall-card" data-a="goods-open" data-arg="' + g.id + '">' +
-      cover(g, 0, { ar: ar, natural: true }) +
+      cover(g, 0, { product: true, eager: true }) +
       '<div class="g-fall-body"><div class="g-fall-title">' + esc(g.title) +
       (g.stale ? '<span class="g-fall-stale">或已绝版</span>' : '') + '</div>' +
       '<div class="g-fall-meta"><span class="g-fall-price">' + fmtPrice(g.price) + '</span>' +
@@ -292,7 +321,7 @@
       }
       const nb = batchesOf(arg);
       S.x.goodsBatches[arg] = nb;
-      h += '<div class="g-falls">' +
+      h += fallsStart() +
         Array.from({ length: nb }, (_, i) => fallBatch(arg, i + 1, sort)).join('') + '</div>';
       // 内容不足一屏时滚动事件不会触发：渲染后自检补批直至溢出（每次 render 重查，到顶自停）
       setTimeout(() => {
@@ -393,12 +422,13 @@
       // 页数 = 真实图片数（上限 5，与后端 pics 上限一致；演示数据的占位图固定 3 页）。
       // 双指撑开/双击进全屏查看器（见文件末查看器节）。
       const shots = Math.max(1, Math.min(5, (g.images && g.images.length) || 3));
-      let h = '<div class="g-pager-wrap"><div class="g-pager">' +
-        Array.from({ length: shots }, (_, v) => '<div class="g-shot">' + cover(g, v) + '</div>').join('') +
+      const media = '<div class="g-pager-wrap"><div class="g-pager">' +
+        Array.from({ length: shots }, (_, v) => '<div class="g-shot">' + cover(g, v, { product: true }) + '</div>').join('') +
         '</div>' + (shots > 1 ? '<div class="g-page-count">1/' + shots + '</div>' +
         '<div class="g-dots">' +
         Array.from({ length: shots }, (_, i) => '<i class="g-dot' + (i === 0 ? ' on' : '') + '"></i>').join('') +
         '</div>' : '') + '</div>';
+      let h = '<div class="g-detail-layout"><div class="g-detail-media">' + media + '</div><div class="g-detail-info">';
       h += '<div class="g-d-title">' + esc(g.title) + '</div>';
       // 以下顺序对应 GoodsDetailScreen：备注 → 优惠 → 失效/预售 → 收录时效 → 原始标题 → # 标签。
       if (g.note) h += '<div class="g-d-text">' + esc(g.note) + '</div>';
@@ -431,7 +461,7 @@
         h += '<div class="sec-head g-d-related-head"><span class="sec-title">同 IP 还有</span></div>' +
           '<div class="g-fresh">' + sameIp.map(x =>
             '<div class="g-fresh-card" data-a="goods-open" data-arg="' + x.id + '">' +
-            cover(x) +
+            cover(x, 0, { product: true }) +
             '<div class="g-fresh-name">' + esc(x.title) + '</div>' +
             '<div class="g-fresh-cat">' + esc((catById(x.cat) || {}).name || '') + ' · ' + fmtPrice(x.price) + '</div></div>').join('') + '</div>';
       }
@@ -441,11 +471,11 @@
         h += '<div class="sec-head g-d-related-head"><span class="sec-title">同展厅还有</span></div>' +
           '<div class="g-fresh">' + rel.map(x =>
             '<div class="g-fresh-card" data-a="goods-open" data-arg="' + x.id + '">' +
-            cover(x) +
+            cover(x, 0, { product: true }) +
             '<div class="g-fresh-name">' + esc(x.title) + '</div>' +
             '<div class="g-fresh-cat">' + esc((catById(x.cat) || {}).name || '') + ' · ' + fmtPrice(x.price) + '</div></div>').join('') + '</div>';
       }
-      return h;
+      return h + '</div></div>';
     },
     // 页面级底栏不随正文滚动；价格位于淘宝按钮内部左侧，复制口令是右侧独立图标。
     bottom(arg) {
@@ -564,7 +594,7 @@
       catIds.map(id => chip((catById(id) || {}).name || id, selectedCat === id, 'goods-ip-cat', e.id + ':' + id)).join('') + '</div>';
     if (!items.length) return h + emptyHint('这个物品形态还没有该展厅的策展展品');
     h += '<div class="g-ip-count">' + items.length + ' / ' + allItems.length + ' 件策展展品</div>' +
-      '<div class="g-falls">' + items.map(g => fallCard(g, 1)).join('') + '</div>';
+      fallsStart() + items.map(g => fallCard(g, 1)).join('') + '</div>';
     return h;
   }
 

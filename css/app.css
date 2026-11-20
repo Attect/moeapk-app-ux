@@ -153,7 +153,7 @@ body {
   border-radius: 36px; overflow: hidden;
   box-shadow: 0 24px 72px -12px rgba(113,145,113,.35), 0 8px 28px rgba(0,0,0,.50), inset 0 0 0 1px rgba(255,255,255,.10);
   display: flex; flex-direction: column;
-  container-type: inline-size; /* 横屏/平板断点的查询容器（App 侧对应 WindowSizeClass） */
+  container-type: size; /* 横屏断点查询宽度；详情媒体同时按容器可用高度限高 */
 }
 /* 原型横屏预览框（proto-bar 切换，真机由真实视口宽度驱动同一套断点） */
 .phone.land { width: min(1024px, 96vw); height: min(680px, 92vh); border-radius: 28px; }
@@ -1253,11 +1253,12 @@ body, .card, .li, .topbar, .top-chrome, .chip, .btn, .tbtn, .field-input,
 }
 .g-cover span { font-size: 44px; filter: drop-shadow(0 4px 10px rgba(60, 25, 55, .25)); transition: transform .2s; }
 /* 真实商品图（淘宝 CDN）：绝对定位覆盖渐变占位；加载失败由 onerror 移除 img 回落占位。
- * 包括首页宽扁展厅槽在内，统一 cover 填满容器，不以 contain 露出两侧渐变。 */
+ * 装饰封面 cover 填满；product 商品图在固定方框内 contain，1:1 源图恰好铺满。 */
 .g-cover img {
   position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
   opacity: 0; transition: opacity .18s ease;
 }
+.g-cover.product img { object-fit: contain; }
 .g-cover img.is-loaded { opacity: 1; }
 /* 焦点对齐（focus 字段，cover 裁剪时保商品主体） */
 .g-cover[data-focus="top"] img { object-position: center top; }
@@ -1298,7 +1299,7 @@ body, .card, .li, .topbar, .top-chrome, .chip, .btn, .tbtn, .field-input,
 /* ---------- 主页 · 杂志错落分类墙（6 列网格，span/高度按节奏表） ---------- */
 .g-mosaic { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; grid-auto-flow: dense; margin-top: 2px; }
 .g-mos-card {
-  position: relative; border-radius: 18px; overflow: hidden; cursor: pointer;
+  position: relative; align-self: start; border-radius: 18px; overflow: hidden; cursor: pointer;
   border: 1px solid var(--glass-brd); box-shadow: var(--shadow-card);
   transition: transform .15s, box-shadow .2s;
 }
@@ -1354,14 +1355,15 @@ body, .card, .li, .topbar, .top-chrome, .chip, .btn, .tbtn, .field-input,
 .g-ip-picker-count { flex: none; font-size: 11px; color: var(--on-surface-variant); }
 .g-ip-picker-row > .ic { flex: none; width: 18px; height: 18px; color: var(--primary); }
 
-/* 响应式瀑布流：手机至少双列；更宽视口在下方断点增加列数。
- * CSS 多列按卡片自然高度排列，不强制同一行跨列对齐。 */
-.g-falls { column-count: 2; column-gap: 10px; margin-top: 4px; }
+/* 响应式信息流：列数由 goodsFallColumnCount 写入，图片区恒定 1:1。
+ * CSS 多列仍只按标题自然高度排列，图片加载不会再改变卡片几何。 */
+.g-falls { column-count: var(--g-fall-columns, 2); column-gap: 10px; margin-top: 4px; }
 .g-fall-card {
   break-inside: avoid; margin-bottom: 10px; border-radius: 16px; overflow: hidden; cursor: pointer;
   background: var(--surface-low); border: 1px solid var(--glass-brd); box-shadow: var(--shadow-card);
   transition: transform .12s; position: relative;
 }
+.g-fall-card .g-cover { aspect-ratio: 1 / 1; }
 .g-fall-card:active { transform: scale(.97); }
 .g-fall-card .g-cover span { font-size: 40px; }
 .g-fall-body { padding: 10px 12px 12px; }
@@ -1374,6 +1376,7 @@ body, .card, .li, .topbar, .top-chrome, .chip, .btn, .tbtn, .field-input,
 .g-fall-price { font-weight: 600; }
 
 /* ---------- 展品卡（详情） ---------- */
+.g-detail-info { min-width: 0; }
 /* 顶部图片 pager：1:1 边到边大图，匹配淘宝方形商品图；页码在右上、圆点在图下 */
 .g-pager-wrap { position: relative; margin: 4px -16px 0; }
 .g-pager {
@@ -1688,15 +1691,22 @@ body, .card, .li, .topbar, .top-chrome, .chip, .btn, .tbtn, .field-input,
   .g-ip-hall-card { width: 236px; }
 }
 
-/* ---------- 宅物 · 宽屏 / 平板：空间越宽，瀑布列数越多 ---------- */
-@container (min-width: 520px) {
-  .g-falls { column-count: 3; }
-}
-@container (min-width: 760px) {
-  .g-falls { column-count: 4; }
-}
-@container (min-width: 1040px) {
-  .g-falls { column-count: 5; }
+/* ---------- 宅物 · 宽屏详情：左侧限高方图，右侧正文与 CTA ---------- */
+@container (min-width: 720px) {
+  .g-detail-layout {
+    display: grid; grid-template-columns: minmax(0, 9fr) minmax(0, 11fr);
+    gap: 24px; align-items: start;
+  }
+  .g-detail-media {
+    width: min(100%, calc(100cqh - 132px));
+    margin: 0 auto;
+  }
+  .g-detail-media .g-pager-wrap { margin: 0; }
+  .g-detail-media .g-pager { border-radius: 16px; }
+  .g-detail-info { padding-bottom: 96px; }
+  .g-detail-info .g-d-title { margin-top: 0; }
+  #app.has-page-bottom .content { padding-bottom: 24px; }
+  #app.has-page-bottom .g-cta { left: calc(45% + 15px); }
 }
 
 /* ============================================================

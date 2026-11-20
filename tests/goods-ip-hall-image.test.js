@@ -208,6 +208,21 @@ test('宽扁物品形态展厅封面也使用 cover 填满，不再 contain 露�
   assert.doesNotMatch(css, /\.g-cover\.fit/);
 });
 
+test('首页 mosaic 将旧高度换算为固定比例，并优先采用显式 aspect_ratio', () => {
+  const { context, screens } = loadPrototype();
+  context.DB.GOODS_HOME = { hero: '测试', fresh_count: 0, mosaic: [{ hall: 'badge', span: 4, height: 148 }] };
+  context.DB.GOODS_IP_HALLS = [];
+  let mosaic = mosaicHtml(screens['tab:goods'].render());
+  const ratio = mosaic.match(/aspect-ratio:([0-9.]+)/);
+  assert.ok(ratio);
+  assert.ok(Math.abs(Number(ratio[1]) - 250 / 148) < 1e-9);
+  assert.doesNotMatch(mosaic, /height:\s*\d+px/);
+
+  context.DB.GOODS_HOME.mosaic[0].aspect_ratio = 2;
+  mosaic = mosaicHtml(screens['tab:goods'].render());
+  assert.match(mosaic, /aspect-ratio:2(?:\D|$)/);
+});
+
 test('IP 筛选提供有限快捷项与可搜索的完整选择器', () => {
   const { context, screens, actions } = loadPrototype();
   let html = screens['goods-cat'].render('badge');
@@ -284,25 +299,31 @@ test('展品详情图片区域与淘宝方形商品图保持 1:1', () => {
   const html = screens['goods-detail'].render('g01');
   assert.match(html, /class="g-pager"/);
   assert.match(html, /class="g-shot"/);
+  assert.match(html, /class="g-detail-layout"><div class="g-detail-media">/);
+  assert.match(html, /<div class="g-detail-info">/);
 
   const css = fs.readFileSync(path.join(ROOT, 'css/app.css'), 'utf8');
   const shotRule = css.match(/\.g-shot\s*\{([^}]*)\}/);
   assert.ok(shotRule);
   assert.match(shotRule[1], /aspect-ratio:\s*1\s*\/\s*1/);
   assert.doesNotMatch(shotRule[1], /aspect-ratio:\s*3\s*\/\s*4/);
+  assert.match(css, /container-type:\s*size/);
+  assert.match(css, /calc\(100cqh - 132px\)/);
 });
 
-test('展厅列表使用手机至少双列、宽屏增列的瀑布流，长标题不截断', () => {
+test('展厅列表保持双列起步，超宽按 240px 封面上限持续增列，长标题不截断', () => {
+  const { context, screens } = loadPrototype();
+  for (const [width, count] of [[360, 2], [520, 3], [760, 4], [1040, 5], [1280, 6], [1600, 7], [1920, 8], [2560, 11]]) {
+    context.frameW = () => width;
+    const html = screens['goods-cat'].render('badge');
+    assert.match(html, new RegExp('class="g-falls" style="--g-fall-columns:' + count + '"'), width + 'px 应为 ' + count + ' 列');
+  }
+
   const css = fs.readFileSync(path.join(ROOT, 'css/app.css'), 'utf8');
   const falls = css.match(/\.g-falls\s*\{([^}]*)\}/);
   assert.ok(falls);
-  assert.match(falls[1], /column-count:\s*2/);
+  assert.match(falls[1], /column-count:\s*var\(--g-fall-columns,\s*2\)/);
   assert.match(falls[1], /column-gap:\s*10px/);
-  for (const [width, count] of [[520, 3], [760, 4], [1040, 5]]) {
-    const media = css.match(new RegExp('@container \\(min-width: ' + width + 'px\\)\\s*\\{\\s*\\.g-falls\\s*\\{([^}]*)\\}'));
-    assert.ok(media, width + 'px 宽屏断点应存在');
-    assert.match(media[1], new RegExp('column-count:\\s*' + count));
-  }
 
   const title = css.match(/\.g-fall-title\s*\{([^}]*)\}/);
   assert.ok(title);
@@ -310,20 +331,21 @@ test('展厅列表使用手机至少双列、宽屏增列的瀑布流，长标�
   assert.doesNotMatch(title[1], /line-clamp|-webkit-box|text-overflow|overflow:\s*hidden/);
 });
 
-test('分类展厅与 IP 展厅真实封面加载后保持原图比例', () => {
+test('分类展厅与 IP 展厅商品图加载前后都固定 1:1，非方图完整显示', () => {
   const { context, screens } = loadPrototype();
   context.DB.GOODS = context.DB.GOODS.map(g => ({ ...g, images: [LOCAL_IMAGE] }));
   for (const html of [screens['goods-cat'].render('badge'), screens['goods-ip'].render('1001')]) {
-    assert.match(html, /class="g-falls"/);
-    assert.match(html, /aspect-ratio:(?:1\/1|4\/5|3\/4)/, '加载前保留稳定占位比例');
-    assert.match(html, /onload="this\.classList\.add\('is-loaded'\);this\.parentElement\.style\.aspectRatio=this\.naturalWidth\+'\/'\+this\.naturalHeight"/);
-    assert.match(html, /loading="eager" decoding="async"/);
+    assert.match(html, /class="g-falls" style="--g-fall-columns:\d+"/);
+    assert.match(html, /class="g-cover v0 product"/);
+    assert.match(html, /loading="eager" decoding="async" onload="this\.classList\.add\('is-loaded'\)"/);
+    assert.doesNotMatch(html, /naturalWidth|naturalHeight|parentElement\.style\.aspectRatio/);
   }
 
   const css = fs.readFileSync(path.join(ROOT, 'css/app.css'), 'utf8');
-  const coverRule = css.match(/\.g-cover\s*\{([^}]*)\}/);
+  const coverRule = css.match(/\.g-fall-card \.g-cover\s*\{([^}]*)\}/);
   assert.ok(coverRule);
-  assert.match(coverRule[1], /position:\s*relative/, '绝对定位图片必须受自身封面容器约束');
+  assert.match(coverRule[1], /aspect-ratio:\s*1\s*\/\s*1/);
+  assert.match(css, /\.g-cover\.product img\s*\{[^}]*object-fit:\s*contain/);
 });
 
 test('物品形态展厅由顶栏承担名称与简介，正文只保留策展语', () => {
