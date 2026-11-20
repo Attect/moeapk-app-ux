@@ -217,9 +217,10 @@
   });
 
   // ---------- 展厅（分类页）：固定方图的信息流 ----------
-  // 手机保留 2 / 3 / 4 / 5 列断点；更宽时按 240px 最大封面边长继续增列，不封顶。
+  // 手机保留 2 / 3 / 4 / 5 列断点；更宽时按 240px 最大封面边长增列。
+  // 网格本身最多 1600px 并水平居中，列数也只按实际网格宽度计算。
   function goodsFallColumnCount(containerWidth) {
-    const width = Math.max(0, Number(containerWidth) || 0);
+    const width = Math.min(1600, Math.max(0, Number(containerWidth) || 0));
     const base = width >= 1040 ? 5 : width >= 760 ? 4 : width >= 520 ? 3 : 2;
     const contentWidth = Math.max(0, width - 32); // 内容左右各 16px
     const byMaxCover = width >= 1040 ? Math.ceil((contentWidth + 10) / (240 + 10)) : 2;

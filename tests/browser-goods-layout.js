@@ -96,14 +96,19 @@ async function listMetrics() {
     const cover = falls.querySelector('.g-cover');
     const img = cover.querySelector('img');
     const r = cover.getBoundingClientRect();
+    const fr = falls.getBoundingClientRect();
+    const content = document.getElementById('content');
+    const cr = content.getBoundingClientRect();
     return { columns: Number(getComputedStyle(falls).columnCount), width: r.width, height: r.height,
       objectFit: img ? getComputedStyle(img).objectFit : 'placeholder',
-      horizontalOverflow: document.getElementById('content').scrollWidth > document.getElementById('content').clientWidth + 1 };
+      gridWidth: fr.width, leftGap: fr.left - cr.left, rightGap: cr.right - fr.right,
+      horizontalOverflow: content.scrollWidth > content.clientWidth + 1 };
   })()`);
 }
 function expectedColumns(width) {
-  const base = width >= 1040 ? 5 : width >= 760 ? 4 : width >= 520 ? 3 : 2;
-  return Math.max(2, base, width >= 1040 ? Math.ceil((Math.max(0, width - 32) + 10) / 250) : 2);
+  const container = Math.min(1600, width);
+  const base = container >= 1040 ? 5 : container >= 760 ? 4 : container >= 520 ? 3 : 2;
+  return Math.max(2, base, container >= 1040 ? Math.ceil((Math.max(0, container - 32) + 10) / 250) : 2);
 }
 async function mosaicRatio() {
   return evaluate(`(() => {
@@ -143,13 +148,16 @@ async function mosaicRatio() {
         assert(Math.abs(value.width - value.height) <= 1, `${width}/${label}: cover is not square ${JSON.stringify(value)}`);
         assert(value.width <= 240.5, `${width}/${label}: oversized cover ${JSON.stringify(value)}`);
         assert(!value.horizontalOverflow, `${width}/${label}: horizontal overflow`);
+        assert(Math.abs(value.leftGap - value.rightGap) <= 1, `${width}/${label}: grid is not centered ${JSON.stringify(value)}`);
       }
+      if (width > 1600) assert(Math.abs(loaded.gridWidth - 1600) <= 1, `${width}: grid must use the 1600px centered track`);
       assert(Math.abs(placeholder.width - loaded.width) <= 1 && Math.abs(placeholder.height - loaded.height) <= 1,
         `${width}: loading changed cover geometry ${JSON.stringify({ placeholder, loaded })}`);
       assert(loaded.objectFit === 'contain', `${width}: product image must be contain`);
       report.lists.push({ width, columns: expected, coverWidth: loaded.width, stable: true });
       if (width === 360) await shot('walk-goods-fixed-square-list-mobile-light.png');
       if (width === 1600) await shot('walk-goods-fixed-square-list-wide-light.png');
+      if (width === 1920) await shot('walk-goods-fixed-square-list-ultrawide-centered-light.png');
     }
 
     await frame(360, 800);
@@ -184,13 +192,21 @@ async function mosaicRatio() {
       const title = document.querySelector('.g-d-title').getBoundingClientRect();
       const cta = document.querySelector('.g-cta').getBoundingClientRect();
       const phone = document.querySelector('.phone').getBoundingClientRect();
-      return { shot: { left: shot.left, right: shot.right, bottom: shot.bottom, width: shot.width, height: shot.height },
+      const layout = document.querySelector('.g-detail-layout').getBoundingClientRect();
+      const info = document.querySelector('.g-detail-info').getBoundingClientRect();
+      return { shot: { left: shot.left, right: shot.right, bottom: shot.bottom, width: shot.width, height: shot.height,
+          centerY: shot.top + shot.height / 2 },
         title: { left: title.left, top: title.top }, cta: { left: cta.left, right: cta.right, top: cta.top, bottom: cta.bottom },
         phone: { left: phone.left, right: phone.right, top: phone.top, bottom: phone.bottom },
+        layout: { top: layout.top, bottom: layout.bottom, centerY: layout.top + layout.height / 2 },
+        infoWidth: info.width,
         display: getComputedStyle(document.querySelector('.g-detail-layout')).display };
     })()`);
     assert(wide.display === 'grid', `wide detail must be two-pane: ${JSON.stringify(wide)}`);
     assert(Math.abs(wide.shot.width - wide.shot.height) <= 1, 'wide detail shot is not square');
+    assert(Math.abs(wide.shot.centerY - wide.layout.centerY) <= 1, `wide detail shot is not vertically centered ${JSON.stringify(wide)}`);
+    assert(Math.abs(wide.infoWidth - 360) <= 1, `wide detail information pane must stay phone-width ${JSON.stringify(wide)}`);
+    assert(wide.shot.width > 450, `wide detail image should be larger than the previous proportional pane ${JSON.stringify(wide)}`);
     assert(wide.shot.bottom <= wide.phone.bottom + 1, `wide detail shot exceeds viewport ${JSON.stringify(wide)}`);
     assert(wide.title.left >= wide.shot.right, `wide detail title is not in the right pane ${JSON.stringify(wide)}`);
     assert(wide.title.top >= wide.phone.top && wide.title.top < wide.phone.bottom, 'wide detail title is outside viewport');

@@ -1357,7 +1357,7 @@ body, .card, .li, .topbar, .top-chrome, .chip, .btn, .tbtn, .field-input,
 
 /* 响应式信息流：列数由 goodsFallColumnCount 写入，图片区恒定 1:1。
  * CSS 多列仍只按标题自然高度排列，图片加载不会再改变卡片几何。 */
-.g-falls { column-count: var(--g-fall-columns, 2); column-gap: 10px; margin-top: 4px; }
+.g-falls { column-count: var(--g-fall-columns, 2); column-gap: 10px; max-width: 1600px; margin: 4px auto 0; }
 .g-fall-card {
   break-inside: avoid; margin-bottom: 10px; border-radius: 16px; overflow: hidden; cursor: pointer;
   background: var(--surface-low); border: 1px solid var(--glass-brd); box-shadow: var(--shadow-card);
@@ -1691,22 +1691,23 @@ body, .card, .li, .topbar, .top-chrome, .chip, .btn, .tbtn, .field-input,
   .g-ip-hall-card { width: 236px; }
 }
 
-/* ---------- 宅物 · 宽屏详情：左侧限高方图，右侧正文与 CTA ---------- */
+/* ---------- 宅物 · 宽屏详情：左侧居中大图，右侧 360px 窄信息栏 ---------- */
 @container (min-width: 720px) {
   .g-detail-layout {
-    display: grid; grid-template-columns: minmax(0, 9fr) minmax(0, 11fr);
-    gap: 24px; align-items: start;
+    display: grid; grid-template-columns: minmax(0, 1fr) 360px;
+    gap: 24px; align-items: stretch; height: calc(100cqh - 132px);
   }
   .g-detail-media {
-    width: min(100%, calc(100cqh - 132px));
+    align-self: center;
+    width: min(100%, calc(100cqh - 164px));
     margin: 0 auto;
   }
   .g-detail-media .g-pager-wrap { margin: 0; }
   .g-detail-media .g-pager { border-radius: 16px; }
-  .g-detail-info { padding-bottom: 96px; }
+  .g-detail-info { height: 100%; overflow-y: auto; scrollbar-width: none; padding-bottom: 96px; }
   .g-detail-info .g-d-title { margin-top: 0; }
   #app.has-page-bottom .content { padding-bottom: 24px; }
-  #app.has-page-bottom .g-cta { left: calc(45% + 15px); }
+  #app.has-page-bottom .g-cta { left: auto; right: 16px; width: 360px; }
 }
 
 /* ============================================================

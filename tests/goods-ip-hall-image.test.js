@@ -311,9 +311,9 @@ test('展品详情图片区域与淘宝方形商品图保持 1:1', () => {
   assert.match(css, /calc\(100cqh - 132px\)/);
 });
 
-test('展厅列表保持双列起步，超宽按 240px 封面上限持续增列，长标题不截断', () => {
+test('展厅列表保持双列起步，超宽网格限宽居中并按实际轨道增列，长标题不截断', () => {
   const { context, screens } = loadPrototype();
-  for (const [width, count] of [[360, 2], [520, 3], [760, 4], [1024, 4], [1039, 4], [1040, 5], [1280, 6], [1600, 7], [1920, 8], [2560, 11]]) {
+  for (const [width, count] of [[360, 2], [520, 3], [760, 4], [1024, 4], [1039, 4], [1040, 5], [1280, 6], [1600, 7], [1920, 7], [2560, 7]]) {
     context.frameW = () => width;
     const html = screens['goods-cat'].render('badge');
     assert.match(html, new RegExp('class="g-falls" style="--g-fall-columns:' + count + '"'), width + 'px 应为 ' + count + ' 列');
@@ -324,6 +324,8 @@ test('展厅列表保持双列起步，超宽按 240px 封面上限持续增列�
   assert.ok(falls);
   assert.match(falls[1], /column-count:\s*var\(--g-fall-columns,\s*2\)/);
   assert.match(falls[1], /column-gap:\s*10px/);
+  assert.match(falls[1], /max-width:\s*1600px/);
+  assert.match(falls[1], /margin:\s*4px auto 0/);
 
   const title = css.match(/\.g-fall-title\s*\{([^}]*)\}/);
   assert.ok(title);
