@@ -242,7 +242,7 @@ async function sampleMetrics() {
       chillout:root.querySelectorAll('.diff-model[data-model-id="chillout-mix-qnn"] .model-samples').length,
       families:root.querySelectorAll('.diff-family').length,
       variants:root.querySelectorAll('.diff-variant').length }; })()`);
-    assert.deepEqual(report.wizard, { anything:4, animagine:3, chillout:1, families:3, variants:4 });
+    assert.deepEqual(report.wizard, { anything:4, animagine:3, chillout:1, families:2, variants:4 });
     // 家族组头吸顶：滚到底后仍可见（sticky 生效）
     assert(await evaluate(`(() => { const el=document.querySelector('.diff-family'); const r=el.getBoundingClientRect();
       const step=document.querySelector('.diff-step[data-step="0"]').getBoundingClientRect();

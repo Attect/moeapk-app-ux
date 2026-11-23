@@ -160,18 +160,29 @@ test('模型列表把同一模型的权重包合并为一行，组头吸顶且�
   vm.createContext(context);
   vm.runInContext(read('js/model-display.js'), context);
   const models = diffusionModels();
-  const groups = context.window.ModelGroups.group(models);
-  const chillout = groups.find(g => g.title === 'Chillout Mix');
+  const grouped = context.window.ModelGroups.group(models);
+  const chillout = grouped.find(g => g.title === 'Chillout Mix');
   assert.equal(chillout.variants.length, 4, '四个权重包合并为一行');
   assert.equal(chillout.samples.length, 4, '相同预览跨变体去重后只留一份');
   assert.deepEqual(Array.from(chillout.variants, v => v.label),
     ['QNN NPU', '8Gen1 桶 · QNN NPU', '通用桶 · QNN NPU', 'MNN CPU']);
+  // 二次元模型排在写实模型前面（同家族内）
+  const titles = grouped.map(g => g.title);
+  assert.ok(titles.indexOf('Anything V5') < titles.indexOf('Chillout Mix'), '写实模型靠后');
+  assert.equal(chillout.style, '写实');
+  assert.equal(chillout.styleLabel, '写实');
+  assert.equal(context.window.ModelGroups.styleOf({ id: 'qteamix', name: 'QteaMix', summary: '混合风格（动漫×写实）' }), '通用');
+  // 家族口径与 App 一致：按架构分组，组内按基础模型分行
+  assert.equal(grouped.find(g => g.title === 'Anything V5').family, 'SD1.5');
+  assert.equal(grouped.find(g => g.title === 'animagine v4').family, 'SDXL');
 
   assert.match(screen, /window\.ModelGroups\.group\(DIFF_MODELS\)/);
   assert.match(screen, /class="section-title diff-family"/);
+  assert.ok(screen.includes("slot.models.length + ' 个模型</div>'"), '家族组头显示模型个数');
   assert.match(screen, /action\('diff-pick-variant'/);
   assert.match(screen, /ModelSamples\.groupHtml\(g\)/);
+  assert.match(screen, /g\.styleLabel/);
   // 家族与主名都不同（DMD2、不同版本）不得并组
-  const dmd = groups.filter(g => /DMD2/.test(g.title));
+  const dmd = grouped.filter(g => /DMD2/.test(g.title));
   assert.ok(dmd.every(g => g.variants.length === 1), 'DMD2 主名不同，不得并入标准版');
 });

@@ -6,9 +6,12 @@
   var BACKEND_WORDS = ['CPU', 'GPU', 'NPU', 'QNN', 'MNN', 'OpenCL'];
   var PAREN = /（([^（）]*)）$/;
 
+  // 家族口径与 App 一致：按架构（SD1.5 / SDXL / DiT…）分组，组内再按基础模型名分行。
   function family(model) {
     var diffusion = model && model.diffusion;
-    return (diffusion && diffusion.family) || (model && model.name) || '其它模型';
+    if (diffusion && diffusion.architecture) return diffusion.architecture;
+    if (diffusion && diffusion.family) return diffusion.family;
+    return (model && model.name) || '其它模型';
   }
 
   function splitName(name, familyLabel) {
@@ -34,6 +37,39 @@
       });
     });
     return { base: base, tags: tags };
+  }
+
+  // 画风分档：二次元主题 App 里二次元模型排前、写实模型排后。
+  // 判定只读目录自带的 summary 与模型名；混合风格（动漫×写实）与判定不出的归通用，
+  // 与同档其它模型一起保持目录原顺序（稳定排序），不把不认识的模型乱插。
+  var ANIME_SUMMARY = ['二次元', '动漫', '卡通', '萌系', '可爱', '插画'];
+  var REAL_SUMMARY = ['写实', '真实', '人像', '照片'];
+  var REAL_NAME = ['reality', 'realistic', 'realism', 'realvis', 'realisian', 'photo', 'chillout',
+    'realskin', 'vision', 'epic', 'orange', 'xxx', 'reed', 'gonzalomo', 'shaper', 'majicmix'];
+  var ANIME_NAME = ['anime', 'anything', 'cute', 'yuki', 'kemono', 'furry', 'pony', 'illustrious', 'noobai',
+    'novelai', 'anim', 'toon', 'chibi', 'moe', 'harem', 'ppanimix', 'chenkinnoob', 'featherfall',
+    'flanime', 'animepopcute', 'sushi', 'meina', 'mistoon', 'nai', 'counterfeit', 'qtea',
+    'unholy', 'fabled', 'lustify', 'biglust', 'oneobsession', 'hdarainbow', 'rawdiance',
+    'rawb2diance', 'lemonsugar', 'bsse', 'perfect', 'prefect', 'illustrij', 'miaomiao', 'mix',
+    'sweet', 'obsidian'];
+  var STYLE_RANK = { '二次元': 0, '通用': 1, '写实': 2 };
+
+  function styleOf(model) {
+    var summary = String((model && model.summary) || '').toLowerCase();
+    var anime = ANIME_SUMMARY.some(w => summary.indexOf(w) >= 0);
+    var real = REAL_SUMMARY.some(w => summary.indexOf(w) >= 0);
+    if (anime && real) return '通用';
+    if (real) return '写实';
+    if (anime) return '二次元';
+    var name = String((model && (model.id + ' ' + model.name)) || '').toLowerCase();
+    if (REAL_NAME.some(w => name.indexOf(w) >= 0)) return '写实';
+    if (ANIME_NAME.some(w => name.indexOf(w) >= 0)) return '二次元';
+    return '通用';
+  }
+
+  function styleLabel(model) {
+    var style = styleOf(model);
+    return style === '通用' ? '' : style;
   }
 
   function normalize(name) { return String(name || '').replace(/\s+/g, '').toLowerCase(); }
@@ -121,9 +157,27 @@
           samples.push(sample);
         });
       });
-      return { family: bucket.family, title: bucket.base, variants: variants, samples: samples };
+      var style = styleOf(bucket.items[0].model);
+      return {
+        family: bucket.family, title: bucket.base, variants: variants, samples: samples,
+        style: style, styleLabel: style === '通用' ? '' : style,
+        order: byKey.indexOf(bucket)
+      };
     });
+    // 家族内按画风排序（二次元 → 通用 → 写实）；同档保持目录原顺序（稳定排序）
+    var byFamily = [];
+    grouped.forEach(function (g) {
+      var slot = byFamily.find(entry => entry.family === g.family);
+      if (!slot) { slot = { family: g.family, items: [] }; byFamily.push(slot); }
+      slot.items.push(g);
+    });
+    var out = [];
+    byFamily.forEach(function (slot) {
+      slot.items.slice().sort((a, b) => (STYLE_RANK[a.style] - STYLE_RANK[b.style]) || (a.order - b.order))
+        .forEach(g => out.push(g));
+    });
+    return out;
   }
 
-  window.ModelGroups = { family: family, splitName: splitName, group: group, samplesOf: samplesOf, backendLabel: backendLabel };
+  window.ModelGroups = { family: family, splitName: splitName, group: group, samplesOf: samplesOf, backendLabel: backendLabel, styleOf: styleOf, styleLabel: styleLabel };
 })();

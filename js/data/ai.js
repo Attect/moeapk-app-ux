@@ -23,7 +23,7 @@ window.DB.AI = [
     "summary": "参考音频编码器：上传一段音频即可克隆音色。", "engine": "onnxruntime",
     "parts": [ { "name": "codec_encoder_fp16.onnx", "size": 845000000 } ] },
   { "type": "model", "id": "anything-v5-mnn", "name": "Anything V5（SD1.5 MNN）", "kind": "diffusion", "version": "1.0.0",
-    "summary": "Anything V5 SD1.5 演示模型，MNN 模型包提供 CPU 与 GPU 两种计算路径。", "engine": "sd-localdream",
+    "summary": "二次元风格 SD1.5 文生图模型，MNN 模型包提供 CPU 与 GPU 两种计算路径。", "engine": "sd-localdream",
     "diffusion": { "family": "Anything V5", "architecture": "SD1.5", "backends": ["cpu", "gpu"], "packageNote": "SD1.5 MNN 演示包；CPU / GPU，无 QNN 包" },
     "samples": [
       { "thumb": "assets/model-samples/anything-v5-sakura-200.webp", "image": "assets/model-samples/anything-v5-sakura-512.webp", "info": "assets/model-samples/anything-v5-sakura.json" },
@@ -33,7 +33,7 @@ window.DB.AI = [
     ],
     "parts": [ { "name": "Anything-V5-SD15-MNN.zip", "size": 1800000000 } ] },
   { "type": "model", "id": "chillout-mix-qnn", "name": "Chillout Mix（SD1.5 QNN NPU）", "kind": "diffusion", "version": "1.0.0",
-    "summary": "二次元插画模型 ChilloutMix，骁龙 8 Gen2 及以上 NPU 加速。", "engine": "sd-localdream",
+    "summary": "写实亚洲人像 SD1.5 文生图模型（QNN NPU 预转换包，骁龙 8 Gen2 及以上）。", "engine": "sd-localdream",
     "diffusion": { "family": "Chillout Mix", "architecture": "SD1.5", "backends": ["npu"], "npuVendor": "Qualcomm", "minGeneration": 2, "packageNote": "仅 QNN / Hexagon，无 CPU / MNN 包" },
     "samples": [
       { "thumb": "assets/model-samples/chillout-mix-1-200.webp", "image": "assets/model-samples/chillout-mix-1-512.webp", "info": "assets/model-samples/chillout-mix-1.json" },
@@ -43,7 +43,7 @@ window.DB.AI = [
     ],
     "parts": [ { "name": "ChilloutMix_qnn2.28_8gen2.zip", "size": 1150000000 } ] },
   { "type": "model", "id": "chillout-mix-qnn-8gen1", "name": "Chillout Mix（SD1.5 QNN NPU · 8Gen1 桶）", "kind": "diffusion", "version": "1.0.0",
-    "summary": "同一 ChilloutMix 权重的 8 Gen1 预转换桶，老骁龙也能跑。", "engine": "sd-localdream",
+    "summary": "写实亚洲人像 SD1.5 文生图模型（QNN NPU 预转换包，骁龙 8 Gen1 桶）。", "engine": "sd-localdream",
     "diffusion": { "family": "Chillout Mix", "architecture": "SD1.5", "backends": ["npu"], "npuVendor": "Qualcomm", "minGeneration": 1, "packageNote": "8 Gen1 桶；与通用桶权重相同、仅 HTP 图不同" },
     "samples": [
       { "thumb": "assets/model-samples/chillout-mix-1-200.webp", "image": "assets/model-samples/chillout-mix-1-512.webp", "info": "assets/model-samples/chillout-mix-1.json" },
@@ -53,11 +53,11 @@ window.DB.AI = [
     ],
     "parts": [ { "name": "ChilloutMix_qnn2.28_8gen1.zip", "size": 1150000000 } ] },
   { "type": "model", "id": "chillout-mix-qnn-min", "name": "Chillout Mix（SD1.5 QNN NPU · 通用桶）", "kind": "diffusion", "version": "1.0.0",
-    "summary": "同一 ChilloutMix 权重的通用桶，覆盖其余高通代际。", "engine": "sd-localdream",
+    "summary": "写实亚洲人像 SD1.5 文生图模型（QNN NPU 预转换包，通用桶）。", "engine": "sd-localdream",
     "diffusion": { "family": "Chillout Mix", "architecture": "SD1.5", "backends": ["npu"], "npuVendor": "Qualcomm", "minGeneration": 1, "packageNote": "通用桶；与 8Gen1 桶权重相同" },
     "parts": [ { "name": "ChilloutMix_qnn2.28_min.zip", "size": 1150000000 } ] },
   { "type": "model", "id": "chillout-mix-mnn", "name": "Chillout Mix（SD1.5 CPU）", "kind": "diffusion", "version": "1.0.0",
-    "summary": "ChilloutMix 的 MNN CPU 包，任意设备可跑，速度慢于 NPU。", "engine": "sd-localdream",
+    "summary": "写实亚洲人像 SD1.5 文生图模型（MNN CPU/OpenCL 格式，任意设备可跑）。", "engine": "sd-localdream",
     "diffusion": { "family": "Chillout Mix", "architecture": "SD1.5", "backends": ["cpu", "gpu"], "packageNote": "SD1.5 MNN 包；CPU / OpenCL" },
     "samples": [
       { "thumb": "assets/model-samples/chillout-mix-1-200.webp", "image": "assets/model-samples/chillout-mix-1-512.webp", "info": "assets/model-samples/chillout-mix-1.json" },
@@ -67,7 +67,7 @@ window.DB.AI = [
     ],
     "parts": [ { "name": "ChilloutMix_mnn_cpu.zip", "size": 1800000000 } ] },
   { "type": "model", "id": "animagine-v4-sdxl", "name": "animagine v4（SDXL QNN NPU）", "kind": "diffusion", "version": "1.0.0",
-    "summary": "高质量动漫 SDXL 模型，出图 1024×1024，骁龙 8 Gen3 及以上。", "engine": "sd-localdream",
+    "summary": "高画质二次元 SDXL 文生图模型（QNN NPU 预转换包，出图 1024×1024，仅骁龙 8Gen3 及更新）。", "engine": "sd-localdream",
     "diffusion": { "family": "Animagine", "architecture": "SDXL", "backends": ["npu"], "npuVendor": "Qualcomm", "minGeneration": 3, "packageNote": "仅骁龙 8 Gen3+ QNN，无 CPU / MNN 包" },
     "samples": [
       { "thumb": "assets/model-samples/animagine-v4-starlight-200.webp", "image": "assets/model-samples/animagine-v4-starlight-1024.webp", "info": "assets/model-samples/animagine-v4-starlight.json" },

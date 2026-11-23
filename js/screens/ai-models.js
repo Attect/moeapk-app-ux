@@ -147,7 +147,8 @@
           : '';
         return '<div class="li model-item" data-model-id="' + esc(m.id) + '"><div class="model-item-main"><div class="li-body"><div class="li-title" style="font-weight:400">' + esc(g.title) + '</div>' +
           '<div class="li-sub">' + esc(m.summary) + ' · ' + fmtSize(size) + (g.variants.length > 1 ? ' · ' + g.variants.length + ' 个权重包' : '') + '</div>' +
-          '<div class="tag-row">' + tagsHtml(KIND_LABEL[m.kind] || m.kind, fmtOfEngine(m)) + capsHtml(m.caps) + '</div></div>' + trail + '</div>' +
+          '<div class="tag-row">' + tagsHtml(KIND_LABEL[m.kind] || m.kind, fmtOfEngine(m)) + capsHtml(m.caps) +
+          (m.kind === 'diffusion' && g.styleLabel ? '<span class="tag-kind">' + esc(g.styleLabel) + '</span>' : '') + '</div></div>' + trail + '</div>' +
           chips + (m.kind === 'diffusion' ? ModelSamples.groupHtml(g) : '') + '</div>';
       }).join('') + '</div>' : emptyHint('当前分类/过滤条件下没有推荐模型');
       }

@@ -285,19 +285,25 @@
       [['txt', '文生图'], ['img', '图生图'], ['inpaint', '局部重绘']].map(x =>
         '<button class="' + (d.mode === x[0] ? 'on' : '') + '" data-a="diff-mode" data-arg="' + x[0] + '">' + x[1] + '</button>').join('') + '</div>' +
       '<div class="diff-caption">图生图 / 局部重绘会在创作输入步选择底图；切换方式不保留旧遮罩。</div>';
-    // 同一模型的多个权重包合并为一行，行内再选具体版本；家族组头吸顶
+    // 同一模型的多个权重包合并为一行，行内再选具体版本；家族组头吸顶并显示模型个数
     const groups = window.ModelGroups.group(DIFF_MODELS);
-    h += '<div class="diff-models">' + groups.map(g => modelGroupHtml(g, d)).join('') + '</div>';
+    const byFamily = [];
+    groups.forEach(g => {
+      let slot = byFamily.find(entry => entry.family === g.family);
+      if (!slot) { slot = { family: g.family, models: [] }; byFamily.push(slot); }
+      slot.models.push(g);
+    });
+    h += '<div class="diff-models">' + byFamily.map(slot =>
+      '<div class="section-title diff-family" role="heading" aria-level="2">' + esc(slot.family) +
+      ' · ' + slot.models.length + ' 个模型</div>' + slot.models.map(g => modelGroupHtml(g, d)).join('')
+    ).join('') + '</div>';
     return h;
   }
   function modelGroupHtml(g, d) {
     const activeId = d.modelId && g.variants.some(v => v.model.id === d.modelId)
       ? d.modelId
       : (g.variants[0] && g.variants[0].model.id);
-    const head = '<div class="section-title diff-family" role="heading" aria-level="2">' + esc(g.family) +
-      ' · ' + g.variants.length + ' 个权重包</div>';
-    const row = g.variants.map(v => modelRow(v, g, d, v.model.id === activeId)).find(Boolean) || '';
-    return head + row;
+    return g.variants.map(v => modelRow(v, g, d, v.model.id === activeId)).find(Boolean) || '';
   }
   function modelRow(variant, g, d, active) {
     const m = variant.model;
@@ -318,7 +324,8 @@
       : '';
     return '<article class="diff-model' + (selected ? ' on' : '') + '" data-model-id="' + esc(m.id) + '">' +
       '<div class="diff-model-top"><div><strong>' + esc(g.title) + '</strong><div class="diff-tags"><span>' + esc(familyOf(m)) + '</span>' +
-      backendsOf(m).map(b => '<span>' + backendNames[b] + '</span>').join('') + (isSdxl(m) ? '<span>宽高比</span>' : '') + '</div></div>' + trail + '</div>' +
+      backendsOf(m).map(b => '<span>' + backendNames[b] + '</span>').join('') + (isSdxl(m) ? '<span>宽高比</span>' : '') +
+      (g.styleLabel ? '<span>' + esc(g.styleLabel) + '</span>' : '') + '</div></div>' + trail + '</div>' +
       '<p>' + esc(m.summary) + '</p><div class="diff-model-meta"><span>' + fmtSize(size) + '</span><span>' + esc((m.diffusion && m.diffusion.packageNote) || '按模型包声明过滤后端') + '</span></div>' +
       (j && !j.done ? progress(j.p) : '') + chips + (g.samples.length ? ModelSamples.groupHtml(g) : '') + '</article>';
   }
