@@ -1,4 +1,4 @@
-// 零依赖 Chrome CDP 走查：图片模型样例缩略图、512/1024 原图与既有查看器复用。
+// 零依赖 Chrome CDP 走查：模型样例直接复用素材查看器的 chrome、分页与缩放手势。
 // 运行：node tests/browser-model-samples.js（可用 CHROME_PATH 指定 Chrome）。
 const fs = require('node:fs');
 const os = require('node:os');
@@ -21,12 +21,12 @@ async function waitFor(fn, timeout = 15000, label = 'condition') {
   while (Date.now() < end) {
     const value = await fn();
     if (value) return value;
-    await sleep(80);
+    await sleep(70);
   }
   throw new Error(`timeout: ${label}`);
 }
 let ws, nextId = 1;
-const pending = new Map(), externalRequests = [], exceptions = [];
+const pending = new Map(), externalRequests = [], infoRequests = [], exceptions = [];
 function connect(url) {
   return new Promise((resolve, reject) => {
     ws = new WebSocket(url);
@@ -40,6 +40,7 @@ function connect(url) {
       } else if (msg.method === 'Network.requestWillBeSent') {
         const url = msg.params.request.url;
         if (/^https?:/i.test(url)) externalRequests.push(url);
+        if (/model-samples\/[^/]+\.json(?:$|\?)/i.test(url)) infoRequests.push(url);
       } else if (msg.method === 'Runtime.exceptionThrown') exceptions.push(msg.params.exceptionDetails);
     });
   });
@@ -60,6 +61,22 @@ async function click(selector) {
   assert(ok, `missing click target: ${selector}`);
   await sleep(120);
 }
+async function point(selector) {
+  return evaluate(`(() => { const r=document.querySelector(${JSON.stringify(selector)}).getBoundingClientRect();
+    return {x:r.left+r.width/2,y:r.top+r.height/2}; })()`);
+}
+async function mouse(type, p, clickCount = 1) {
+  await send('Input.dispatchMouseEvent', { type, ...p, button: 'left', clickCount });
+}
+async function clickAt(p) { await mouse('mousePressed', p); await sleep(35); await mouse('mouseReleased', p); }
+async function clickSelector(selector) { await clickAt(await point(selector)); }
+async function doubleClickAt(p) {
+  await clickAt(p); await sleep(65); await mouse('mousePressed', p, 2); await sleep(35); await mouse('mouseReleased', p, 2);
+}
+async function touch(type, points) {
+  await send('Input.dispatchTouchEvent', { type,
+    touchPoints: points.map((p, i) => ({ x:p.x, y:p.y, id:p.id == null ? i : p.id })) });
+}
 async function metrics(width, height) {
   await send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: false });
   await sleep(350);
@@ -69,16 +86,22 @@ async function shot(name) {
   fs.writeFileSync(path.join(root, 'shots', name), Buffer.from(result.data, 'base64'));
 }
 async function viewerReady() {
-  await waitFor(() => evaluate(`(() => { const img=document.querySelector('.diff-viewer-image'); return !!img && img.complete && img.naturalWidth>0; })()`), 10000, 'sample original image');
+  await waitFor(() => evaluate(`(() => { const img=document.querySelector('.av-page[data-pos="0"] .av-image'), p=document.querySelector('.av-page[data-pos="0"] .av-picture');
+    return !!img && !!p && img.complete && img.naturalWidth>0 && p.dataset.pixelWidth===String(img.naturalWidth); })()`), 10000, 'asset sample original');
+  await sleep(80);
 }
-async function viewerMetrics() {
-  return evaluate(`(() => { const stage=document.querySelector('.diff-viewer-stage'), img=document.querySelector('.diff-viewer-image');
-    const s=stage.getBoundingClientRect(), r=img.getBoundingClientRect();
-    return { natural:[img.naturalWidth,img.naturalHeight], shown:[r.width,r.height], stage:[s.left,s.top,s.right,s.bottom],
-      inside:r.left>=s.left-1&&r.top>=s.top-1&&r.right<=s.right+1&&r.bottom<=s.bottom+1,
-      mode:stage.className, scrollWidth:stage.scrollWidth,clientWidth:stage.clientWidth,
-      scrollHeight:stage.scrollHeight,clientHeight:stage.clientHeight,
-      src:img.getAttribute('src'),infoShown:document.querySelector('.diff-viewer').textContent.includes('.json') }; })()`);
+async function sampleMetrics() {
+  return evaluate(`(() => { const pager=document.querySelector('.av-pager'), picture=document.querySelector('.av-page[data-pos="0"] .av-picture'),
+    img=picture.querySelector('.av-image'), p=pager.getBoundingClientRect(), r=picture.getBoundingClientRect(), toolbar=document.querySelector('.av-toolbar');
+    return { page:nav.current().page,id:S.x.viewId,counter:document.querySelector('.av-counter').textContent,
+      natural:[img.naturalWidth,img.naturalHeight],pixel:[+picture.dataset.pixelWidth,+picture.dataset.pixelHeight],
+      shown:[r.width,r.height],inside:r.left>=p.left-1&&r.right<=p.right+1&&r.top>=p.top-1&&r.bottom<=p.bottom+1,
+      sources:[...document.querySelectorAll('.av-page .av-image')].map(x=>x.getAttribute('src')),
+      tools:[...toolbar.querySelectorAll('.tool-label')].map(x=>x.textContent),toolbarBg:getComputedStyle(toolbar).backgroundColor,
+      toolbarBlur:getComputedStyle(toolbar).backdropFilter,back:!!document.querySelector('.av-back'),
+      left:!!document.querySelector('.av-nav.left'),right:!!document.querySelector('.av-nav.right'),
+      diffViewer:!!document.querySelector('.diff-viewer'),originalButton:document.querySelector('.av-stage').textContent.includes('原始尺寸'),
+      infoShown:document.querySelector('.av-stage').textContent.includes('.json') }; })()`);
 }
 
 (async () => {
@@ -93,6 +116,7 @@ async function viewerMetrics() {
     }, 10000, 'CDP endpoint');
     await connect(page.webSocketDebuggerUrl);
     await send('Page.enable'); await send('Runtime.enable'); await send('Network.enable');
+    await send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 5 });
     await metrics(412, 860);
     const index = pathToFileURL(path.join(root, 'index.html')).href;
     await send('Page.navigate', { url: `${index}?theme=light&frame=port#ai/models` });
@@ -106,92 +130,160 @@ async function viewerMetrics() {
         const item=document.querySelector('.model-item[data-model-id="'+id+'"]');
         counts[id]={buttons:item.querySelectorAll('.model-sample').length,containers:item.querySelectorAll('.model-samples').length};
       }
-      const squares=[...document.querySelectorAll('.model-item .model-sample')].map(el=>{const r=el.getBoundingClientRect();return Math.abs(r.width-r.height)<1&&r.width>0});
-      const sources=[...document.querySelectorAll('.model-item .model-sample img')].map(img=>({src:img.getAttribute('src'),natural:[img.naturalWidth,img.naturalHeight]}));
-      return {counts,squares,sources,overflow:document.documentElement.scrollWidth>innerWidth}; })()`);
+      return {counts,squares:[...document.querySelectorAll('.model-item .model-sample')].every(el=>{const r=el.getBoundingClientRect();return Math.abs(r.width-r.height)<1&&r.width>0}),
+        sources:[...document.querySelectorAll('.model-item .model-sample img')].map(img=>({src:img.getAttribute('src'),natural:[img.naturalWidth,img.naturalHeight]})),
+        overflow:document.documentElement.scrollWidth>innerWidth}; })()`);
     assert.equal(report.hub.counts['anything-v5-mnn'].buttons, 4);
     assert.equal(report.hub.counts['animagine-v4-sdxl'].buttons, 3);
     assert.deepEqual(report.hub.counts['chillout-mix-qnn'], { buttons: 0, containers: 0 });
-    assert(report.hub.squares.every(Boolean) && !report.hub.overflow);
+    assert(report.hub.squares && !report.hub.overflow);
     assert(report.hub.sources.every(x => x.natural[0] === 200 && x.natural[1] === 200 && x.src.includes('-200.webp')));
     await shot('walk-model-samples-hub-light.png');
-    ok('模型中心各条目独立显示最多四张 200×200 方形缩略图，无样例无容器', report.hub);
+    ok('模型中心只加载 200×200 thumb，各模型独立显示最多四张', report.hub);
 
     await click('.model-item[data-model-id="anything-v5-mnn"] [data-arg="sample:anything-v5-mnn:1"]');
     await viewerReady();
-    report.fit512 = await viewerMetrics();
-    assert.deepEqual(report.fit512.natural, [512, 512]);
-    assert(report.fit512.inside && report.fit512.mode.includes('fit') && !report.fit512.mode.includes('original'));
-    assert(report.fit512.src.endsWith('anything-v5-rain-512.webp') && !report.fit512.infoShown);
-    assert.equal(await evaluate(`nav.current().page`), 'diff-image');
-    assert((await evaluate(`location.hash`)).includes('sample:anything-v5-mnn:1'));
+    report.asset512 = await sampleMetrics();
+    assert.equal(report.asset512.page, 'asset');
+    assert.equal(report.asset512.counter.trim(), '2 / 4 · 图片');
+    assert.deepEqual(report.asset512.natural, [512, 512]);
+    assert.deepEqual(report.asset512.pixel, [512, 512]);
+    assert(report.asset512.inside && report.asset512.back && report.asset512.left && report.asset512.right);
+    assert.deepEqual(report.asset512.tools, ['分享', '详情']);
+    assert(report.asset512.sources.every(src => src.includes('-512.webp') && !src.includes('-200.webp')));
+    assert(!report.asset512.diffViewer && !report.asset512.originalButton && !report.asset512.infoShown);
+    assert.equal(report.asset512.toolbarBg, 'rgba(18, 14, 30, 0.52)');
+    assert(report.asset512.toolbarBlur.includes('blur(14px)'));
     await shot('walk-model-sample-viewer-512-light.png');
-    await click('.diff-viewer-actions [data-a="diff-view-zoom"]');
-    report.original512 = await viewerMetrics();
-    assert.deepEqual(report.original512.shown, [512, 512]);
-    assert(report.original512.mode.includes('original') && report.original512.scrollWidth > report.original512.clientWidth);
-    assert(await evaluate(`(() => { const s=document.querySelector('.diff-viewer-stage'); s.scrollLeft=50; return s.scrollLeft>0; })()`));
-    await click('.diff-viewer-actions [data-a="diff-view-zoom"]');
-    assert((await viewerMetrics()).mode.includes('fit'));
-    await click('.diff-viewer-head [data-a="back"]');
+    ok('样例直接使用素材暗色舞台、返回、计数、左右键与玻璃工具区', report.asset512);
+
+    const center = await point('.av-page[data-pos="0"] .av-media');
+    await clickAt(center); await sleep(390);
+    await waitFor(() => evaluate(`getComputedStyle(document.querySelector('.av-toolbar')).opacity==='0'`), 2000, 'sample chrome fade out');
+    report.singleHide = await evaluate(`(() => ({hidden:document.querySelector('.av-stage').classList.contains('chrome-hidden'),
+      opacity:getComputedStyle(document.querySelector('.av-toolbar')).opacity,inert:document.querySelector('.av-toolbar').inert,
+      backInert:document.querySelector('.av-back').inert,scale:S.x.avZoom.scale}))()`);
+    assert(report.singleHide.hidden && report.singleHide.opacity === '0' && report.singleHide.inert && report.singleHide.backInert && report.singleHide.scale === 1,
+      `single tap chrome mismatch: ${JSON.stringify(report.singleHide)}`);
+    await shot('walk-model-sample-viewer-hidden.png');
+    await clickAt(center); await sleep(390);
+    assert(await evaluate(`!document.querySelector('.av-stage').classList.contains('chrome-hidden') && !document.querySelector('.av-toolbar').inert`));
+    ok('单击显隐素材 chrome，隐藏层同步 inert', report.singleHide);
+
+    const baseLayout = await evaluate(`(() => { const m=document.querySelector('.av-page[data-pos="0"] .av-picture');
+      return [m.style.left,m.style.top,m.style.width,m.style.height].join(';'); })()`);
+    await doubleClickAt(center); await sleep(340);
+    report.doubleZoom = await evaluate(`(() => { const m=document.querySelector('.av-page[data-pos="0"] .av-picture');
+      return {scale:S.x.avZoom.scale,id:S.x.viewId,hidden:document.querySelector('.av-stage').classList.contains('chrome-hidden'),
+        stableBase:[m.style.left,m.style.top,m.style.width,m.style.height].join(';'),transform:m.style.transform}; })()`);
+    assert(report.doubleZoom.scale === 2.5 && report.doubleZoom.hidden && report.doubleZoom.stableBase === baseLayout);
+    assert(report.doubleZoom.id === 'sample:anything-v5-mnn:1');
+    await shot('walk-model-sample-viewer-double-zoom.png');
+    await doubleClickAt(center); await sleep(320);
+    assert(await evaluate(`S.x.avZoom.scale===1 && !document.querySelector('.av-stage').classList.contains('chrome-hidden')`));
+    ok('双击 1×/2.5× 缩放复用素材连续几何与 chrome 规则', report.doubleZoom);
+
+    const rect = await evaluate(`(() => { const r=document.querySelector('.av-pager').getBoundingClientRect();return {x:r.left,y:r.top,w:r.width,h:r.height}; })()`);
+    const pinchCenter = { x:rect.x+rect.w/2, y:rect.y+rect.h/2 };
+    await touch('touchStart', [{x:pinchCenter.x-40,y:pinchCenter.y,id:0},{x:pinchCenter.x+40,y:pinchCenter.y,id:1}]);
+    await touch('touchMove', [{x:pinchCenter.x-90,y:pinchCenter.y,id:0},{x:pinchCenter.x+90,y:pinchCenter.y,id:1}]);
+    await sleep(90);
+    report.pinch = await evaluate(`({scale:S.x.avZoom.scale,id:S.x.viewId,hidden:document.querySelector('.av-stage').classList.contains('chrome-hidden')})`);
+    assert(report.pinch.scale > 1.8 && report.pinch.id === 'sample:anything-v5-mnn:1' && report.pinch.hidden);
+    await touch('touchEnd', []); await sleep(80);
+    await touch('touchStart', [{x:pinchCenter.x,y:pinchCenter.y,id:0}]);
+    await touch('touchMove', [{x:pinchCenter.x+42,y:pinchCenter.y+20,id:0}]);
+    await touch('touchEnd', []); await sleep(90);
+    report.zoomPan = await evaluate(`({x:S.x.avZoom.x,y:S.x.avZoom.y,id:S.x.viewId,scale:S.x.avZoom.scale})`);
+    assert(report.zoomPan.scale > 1 && Math.abs(report.zoomPan.x) > 10 && report.zoomPan.id === 'sample:anything-v5-mnn:1');
+    await doubleClickAt(center); await sleep(320);
+    ok('双指缩放与放大后单指平移不切页', { pinch:report.pinch, pan:report.zoomPan });
+
+    await clickSelector('.av-nav.right'); await sleep(460); await viewerReady();
+    assert.equal(await evaluate(`S.x.viewId`), 'sample:anything-v5-mnn:2');
+    await clickSelector('.av-nav.left'); await sleep(460); await viewerReady();
+    assert.equal(await evaluate(`S.x.viewId`), 'sample:anything-v5-mnn:1');
+    await clickSelector('.av-nav.left'); await sleep(460); await viewerReady();
+    assert.equal(await evaluate(`S.x.viewId`), 'sample:anything-v5-mnn:0');
+
+    report.swipes = [];
+    for (let target = 1; target <= 3; target++) {
+      const start = { x:pinchCenter.x+80, y:pinchCenter.y };
+      await touch('touchStart', [{...start,id:0}]);
+      await touch('touchMove', [{x:start.x-60,y:start.y,id:0}]);
+      await touch('touchMove', [{x:start.x-140,y:start.y,id:0}]);
+      await sleep(60);
+      if (target === 1) {
+        report.following = await evaluate(`(() => { const t=document.querySelector('.av-pager-track'),m=new DOMMatrix(getComputedStyle(t).transform),
+          w=document.querySelector('.av-pager').clientWidth;return {id:S.x.viewId,offset:m.m41+w}; })()`);
+        assert(report.following.id === 'sample:anything-v5-mnn:0' && report.following.offset < -100 && report.following.offset > -220);
+      }
+      await touch('touchEnd', []); await sleep(440); await viewerReady();
+      const state = await evaluate(`({id:S.x.viewId,counter:document.querySelector('.av-counter').textContent,
+        src:document.querySelector('.av-page[data-pos="0"] .av-image').getAttribute('src')})`);
+      assert.equal(state.id, `sample:anything-v5-mnn:${target}`);
+      assert(state.counter.startsWith(`${target+1} / 4`) && state.src.includes('-512.webp'));
+      report.swipes.push(state);
+    }
+    assert(await evaluate(`!document.querySelector('.av-nav.right') && !!document.querySelector('.av-nav.left')`));
+    ok('左右按钮与真实横滑依次查看四张原图，拖动跟手且末张不越界', { following:report.following, swipes:report.swipes });
+
+    await click('[data-a="av-info"]');
+    assert(await evaluate(`document.querySelector('.dlg-title').textContent==='样例详情' && document.querySelector('.dlg').textContent.includes('512×512') && !document.querySelector('.dlg').textContent.includes('.json')`));
+    await click('.dlg [data-dlg="0"]');
+    await click('.av-back');
     assert.equal(await evaluate(`nav.current().page`), 'models');
-    assert.equal(await evaluate(`document.querySelectorAll('.model-item[data-model-id="anything-v5-mnn"] .model-sample').length`), 4);
-    ok('512 原图默认适配视口，可切原始尺寸滚动查看并返回模型中心', { fit: report.fit512, original: report.original512 });
 
     await evaluate(`nav.push('diffusion')`); await sleep(250);
     report.wizard = await evaluate(`(() => { const root=document.querySelector('.diff-step[data-step="0"]'); return {
       anything:root.querySelectorAll('.diff-model[data-model-id="anything-v5-mnn"] .model-sample').length,
       animagine:root.querySelectorAll('.diff-model[data-model-id="animagine-v4-sdxl"] .model-sample').length,
       chillout:root.querySelectorAll('.diff-model[data-model-id="chillout-mix-qnn"] .model-samples').length }; })()`);
-    assert.deepEqual(report.wizard, { anything: 4, animagine: 3, chillout: 0 });
+    assert.deepEqual(report.wizard, { anything:4, animagine:3, chillout:0 });
     await click('.diff-step[data-step="0"] .diff-model[data-model-id="animagine-v4-sdxl"] [data-arg="sample:animagine-v4-sdxl:0"]');
     await viewerReady();
-    report.fit1024 = await viewerMetrics();
-    assert.deepEqual(report.fit1024.natural, [1024, 1024]);
-    assert(report.fit1024.inside && report.fit1024.shown[0] < 1024);
-    await click('.diff-viewer-actions [data-a="diff-view-zoom"]');
-    report.original1024 = await viewerMetrics();
-    assert.deepEqual(report.original1024.shown, [1024, 1024]);
-    assert(report.original1024.scrollWidth > report.original1024.clientWidth && report.original1024.scrollHeight > report.original1024.clientHeight);
-    await click('.diff-viewer-head [data-a="back"]');
+    report.asset1024 = await sampleMetrics();
+    assert.deepEqual(report.asset1024.natural, [1024, 1024]);
+    assert(report.asset1024.inside && report.asset1024.shown[0] < 1024 && report.asset1024.page === 'asset');
+    assert(report.asset1024.sources.every(src => src.includes('-1024.webp') && !src.includes('-200.webp')));
+    assert(!report.asset1024.diffViewer && !report.asset1024.originalButton);
+    await click('.av-back');
     assert.equal(await evaluate(`nav.current().page`), 'diffusion');
-    ok('生图向导复用相同样例与查看器，1024 原图支持适应和原始尺寸', { counts: report.wizard, fit: report.fit1024, original: report.original1024 });
+    ok('生图向导进入同一素材查看器并加载 1024 原始 image', report.asset1024);
 
     await evaluate(`nav.pop()`); await sleep(150);
     await click('[data-a="theme-toggle"]');
     assert.equal(await evaluate(`document.documentElement.dataset.theme`), 'dark');
     await shot('walk-model-samples-hub-dark.png');
-    await click('[data-a="frame-toggle"]');
-    await metrics(1024, 680);
+    await click('[data-a="frame-toggle"]'); await metrics(1024, 680);
     report.landscape = await evaluate(`({overflow:document.documentElement.scrollWidth>innerWidth,
       squares:[...document.querySelectorAll('.model-item .model-sample')].every(el=>{const r=el.getBoundingClientRect();return Math.abs(r.width-r.height)<1}),
-      rail:document.querySelector('.phone').classList.contains('land')})`);
-    assert(!report.landscape.overflow && report.landscape.squares && report.landscape.rail);
+      land:document.querySelector('.phone').classList.contains('land')})`);
+    assert(!report.landscape.overflow && report.landscape.squares && report.landscape.land);
     await evaluate(`nav.push('diffusion')`); await sleep(300);
     await shot('walk-model-samples-wizard-dark-landscape.png');
     await click('.diff-step[data-step="0"] .diff-model[data-model-id="animagine-v4-sdxl"] [data-arg="sample:animagine-v4-sdxl:0"]');
     await viewerReady();
-    assert((await viewerMetrics()).inside);
+    assert((await sampleMetrics()).inside);
     await shot('walk-model-sample-viewer-1024-dark-landscape.png');
-    await click('.diff-viewer-head [data-a="back"]');
-    await evaluate(`nav.pop()`); await sleep(150);
-    ok('暗色主题与 1024×680 横屏下缩略图和原图均适配', report.landscape);
+    await click('.av-back'); await evaluate(`nav.pop()`); await sleep(150);
+    ok('暗色与 1024×680 横屏仍使用素材查看器适配', report.landscape);
 
-    await click('[data-a="frame-toggle"]');
-    await metrics(360, 780);
+    await click('[data-a="frame-toggle"]'); await metrics(360, 780);
     report.narrow = await evaluate(`({overflow:document.documentElement.scrollWidth>innerWidth,
       squares:[...document.querySelectorAll('.model-item .model-sample')].every(el=>{const r=el.getBoundingClientRect();return Math.abs(r.width-r.height)<1&&r.width>0})})`);
     assert(!report.narrow.overflow && report.narrow.squares);
     await shot('walk-model-samples-hub-narrow-dark.png');
-    ok('360px 窄屏无横向溢出，缩略图保持正方形', report.narrow);
+    ok('360px 窄屏列表无横向溢出', report.narrow);
 
     assert.deepEqual(externalRequests, [], `external requests: ${externalRequests.join(',')}`);
+    assert.deepEqual(infoRequests, [], `info JSON was requested: ${infoRequests.join(',')}`);
     assert.deepEqual(exceptions, [], `browser exceptions: ${JSON.stringify(exceptions)}`);
-    report.externalRequests = 0; report.exceptions = 0;
-    console.log(JSON.stringify({ ok: true, ...report }, null, 2));
+    report.externalRequests = 0; report.infoRequests = 0; report.exceptions = 0;
+    console.log(JSON.stringify({ ok:true, ...report }, null, 2));
   } finally {
     try { if (ws) ws.close(); } catch {}
     chrome.kill(); await sleep(400);
-    try { fs.rmSync(profile, { recursive: true, force: true }); } catch {}
+    try { fs.rmSync(profile, { recursive:true, force:true }); } catch {}
   }
 })().catch(error => { console.error(error); process.exitCode = 1; });

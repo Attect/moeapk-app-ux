@@ -3,7 +3,18 @@
 // 点云素材查看：姿态感应（倾斜演示 + 自动摇摆）与查看/渲染性能面板，默认收起。
 (function () {
   const assets = () => S.x.assets;
-  const cur = () => assets().find(a => a.id === S.x.viewId) || assets()[0];
+  // 素材库与模型样例共用同一查看器。样例集合由当前路由还原，不写入素材库；
+  // 各页以稳定 id 定位，横滑时仍沿用调用入口的模型路由。
+  const viewerAssets = () => {
+    const current = nav.current();
+    if (current && current.page === 'asset') {
+      const samples = ModelSamples.view(current.arg);
+      if (samples) return samples.items;
+    }
+    return assets();
+  };
+  const cur = () => viewerAssets().find(a => a.id === S.x.viewId) || viewerAssets()[0];
+  const curIndex = list => Math.max(0, list.findIndex(a => a.id === S.x.viewId));
 
   const KIND_LABEL = { image: '图片', video: '视频', audio: '音频', pointcloud: '3D 点云' };
 
@@ -145,6 +156,15 @@
     const restored = JSON.parse(ds.arg);
     restored.forEach(a => { if (!assets().some(x => x.id === a.id)) S.x.assets.unshift(a); });
     render();
+  });
+  action('av-open-sample', ds => {
+    if (!ModelSamples.view(ds.arg)) { toast('样例图片不可用'); return; }
+    S.x.viewId = ds.arg;
+    S.x.avChrome = true;
+    S.x.avZoomed = false;
+    S.x.avZoomChrome = false;
+    S.x.avZoom = { id: ds.arg, scale: 1, x: 0, y: 0 };
+    nav.push('asset', ds.arg);
   });
   action('av-open', ds => {
     if (lpFired) { lpFired = false; return; } // 长按后的松手 click：吞掉（见长按定时器注释）
@@ -347,11 +367,32 @@
   function mediaStage(a) {
     if (a.kind === 'pointcloud') return cloudStage(a);
     if (a.kind === 'audio') return audioStage(a);
-    const iw = a.pixelWidth > 0 ? a.pixelWidth : 9, ih = a.pixelHeight > 0 ? a.pixelHeight : 16;
-    return '<div class="av-media' + (a.kind === 'image' ? ' av-zoomable' : '') + '">' +
-      '<div class="av-picture" data-pixel-width="' + iw + '" data-pixel-height="' + ih + '" style="background:linear-gradient(165deg,hsl(' + a.hue + ',62%,64%),hsl(' + ((a.hue + 60) % 360) + ',48%,30%))"></div>' +
+    const iw = a.pixelWidth > 0 ? a.pixelWidth : (a.image ? 1 : 9);
+    const ih = a.pixelHeight > 0 ? a.pixelHeight : (a.image ? 1 : 16);
+    const background = a.image ? '' : ' style="background:linear-gradient(165deg,hsl(' + a.hue + ',62%,64%),hsl(' + ((a.hue + 60) % 360) + ',48%,30%))"';
+    const picture = '<div class="av-picture" data-pixel-width="' + iw + '" data-pixel-height="' + ih + '"' + background + '>' +
+      (a.image ? '<img class="av-image" src="' + esc(a.image) + '" alt="' + esc(a.label) + '" decoding="async" draggable="false">' : '') + '</div>';
+    return '<div class="av-media' + (a.kind === 'image' ? ' av-zoomable' : '') + '">' + picture +
       (a.kind === 'video' ? '<span style="width:56px;height:56px;border-radius:50%;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;color:#fff;z-index:1">' + icon('play_arrow') + '</span>' : '') + '</div>';
   }
+  // 原图加载后按真实像素重算同一连续缩放几何；列表缩略图不参与查看器布局。
+  document.addEventListener('load', e => {
+    const img = e.target;
+    if (!img.classList || !img.classList.contains('av-image')) return;
+    const picture = img.closest('.av-picture');
+    if (!picture) return;
+    picture.dataset.pixelWidth = img.naturalWidth;
+    picture.dataset.pixelHeight = img.naturalHeight;
+    const current = nav.current(), page = picture.closest('.av-page');
+    if (!current || current.page !== 'asset' || !page || page.dataset.pos !== '0') return;
+    const selected = cur();
+    if (!selected || selected.kind !== 'image') return;
+    requestAnimationFrame(() => {
+      if (!picture.isConnected) return;
+      const z = zoomOf(cur().id);
+      paintZoom(z.scale, z.x, z.y, false);
+    });
+  }, true);
   // 三页常驻轨道：媒体容器始终全屏，安全区只决定 1× 初始取景，不参与阈值布局切换。
   function pagerStage(list, idx) {
     const page = (item, pos) => '<div class="av-page" data-pos="' + pos + '">' +
@@ -371,10 +412,10 @@
     title: '素材',
     full: true, // 沉浸式全屏：无顶栏（顶栏由悬浮返回键 + 工具栏承担），Compose 侧对应全屏 Dialog/immersive viewer
     render() {
-      const list = assets();
+      const list = viewerAssets();
       const a = cur();
       if (!a) return emptyHint('素材不存在');
-      const idx = list.indexOf(a);
+      const idx = curIndex(list);
       const chromeOff = a.kind === 'image' && S.x.avChrome === false;
       const chromeAttrs = chromeOff ? ' aria-hidden="true" inert' : '';
       // 处理进度条（工具栏上方）
@@ -402,7 +443,8 @@
         '<button class="tool" data-a="' + act + '"' + (arg != null ? ' data-arg="' + esc(arg) + '"' : '') + '>' +
         '<span class="tool-ic">' + icon(ic) + '</span><span class="tool-label">' + esc(label) + '</span></button>';
       let tools = '';
-      if (a.kind === 'image') tools =
+      if (a.sample) tools = tool('send', '分享', 'av-share') + tool('info', '详情', 'av-info');
+      else if (a.kind === 'image') tools =
         tool('wallpaper', '设为壁纸', 'av-wallpaper') + tool('send', '分享', 'av-share') +
         tool('zoom_in', 'AI 放大', 'av-upscale') + tool('crop', 'AI 扩图', 'av-outpaint') +
         tool('apps', '3D 点云', 'av-3d') + tool('info', '详情', 'av-info');
@@ -419,7 +461,7 @@
         tool('settings', '控制面板', 'cl-panel') + tool('delete', '删除', 'av-delete', a.id) +
         tool('info', '详情', 'av-info');
       // 多选入口（图片/视频）：进入批量选择模式
-      if (a.kind === 'image' || a.kind === 'video') tools += tool('playlist_add', '多选', 'as-batch-on-viewer');
+      if (!a.sample && (a.kind === 'image' || a.kind === 'video')) tools += tool('playlist_add', '多选', 'as-batch-on-viewer');
       return '<div class="av-stage' + (chromeOff ? ' chrome-hidden' : '') + '">' +
         '<button class="av-back av-chrome" data-a="av-back"' + chromeAttrs + '>' + icon('arrow_back') + '</button>' +
         '<div class="av-counter av-chrome"' + (chromeOff ? ' aria-hidden="true"' : '') + '>' + (idx + 1) + ' / ' + list.length + (KIND_LABEL[a.kind] ? ' · ' + KIND_LABEL[a.kind] : '') + '</div>' +
@@ -430,7 +472,7 @@
   action('av-back', () => nav.pop());
   // 左右切到点云素材同样进入加载态（App 侧每次切换都会重新解析 pcache）
   function commitStep(d) {
-    const l = assets(); const i = l.indexOf(cur());
+    const l = viewerAssets(), i = curIndex(l);
     const nx = l[i + d];
     if (!nx) return;
     S.x.viewId = nx.id;
@@ -466,6 +508,18 @@
   action('av-info', () => {
     const a = cur();
     if (!a) return;
+    if (a.sample) {
+      const img = document.querySelector('.av-page[data-pos="0"] .av-image');
+      const dims = img && img.naturalWidth ? img.naturalWidth + '×' + img.naturalHeight : '加载中';
+      showDialog({
+        title: '样例详情',
+        body: '<div class="card tight" style="margin-top:0;padding:0">' +
+          [['模型', a.modelName], ['样例', '第 ' + (a.sampleIndex + 1) + ' 张'], ['分辨率', dims]]
+          .map(r => '<div class="li" style="cursor:default;min-height:44px"><div class="li-body"><div class="li-sub">' + r[0] + '</div><div class="li-title" style="font-weight:400;word-break:break-all">' + esc(r[1]) + '</div></div></div>').join('') + '</div>',
+        actions: [{ label: '关闭' }]
+      });
+      return;
+    }
     const mockBytes = 800000 + (a.hue * 13753) % 4200000;
     showDialog({
       title: '素材详情',
@@ -518,7 +572,7 @@
   }
   function animatePage(direction) {
     const p = pagerParts();
-    const l = assets(), i = l.indexOf(cur());
+    const l = viewerAssets(), i = curIndex(l);
     if (!p || pageAnimating || !l[i + direction]) return false;
     if (cur().kind === 'image') {
       S.x.avZoom = { id: cur().id, scale: 1, x: 0, y: 0 };
@@ -701,7 +755,7 @@
       paintZoom(z.scale, viewGesture.startZoom.x + dx, viewGesture.startZoom.y + dy, false);
       e.preventDefault();
     } else if (viewGesture.mode === 'swipe') {
-      const l = assets(), i = l.indexOf(cur());
+      const l = viewerAssets(), i = curIndex(l);
       const edge = (dx > 0 && i <= 0) || (dx < 0 && i >= l.length - 1);
       viewGesture.dragX = edge ? dx * .32 : dx;
       setTrackOffset(viewGesture.dragX, false);
@@ -743,8 +797,8 @@
     } else if (g.mode === 'swipe') {
       const dx = g.dragX, w = p.pager.clientWidth;
       const direction = Math.abs(dx) > w * .2 || Math.abs(g.velocityX) > .55 ? (dx < 0 ? 1 : -1) : 0;
-      const i = assets().indexOf(cur());
-      settlePage(direction && assets()[i + direction] ? direction : 0);
+      const list = viewerAssets(), i = curIndex(list);
+      settlePage(direction && list[i + direction] ? direction : 0);
     } else if (cur().kind === 'image' && zoomOf(cur().id).scale <= 1.01) {
       paintZoom(1, 0, 0, true);
     }

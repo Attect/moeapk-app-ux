@@ -639,38 +639,23 @@
   action('diff-hist-undo', ds => { const v = JSON.parse(ds.arg); D().history.splice(Math.min(v.idx, D().history.length), 0, v.r); render(); });
   action('diff-settings', () => { S.x.diffDrawer = false; S.x.dcId = D().modelId || DIFF_MODELS[0].id; nav.push('diff-config', S.x.dcId); });
 
-  // ---------- 全屏图片查看：生成结果 / 底图 / 模型样例共用 ----------
+  // ---------- 全屏图片查看：上方大画面、下方查看工具栏 ----------
   function diffImagePage(arg) {
-    const d = D(), value = String(arg || '');
-    const isBase = value.indexOf('base:') === 0, isSample = value.indexOf('sample:') === 0;
-    let r = null, sampleView = null;
-    if (isSample) {
-      sampleView = ModelSamples.read(value);
-      if (sampleView) r = {
-        id: value, sample: true, image: sampleView.sample.image,
-        prompt: sampleView.model.name,
-        info: '样例 ' + (sampleView.index + 1) + ' / ' + sampleView.count
-      };
-    } else if (isBase) {
-      const id = value.slice(5), a = (S.x.assets || []).find(x => x.id === id);
+    const d = D();
+    const isBase = String(arg || '').indexOf('base:') === 0;
+    let r = null;
+    if (isBase) {
+      const id = String(arg).slice(5), a = (S.x.assets || []).find(x => x.id === id);
       if (a) r = { id: arg, hue: a.hue, prompt: a.label, info: '创作输入底图 · 素材库', params: { size: 512, ar: '1:1' }, base: true };
     } else r = d.history.find(x => x.id === arg) || currentResult();
     if (!r) return '<div class="diff-viewer"><header class="diff-viewer-head"><button class="diff-icon" data-a="back">' + icon('arrow_back') + '</button><strong>图片不可用</strong></header><div class="diff-empty">记录已被删除</div></div>';
-    const zoomed = !!S.x.diffImageZoom;
-    const stageMode = r.sample ? (zoomed ? ' original' : ' fit') : (zoomed ? ' zoomed' : '');
-    const title = r.sample ? '模型样例' : (r.base ? '底图查看' : '生成结果');
-    const subtitle = r.sample ? '适应屏幕 / 原始尺寸' : '点击工具栏可放大查看';
-    const media = r.sample
-      ? '<img class="diff-viewer-image" src="' + esc(r.image) + '" alt="' + esc(r.prompt + ' ' + r.info) + '" draggable="false">'
-      : imageArt(r, 'diff-viewer-art', null);
+    const zoom = S.x.diffImageZoom ? ' zoomed' : '';
     let h = '<div class="diff-viewer"><header class="diff-viewer-head"><button class="diff-icon" data-a="back" title="返回">' + icon('arrow_back') + '</button>' +
-      '<div><strong>' + title + '</strong><span>' + subtitle + '</span></div>' +
-      '<button class="diff-icon" data-a="diff-view-zoom" title="' + (r.sample ? (zoomed ? '适应屏幕' : '查看原始尺寸') : '切换放大') + '">' + icon(r.sample && zoomed ? 'aspect_ratio' : 'zoom_in') + '</button></header>' +
-      '<div class="diff-viewer-stage' + stageMode + '">' + media + '</div>' +
+      '<div><strong>' + (r.base ? '底图查看' : '生成结果') + '</strong><span>点击工具栏可放大查看</span></div>' +
+      '<button class="diff-icon" data-a="diff-view-zoom" title="切换放大">' + icon('zoom_in') + '</button></header>' +
+      '<div class="diff-viewer-stage' + zoom + '">' + imageArt(r, 'diff-viewer-art', null) + '</div>' +
       '<footer class="diff-viewer-tools"><div class="diff-viewer-copy"><strong>' + esc(r.prompt || '（无提示词）') + '</strong><span>' + esc(r.info || '') + '</span></div><div class="diff-viewer-actions">';
-    if (r.sample) {
-      h += '<button class="diff-btn small ghost" data-a="diff-view-zoom">' + icon(zoomed ? 'aspect_ratio' : 'zoom_in') + (zoomed ? '适应屏幕' : '原始尺寸') + '</button>';
-    } else if (r.base) h += '<button class="diff-btn small" data-a="back">返回继续编辑</button>';
+    if (r.base) h += '<button class="diff-btn small" data-a="back">返回继续编辑</button>';
     else {
       h += '<button class="diff-btn small ghost" data-a="diff-save-asset" data-arg="' + r.id + '">' + icon('save') + '存素材</button>' +
         '<button class="diff-btn small ghost" data-a="diff-save-album" data-arg="' + r.id + '">' + icon('download') + '存相册</button>' +
@@ -681,11 +666,6 @@
   }
   action('diff-open-result', ds => { D().curId = ds.arg; S.x.diffDrawer = false; S.x.diffImageZoom = false; nav.push('diff-image', ds.arg); });
   action('diff-open-base', ds => { S.x.diffImageZoom = false; nav.push('diff-image', 'base:' + ds.arg); });
-  action('diff-open-sample', ds => {
-    if (!ModelSamples.read(ds.arg)) { toast('样例图片不可用'); return; }
-    S.x.diffImageZoom = false;
-    nav.push('diff-image', ds.arg);
-  });
   action('diff-view-zoom', () => { S.x.diffImageZoom = !S.x.diffImageZoom; render(); });
 
   // ---------- 生成（简单批量 / 扫描共用一条驱动） ----------

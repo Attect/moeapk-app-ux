@@ -179,6 +179,7 @@ async function swipe(direction) {
     await click('.dlg [data-a="vocab-download"]');
     assert(await evaluate(`document.querySelectorAll('.dlg [data-a="vocab-use"]').length>=40 && document.querySelector('.dlg').textContent.includes('共 50 条标签')`));
     await setValue('.dlg [data-live="vocab-query"]', '蓝眼');
+    await waitFor(() => evaluate(`document.querySelectorAll('.dlg [data-a="vocab-use"]').length===1`), 2000, 'vocabulary filter');
     assert.equal(await evaluate(`document.querySelectorAll('.dlg [data-a="vocab-use"]').length`), 1);
     await click('.dlg [data-a="vocab-use"]');
     assert(await evaluate(`window._diffusion.state().prompt.includes('blue eyes')`));

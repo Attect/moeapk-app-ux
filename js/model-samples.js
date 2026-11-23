@@ -33,18 +33,33 @@
     return { model, sample: samples[index], index, count: samples.length };
   }
 
+  function view(value) {
+    const selected = read(value);
+    if (!selected) return null;
+    const model = selected.model;
+    return {
+      model,
+      index: selected.index,
+      items: list(model).map((sample, index) => ({
+        id: ref(model, index), kind: 'image', image: sample.image,
+        label: model.name + ' · 样例 ' + (index + 1),
+        modelName: model.name, sampleIndex: index, sample: true
+      }))
+    };
+  }
+
   function html(model) {
     const samples = list(model);
     if (!samples.length) return '';
     const name = (model && model.name) || '图片模型';
     return '<div class="model-samples">' + samples.map((sample, index) => {
       const label = '查看 ' + name + ' 的第 ' + (index + 1) + ' 张样例原图';
-      return '<button type="button" class="model-sample" data-a="diff-open-sample" data-arg="' + esc(ref(model, index)) + '"' +
+      return '<button type="button" class="model-sample" data-a="av-open-sample" data-arg="' + esc(ref(model, index)) + '"' +
         ' aria-label="' + esc(label) + '" title="查看原图">' +
         '<img src="' + esc(sample.thumb) + '" alt="" width="200" height="200" loading="lazy" decoding="async" draggable="false">' +
         '</button>';
     }).join('') + '</div>';
   }
 
-  window.ModelSamples = { list, html, read, ref };
+  window.ModelSamples = { list, html, read, view, ref };
 })();

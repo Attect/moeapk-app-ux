@@ -53,6 +53,13 @@ test('samples 新旧格式统一，过滤无效项且最多返回四张', () => 
   assert.equal(resolved.count, 4);
   assert.equal(api.read('sample:repo%2Fmodel:4'), null, '第五张不可通过路由绕过四张上限');
   assert.equal(api.read('sample:other:0'), null, '不得跨模型借用样例');
+  const viewer = api.view(ref);
+  assert.equal(viewer.items.length, 4, '素材查看器获得同一模型的完整四页集合');
+  assert.equal(viewer.index, 1);
+  assert.equal(viewer.items[1].id, ref);
+  assert.equal(viewer.items[1].image, 'one-1024.webp');
+  assert.equal(viewer.items[1].thumb, undefined, '查看器数据只携带原图，不回用列表缩略图');
+  assert.equal(viewer.items[1].info, undefined, '查看器数据不携带或请求生成信息');
 });
 
 test('无样例不输出容器，缩略图按钮只引用 thumb 并携带原图路由', () => {
@@ -67,6 +74,7 @@ test('无样例不输出容器，缩略图按钮只引用 thumb 并携带原图�
   assert.equal((html.match(/class="model-sample"/g) || []).length, 2);
   assert(html.includes('src="small-200.webp"'));
   assert(!html.includes('src="large-1024.webp"'));
+  assert(html.includes('data-a="av-open-sample"'));
   assert(html.includes('data-arg="sample:m:0"'));
   assert(html.includes('width="200" height="200"'));
   assert(!html.includes('private.json'), '生成信息 URL 不进入界面');
@@ -98,26 +106,33 @@ test('演示目录按模型提供独立样例，所有资源与 info JSON 均在
   }
 });
 
-test('模型中心与生图向导复用同一样例组件和已有全屏查看页', () => {
+test('模型样例直接复用素材 asset 查看器，不再进入 diff-image', () => {
   const hub = read('js/screens/ai-models.js');
   const diffusion = read('js/screens/ai-diffusion.js');
+  const assets = read('js/screens/assets.js');
   assert(hub.includes("m.kind === 'diffusion' ? ModelSamples.html(m) : ''"));
   assert(hub.includes("kl === '生图' ? ModelSamples.html(m) : ''"));
   assert(diffusion.includes('ModelSamples.html(m)'));
-  assert(diffusion.includes("action('diff-open-sample'"));
-  assert(diffusion.includes("nav.push('diff-image', ds.arg)"));
-  assert(diffusion.includes('ModelSamples.read(value)'));
-  assert(diffusion.includes('class="diff-viewer-image"'));
-  assert(!diffusion.includes('sampleView.sample.info'), '本任务不展示生成信息');
+  assert(!diffusion.includes('diff-open-sample'));
+  assert(!diffusion.includes('ModelSamples.read(value)'));
+  assert(!diffusion.includes('diff-viewer-image'));
+  assert(assets.includes("action('av-open-sample'"));
+  assert(assets.includes("nav.push('asset', ds.arg)"));
+  assert(assets.includes('ModelSamples.view(current.arg)'));
+  assert(assets.includes('class="av-image"'));
+  assert(assets.includes('const list = viewerAssets()'));
+  assert(assets.includes('const l = viewerAssets()'), '分页与横滑使用同一样例集合');
 
   const css = read('css/app.css');
   assert.match(css, /\.model-samples\s*\{[^}]*grid-template-columns:\s*repeat\(4, minmax\(0, 1fr\)\)/s);
   assert.match(css, /\.model-sample\s*\{[^}]*aspect-ratio:\s*1 \/ 1/s);
   assert.match(css, /\.model-sample img\s*\{[^}]*object-fit:\s*cover/s);
-  assert.match(css, /\.diff-viewer-stage\.original \.diff-viewer-image\s*\{[^}]*max-width:\s*none;[^}]*max-height:\s*none/s);
+  assert.match(css, /\.av-picture \.av-image\s*\{[^}]*object-fit:\s*contain/s);
+  assert(!css.includes('.diff-viewer-stage.original'));
+  assert(!css.includes('.diff-viewer-image'));
 
   const html = read('index.html');
-  assert(html.indexOf('js/model-samples.js') < html.indexOf('js/screens/ai-diffusion.js'));
+  assert(html.indexOf('js/model-samples.js') < html.indexOf('js/screens/assets.js'));
   const versions = [...html.matchAll(/\?v=(\d+)/g)].map(m => m[1]);
-  assert(versions.length >= 20 && versions.every(v => v === '99'));
+  assert(versions.length >= 20 && versions.every(v => v === '100'));
 });

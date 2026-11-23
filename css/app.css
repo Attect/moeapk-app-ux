@@ -662,6 +662,7 @@ body.has-full .proto-bar { opacity: 0; pointer-events: none; transition: opacity
   transform-origin: center; transition: transform .22s cubic-bezier(.2,.8,.2,1);
   will-change: transform; pointer-events: none;
 }
+.av-picture .av-image { display: block; width: 100%; height: 100%; object-fit: contain; pointer-events: none; user-select: none; -webkit-user-drag: none; }
 .av-zoomable { cursor: zoom-in; }
 .av-counter {
   position: absolute; top: calc(var(--statusbar-h) + 8px); left: 50%; transform: translateX(-50%);
@@ -2043,12 +2044,9 @@ textarea.diff-prompt { min-height: 156px; resize: vertical; border-radius: 0; bo
 .diff-viewer-head strong { display: block; font-size: 14px; }
 .diff-viewer-head span { display: block; color: rgba(255,255,255,.65); font-size: 10px; }
 .diff-viewer-head .diff-icon, .diff-viewer-tools .diff-icon { color: #fff; }
-.diff-viewer-stage { flex: 1; min-height: 0; overflow: auto; display: flex; padding: 12px; }
-.diff-viewer-stage > * { margin: auto; }
+.diff-viewer-stage { flex: 1; min-height: 0; overflow: auto; display: flex; align-items: center; justify-content: center; padding: 12px; }
 .diff-viewer-stage .diff-art { flex: none; width: min(100%, 72vh); height: auto; max-height: none; }
 .diff-viewer-stage.zoomed .diff-art { transform: scale(1.6); }
-.diff-viewer-image { flex: none; display: block; width: auto; height: auto; max-width: 100%; max-height: 100%; object-fit: contain; user-select: none; }
-.diff-viewer-stage.original .diff-viewer-image { max-width: none; max-height: none; }
 .diff-viewer-tools { flex: none; padding: 9px 10px calc(9px + var(--gesture-h)); background: rgba(10,14,24,.88); border-top: 1px solid rgba(255,255,255,.12); }
 .diff-viewer-copy strong { display: block; font-size: 11px; line-height: 16px; overflow-wrap: anywhere; }
 .diff-viewer-copy span { display: block; margin-top: 3px; color: rgba(255,255,255,.65); font-size: 10px; line-height: 15px; }
