@@ -52,14 +52,37 @@
     const samples = list(model);
     if (!samples.length) return '';
     const name = (model && model.name) || '图片模型';
-    return '<div class="model-samples">' + samples.map((sample, index) => {
-      const label = '查看 ' + name + ' 的第 ' + (index + 1) + ' 张样例原图';
-      return '<button type="button" class="model-sample" data-a="av-open-sample" data-arg="' + esc(ref(model, index)) + '"' +
+    return '<div class="model-samples">' + samples.map((sample, index) => sampleButton(model, sample, index, name)).join('') + '</div>';
+  }
+
+  /**
+   * 分组行的预览：组内跨变体去重后的样例（相同预览只留一份）。
+   * 每张样例按「首个持有它的变体 + 该变体内的序号」生成引用，查看器数据源不变。
+   */
+  function groupHtml(group) {
+    const samples = (group && group.samples) || [];
+    if (!samples.length) return '';
+    const title = (group && group.title) || '图片模型';
+    const buttons = samples.map((sample, i) => {
+      const hit = (group.variants || []).map(v => ({ model: v.model, samples: list(v.model) }))
+        .find(entry => entry.samples.some(s => s.thumb === sample.thumb && s.image === sample.image));
+      const index = hit ? hit.samples.findIndex(s => s.thumb === sample.thumb && s.image === sample.image) : 0;
+      const label = '查看 ' + title + ' 的第 ' + (i + 1) + ' 张样例原图';
+      return '<button type="button" class="model-sample" data-a="av-open-sample" data-arg="' + esc(ref(hit.model, index)) + '"' +
         ' aria-label="' + esc(label) + '" title="查看原图">' +
         '<img src="' + esc(sample.thumb) + '" alt="" width="200" height="200" loading="lazy" decoding="async" draggable="false">' +
         '</button>';
-    }).join('') + '</div>';
+    }).join('');
+    return '<div class="model-samples">' + buttons + '</div>';
   }
 
-  window.ModelSamples = { list, html, read, view, ref };
+  function sampleButton(model, sample, index, name) {
+    const label = '查看 ' + name + ' 的第 ' + (index + 1) + ' 张样例原图';
+    return '<button type="button" class="model-sample" data-a="av-open-sample" data-arg="' + esc(ref(model, index)) + '"' +
+      ' aria-label="' + esc(label) + '" title="查看原图">' +
+      '<img src="' + esc(sample.thumb) + '" alt="" width="200" height="200" loading="lazy" decoding="async" draggable="false">' +
+      '</button>';
+  }
+
+  window.ModelSamples = { list, html, groupHtml, read, view, ref };
 })();

@@ -85,11 +85,13 @@ test('演示目录按模型提供独立样例，所有资源与 info JSON 均在
   const anything = models.find(m => m.id === 'anything-v5-mnn');
   const animagine = models.find(m => m.id === 'animagine-v4-sdxl');
   const chillout = models.find(m => m.id === 'chillout-mix-qnn');
+  const noSamples = models.find(m => m.id === 'chillout-mix-qnn-min');
   assert.equal(anything.samples.length, 4);
   assert.equal(animagine.samples.length, 3);
-  assert(!Array.isArray(chillout.samples) || chillout.samples.length === 0, '保留无样例模型走查入口');
+  assert.equal(chillout.samples.length, 4);
+  assert(!Array.isArray(noSamples.samples) || noSamples.samples.length === 0, '保留无样例模型走查入口');
 
-  for (const model of [anything, animagine]) {
+  for (const model of [anything, animagine, chillout]) {
     for (const sample of model.samples) {
       for (const key of ['thumb', 'image', 'info']) {
         assert.equal(typeof sample[key], 'string', `${model.id}.${key}`);
@@ -106,13 +108,33 @@ test('演示目录按模型提供独立样例，所有资源与 info JSON 均在
   }
 });
 
+test('同一模型的多个权重包合并为一行，相同预览只保留一份', () => {
+  const groups = read('js/model-display.js');
+  const context = { window: {} };
+  vm.createContext(context);
+  vm.runInContext(groups, context);
+  const data = aiData().filter(m => m.type === 'model' && m.kind === 'diffusion');
+  const grouped = context.window.ModelGroups.group(data);
+  const chillout = grouped.find(g => g.title === 'Chillout Mix');
+  assert.equal(chillout.variants.length, 4, '四个权重包合并为一行');
+  assert.deepEqual(Array.from(chillout.variants, v => v.label),
+    ['QNN NPU', '8Gen1 桶 · QNN NPU', '通用桶 · QNN NPU', 'MNN CPU']);
+  assert.equal(chillout.samples.length, 4, '三个变体共 12 条相同样例去重后仍为四张');
+  const anything = grouped.find(g => g.title === 'Anything V5');
+  assert.equal(anything.variants.length, 1);
+  const animagine = grouped.find(g => g.title === 'animagine v4');
+  assert.equal(animagine.variants.length, 1, '主名不同的模型不得并组');
+});
+
 test('模型样例直接复用素材 asset 查看器，不再进入 diff-image', () => {
   const hub = read('js/screens/ai-models.js');
   const diffusion = read('js/screens/ai-diffusion.js');
   const assets = read('js/screens/assets.js');
-  assert(hub.includes("m.kind === 'diffusion' ? ModelSamples.html(m) : ''"));
+  assert(hub.includes("m.kind === 'diffusion' ? ModelSamples.groupHtml(g) : ''"));
   assert(hub.includes("kl === '生图' ? ModelSamples.html(m) : ''"));
-  assert(diffusion.includes('ModelSamples.html(m)'));
+  assert(diffusion.includes('ModelSamples.groupHtml(g)'));
+  assert(diffusion.includes("action('diff-pick-variant'"), '行内权重包可切换');
+  assert(diffusion.includes('class="section-title diff-family"'), '家族组头吸顶');
   assert(!diffusion.includes('diff-open-sample'));
   assert(!diffusion.includes('ModelSamples.read(value)'));
   assert(!diffusion.includes('diff-viewer-image'));
@@ -127,12 +149,15 @@ test('模型样例直接复用素材 asset 查看器，不再进入 diff-image',
   assert.match(css, /\.model-samples\s*\{[^}]*grid-template-columns:\s*repeat\(4, minmax\(0, 1fr\)\)/s);
   assert.match(css, /\.model-sample\s*\{[^}]*aspect-ratio:\s*1 \/ 1/s);
   assert.match(css, /\.model-sample img\s*\{[^}]*object-fit:\s*cover/s);
+  assert.match(css, /\.diff-family\s*\{[^}]*position:\s*sticky/s);
+  assert.match(css, /\.diff-variant\.on\s*\{[^}]*background:\s*var\(--secondary-container\)/s);
   assert.match(css, /\.av-picture \.av-image\s*\{[^}]*object-fit:\s*contain/s);
   assert(!css.includes('.diff-viewer-stage.original'));
   assert(!css.includes('.diff-viewer-image'));
 
   const html = read('index.html');
   assert(html.indexOf('js/model-samples.js') < html.indexOf('js/screens/assets.js'));
+  assert(html.indexOf('js/model-display.js') < html.indexOf('js/screens/ai-diffusion.js'), '分组模块先于页面加载');
   const versions = [...html.matchAll(/\?v=(\d+)/g)].map(m => m[1]);
-  assert(versions.length >= 20 && versions.every(v => v === '100'));
+  assert(versions.length >= 20 && versions.every(v => v === '101'));
 });

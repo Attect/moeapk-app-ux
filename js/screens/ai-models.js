@@ -81,6 +81,8 @@
         if (q && m.name.toLowerCase().indexOf(q) < 0 && (m.summary || '').toLowerCase().indexOf(q) < 0) return false;
         return true;
       });
+      // 同一基础模型的多个权重包合并为一行（行内再选具体版本）
+      const recGroups = window.ModelGroups.group(recFiltered);
 
       let h = '';
       // F11：存储占用卡（总大小 / 数量 / 清理入口）
@@ -128,9 +130,10 @@
         : (local.length ? emptyHint('当前分类/过滤条件下没有模型') :
           card('<div class="muted small" style="padding:14px">还没有本地模型。下载推荐模型、从搜索页获取，或点「从手机导入」添加自己的模型文件。</div>'));
 
-      // 推荐模型（分类 + 标签 + 能力徽章）
-      h += sectionTitle('推荐模型' + (q || cat !== 'all' ? ' · ' + recFiltered.length + ' 个' : ''));
-      h += recFiltered.length ? '<div class="card tight" style="padding:0;margin-top:0">' + recFiltered.map(m => {
+      // 推荐模型（分类 + 双标签）：同一模型的多个权重包合并为一行，行内chip各自下载
+      h += sectionTitle('推荐模型' + (q || cat !== 'all' ? ' · ' + recGroups.length + ' 个' : ''));
+      h += recGroups.length ? '<div class="card tight" style="padding:0;margin-top:0">' + recGroups.map(g => {
+        const m = g.variants[0].model;
         const size = m.parts.reduce((x, p) => x + p.size, 0);
         const j = mock.job('rec-dl-' + m.id);
         const ready = (S.x.localModels || []).some(l => l.id === m.id) || (j && j.done);
@@ -138,10 +141,14 @@
         if (ready) trail = '<span class="badge soft">已就绪</span>';
         else if (j) trail = '<div style="width:90px">' + progress(j.p) + '</div>';
         else trail = textBtn('下载', 'rec-dl', m.id);
-        return '<div class="li model-item" data-model-id="' + esc(m.id) + '"><div class="model-item-main"><div class="li-body"><div class="li-title" style="font-weight:400">' + esc(m.name) + '</div>' +
-          '<div class="li-sub">' + esc(m.summary) + ' · ' + fmtSize(size) + '</div>' +
+        const chips = g.variants.length > 1
+          ? '<div class="diff-variants" role="group" aria-label="权重包"><span>权重包</span>' + g.variants.map(v =>
+            '<button class="diff-variant" data-a="rec-dl" data-arg="' + v.model.id + '">' + esc(v.label) + '</button>').join('') + '</div>'
+          : '';
+        return '<div class="li model-item" data-model-id="' + esc(m.id) + '"><div class="model-item-main"><div class="li-body"><div class="li-title" style="font-weight:400">' + esc(g.title) + '</div>' +
+          '<div class="li-sub">' + esc(m.summary) + ' · ' + fmtSize(size) + (g.variants.length > 1 ? ' · ' + g.variants.length + ' 个权重包' : '') + '</div>' +
           '<div class="tag-row">' + tagsHtml(KIND_LABEL[m.kind] || m.kind, fmtOfEngine(m)) + capsHtml(m.caps) + '</div></div>' + trail + '</div>' +
-          (m.kind === 'diffusion' ? ModelSamples.html(m) : '') + '</div>';
+          chips + (m.kind === 'diffusion' ? ModelSamples.groupHtml(g) : '') + '</div>';
       }).join('') + '</div>' : emptyHint('当前分类/过滤条件下没有推荐模型');
       }
 

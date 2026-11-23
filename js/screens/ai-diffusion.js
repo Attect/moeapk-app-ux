@@ -285,10 +285,22 @@
       [['txt', '文生图'], ['img', '图生图'], ['inpaint', '局部重绘']].map(x =>
         '<button class="' + (d.mode === x[0] ? 'on' : '') + '" data-a="diff-mode" data-arg="' + x[0] + '">' + x[1] + '</button>').join('') + '</div>' +
       '<div class="diff-caption">图生图 / 局部重绘会在创作输入步选择底图；切换方式不保留旧遮罩。</div>';
-    h += '<div class="diff-models">' + DIFF_MODELS.map(m => modelRow(m, d)).join('') + '</div>';
+    // 同一模型的多个权重包合并为一行，行内再选具体版本；家族组头吸顶
+    const groups = window.ModelGroups.group(DIFF_MODELS);
+    h += '<div class="diff-models">' + groups.map(g => modelGroupHtml(g, d)).join('') + '</div>';
     return h;
   }
-  function modelRow(m, d) {
+  function modelGroupHtml(g, d) {
+    const activeId = d.modelId && g.variants.some(v => v.model.id === d.modelId)
+      ? d.modelId
+      : (g.variants[0] && g.variants[0].model.id);
+    const head = '<div class="section-title diff-family" role="heading" aria-level="2">' + esc(g.family) +
+      ' · ' + g.variants.length + ' 个权重包</div>';
+    const row = g.variants.map(v => modelRow(v, g, d, v.model.id === activeId)).find(Boolean) || '';
+    return head + row;
+  }
+  function modelRow(variant, g, d, active) {
+    const m = variant.model;
     const size = m.parts.reduce((s, p) => s + p.size, 0);
     const j = mock.job('diff-mdl-' + m.id);
     const selected = d.modelId === m.id;
@@ -297,12 +309,46 @@
     if (j && !j.done) trail = '<span class="diff-model-progress">' + Math.round(j.p * 100) + '%</span>';
     else if (j && j.done) trail = '<button class="diff-btn small ' + (selected ? 'ghost' : '') + '" data-a="diff-pick-use" data-arg="' + m.id + '">' + (selected ? '当前' : '选择') + '</button>';
     else trail = '<button class="diff-btn small ghost" data-a="diff-pick-dl" data-arg="' + m.id + '">下载</button>';
+    if (!active) return '';
+    // 行内权重包chip：当前包高亮；点已下载的包直接选用，未下载的点一下即开始下载
+    const chips = g.variants.length > 1
+      ? '<div class="diff-variants" role="group" aria-label="权重包"><span>权重包</span>' + g.variants.map(v =>
+        '<button class="diff-variant' + (v.model.id === m.id ? ' on' : '') + '" data-a="diff-pick-variant" data-arg="' + v.model.id + '"' +
+        ' aria-pressed="' + (v.model.id === m.id ? 'true' : 'false') + '">' + esc(v.label) + '</button>').join('') + '</div>'
+      : '';
     return '<article class="diff-model' + (selected ? ' on' : '') + '" data-model-id="' + esc(m.id) + '">' +
-      '<div class="diff-model-top"><div><strong>' + esc(m.name) + '</strong><div class="diff-tags"><span>' + esc(familyOf(m)) + '</span>' +
+      '<div class="diff-model-top"><div><strong>' + esc(g.title) + '</strong><div class="diff-tags"><span>' + esc(familyOf(m)) + '</span>' +
       backendsOf(m).map(b => '<span>' + backendNames[b] + '</span>').join('') + (isSdxl(m) ? '<span>宽高比</span>' : '') + '</div></div>' + trail + '</div>' +
       '<p>' + esc(m.summary) + '</p><div class="diff-model-meta"><span>' + fmtSize(size) + '</span><span>' + esc((m.diffusion && m.diffusion.packageNote) || '按模型包声明过滤后端') + '</span></div>' +
-      (j && !j.done ? progress(j.p) : '') + ModelSamples.html(m) + '</article>';
+      (j && !j.done ? progress(j.p) : '') + chips + (g.samples.length ? ModelSamples.groupHtml(g) : '') + '</article>';
   }
+  // 行内权重包切换：已下载 → 选用；未下载 → 下载（与主按钮同链路）
+  action('diff-pick-variant', ds => {
+    const m = modelOf(ds.arg);
+    if (!m) return;
+    if (modelReady(m)) {
+      const d = D();
+      d.modelId = m.id; d.curId = null; d.compute = null; d.computeError = null; d.lastError = null;
+      render(); afterRenderGo(1);
+      return;
+    }
+    const existing = mock.job('diff-mdl-' + m.id);
+    if (existing && !existing.done) { toast('模型正在下载'); return; }
+    mock.startJob('diff-mdl-' + m.id, '下载 ' + m.name, 3400, ['源 1', '源 2', '校验']);
+    const t = setInterval(() => {
+      const job = mock.job('diff-mdl-' + m.id);
+      if (!job) { clearInterval(t); return; }
+      if (job.done) {
+        clearInterval(t);
+        const d = D();
+        d.modelId = m.id; d.curId = null; d.compute = null; d.computeError = null;
+        render();
+        const cur = nav.current();
+        if (cur && cur.page === 'diffusion' && d.step === 0) afterRenderGo(1);
+      }
+    }, 300);
+    render();
+  });
   action('diff-pick', () => goStep(0, true));
   action('diff-pick-dl', ds => {
     const m = modelOf(ds.arg);

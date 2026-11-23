@@ -1875,8 +1875,19 @@ textarea.field-input { min-height: 84px; resize: vertical; font-family: inherit;
 .diff-segment.compact { margin-top: 8px; }
 .diff-segment.compact button { min-height: 28px; font-size: 11px; }
 .diff-models { display: grid; gap: 6px; margin-top: 7px; }
+/* 生图模型家族组头：复用 .section-title 玻璃胶囊，吸顶位置按向导 chrome 另算 */
+.diff-family { position: sticky; top: 0; z-index: 3; margin: 10px 0 0 0; }
 .diff-model { padding: 8px; border: 1px solid var(--outline-variant); border-radius: 8px; background: var(--surface-low); }
 .diff-model.on { border-color: var(--primary); background: var(--secondary-container); }
+/* 行内权重包chip：当前包高亮，已下载/未下载用底色区分 */
+.diff-variants { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 6px; }
+.diff-variants > span { color: var(--on-surface-variant); font-size: 9px; line-height: 14px; }
+.diff-variant {
+  min-height: 22px; padding: 2px 7px; border: 1px solid var(--outline-variant); border-radius: 4px;
+  background: var(--surface-highest); color: var(--on-surface-variant);
+  font-size: 9px; line-height: 13px; cursor: pointer;
+}
+.diff-variant.on { border-color: var(--primary); background: var(--secondary-container); color: var(--on-secondary-container); font-weight: 600; }
 .diff-model-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
 .diff-model-top > div { min-width: 0; }
 .diff-model strong { font-size: 12px; line-height: 17px; }

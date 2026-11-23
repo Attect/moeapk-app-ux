@@ -79,7 +79,8 @@ test('每个生图模型显式声明真实后端与高通代际约束', () => {
     assert.ok(m.diffusion.backends.every(b => ['cpu','gpu','npu'].includes(b)), m.id);
     if (m.diffusion.backends.includes('npu')) {
       assert.equal(m.diffusion.npuVendor, 'Qualcomm', m.id);
-      assert.ok(m.diffusion.minGeneration >= 2, m.id);
+      // 代际下限至少 1：8Gen1 桶就是为骁龙 8 Gen1 准备的预转换包
+      assert.ok(m.diffusion.minGeneration >= 1, m.id);
     }
   }
   assert.match(screen, /无法计算 · NPU 仅对应 QNN \/ Hexagon/);
@@ -150,5 +151,27 @@ test('生图原型保持纯静态，无网络或模块依赖', () => {
   const html = read('index.html');
   const versions = [...html.matchAll(/\?v=(\d+)/g)].map(m => m[1]);
   assert.ok(versions.length >= 20);
-  assert.ok(versions.every(v => v === '100'));
+  assert.ok(versions.every(v => v === '101'));
+});
+
+test('模型列表把同一模型的权重包合并为一行，组头吸顶且行内可切换', () => {
+  // 分组逻辑走 js/model-display.js（与 Compose 侧 DiffusionModelGroups 同口径）
+  const context = { window: {} };
+  vm.createContext(context);
+  vm.runInContext(read('js/model-display.js'), context);
+  const models = diffusionModels();
+  const groups = context.window.ModelGroups.group(models);
+  const chillout = groups.find(g => g.title === 'Chillout Mix');
+  assert.equal(chillout.variants.length, 4, '四个权重包合并为一行');
+  assert.equal(chillout.samples.length, 4, '相同预览跨变体去重后只留一份');
+  assert.deepEqual(Array.from(chillout.variants, v => v.label),
+    ['QNN NPU', '8Gen1 桶 · QNN NPU', '通用桶 · QNN NPU', 'MNN CPU']);
+
+  assert.match(screen, /window\.ModelGroups\.group\(DIFF_MODELS\)/);
+  assert.match(screen, /class="section-title diff-family"/);
+  assert.match(screen, /action\('diff-pick-variant'/);
+  assert.match(screen, /ModelSamples\.groupHtml\(g\)/);
+  // 家族与主名都不同（DMD2、不同版本）不得并组
+  const dmd = groups.filter(g => /DMD2/.test(g.title));
+  assert.ok(dmd.every(g => g.variants.length === 1), 'DMD2 主名不同，不得并入标准版');
 });

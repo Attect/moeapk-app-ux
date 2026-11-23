@@ -135,11 +135,12 @@ async function sampleMetrics() {
         overflow:document.documentElement.scrollWidth>innerWidth}; })()`);
     assert.equal(report.hub.counts['anything-v5-mnn'].buttons, 4);
     assert.equal(report.hub.counts['animagine-v4-sdxl'].buttons, 3);
-    assert.deepEqual(report.hub.counts['chillout-mix-qnn'], { buttons: 0, containers: 0 });
+    // 同一模型的多个权重包已合并为一行：四张预览只出现一次（跨变体去重）
+    assert.deepEqual(report.hub.counts['chillout-mix-qnn'], { buttons: 4, containers: 1 });
     assert(report.hub.squares && !report.hub.overflow);
     assert(report.hub.sources.every(x => x.natural[0] === 200 && x.natural[1] === 200 && x.src.includes('-200.webp')));
     await shot('walk-model-samples-hub-light.png');
-    ok('模型中心只加载 200×200 thumb，各模型独立显示最多四张', report.hub);
+    ok('模型中心只加载 200×200 thumb，权重包合并后相同预览只留一份', report.hub);
 
     await click('.model-item[data-model-id="anything-v5-mnn"] [data-arg="sample:anything-v5-mnn:1"]');
     await viewerReady();
@@ -238,8 +239,14 @@ async function sampleMetrics() {
     report.wizard = await evaluate(`(() => { const root=document.querySelector('.diff-step[data-step="0"]'); return {
       anything:root.querySelectorAll('.diff-model[data-model-id="anything-v5-mnn"] .model-sample').length,
       animagine:root.querySelectorAll('.diff-model[data-model-id="animagine-v4-sdxl"] .model-sample').length,
-      chillout:root.querySelectorAll('.diff-model[data-model-id="chillout-mix-qnn"] .model-samples').length }; })()`);
-    assert.deepEqual(report.wizard, { anything:4, animagine:3, chillout:0 });
+      chillout:root.querySelectorAll('.diff-model[data-model-id="chillout-mix-qnn"] .model-samples').length,
+      families:root.querySelectorAll('.diff-family').length,
+      variants:root.querySelectorAll('.diff-variant').length }; })()`);
+    assert.deepEqual(report.wizard, { anything:4, animagine:3, chillout:1, families:3, variants:4 });
+    // 家族组头吸顶：滚到底后仍可见（sticky 生效）
+    assert(await evaluate(`(() => { const el=document.querySelector('.diff-family'); const r=el.getBoundingClientRect();
+      const step=document.querySelector('.diff-step[data-step="0"]').getBoundingClientRect();
+      return getComputedStyle(el).position==='sticky' && r.top >= step.top - 1; })()`), '家族组头吸顶');
     await click('.diff-step[data-step="0"] .diff-model[data-model-id="animagine-v4-sdxl"] [data-arg="sample:animagine-v4-sdxl:0"]');
     await viewerReady();
     report.asset1024 = await sampleMetrics();
