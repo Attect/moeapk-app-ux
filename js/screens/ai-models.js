@@ -120,10 +120,10 @@
       h += localFiltered.length ? '<div class="card tight" style="padding:0;margin-top:0">' + localFiltered.map((m) => {
         const idx = local.indexOf(m);
         const kl = kindOfLocal(m), fmt = m.fmt || fmtOfName(m.name);
-        return '<div class="li"><div class="li-body"><div class="li-title" style="font-weight:400">' + esc(m.name) + '</div>' +
+        return '<div class="li model-item" data-model-id="' + esc(m.id || m.name) + '"><div class="model-item-main"><div class="li-body"><div class="li-title" style="font-weight:400">' + esc(m.name) + '</div>' +
           '<div class="li-sub">' + fmtSize(m.size) + ' · ' + esc(m.src) + '</div>' +
           '<div class="tag-row">' + tagsHtml(kl, fmt) + capsHtml(m.caps) + '</div></div>' +
-          textBtn('删除', 'models-del', idx, 'danger') + '</div>';
+          textBtn('删除', 'models-del', idx, 'danger') + '</div>' + (kl === '生图' ? ModelSamples.html(m) : '') + '</div>';
       }).join('') + '</div>'
         : (local.length ? emptyHint('当前分类/过滤条件下没有模型') :
           card('<div class="muted small" style="padding:14px">还没有本地模型。下载推荐模型、从搜索页获取，或点「从手机导入」添加自己的模型文件。</div>'));
@@ -138,9 +138,10 @@
         if (ready) trail = '<span class="badge soft">已就绪</span>';
         else if (j) trail = '<div style="width:90px">' + progress(j.p) + '</div>';
         else trail = textBtn('下载', 'rec-dl', m.id);
-        return '<div class="li"><div class="li-body"><div class="li-title" style="font-weight:400">' + esc(m.name) + '</div>' +
+        return '<div class="li model-item" data-model-id="' + esc(m.id) + '"><div class="model-item-main"><div class="li-body"><div class="li-title" style="font-weight:400">' + esc(m.name) + '</div>' +
           '<div class="li-sub">' + esc(m.summary) + ' · ' + fmtSize(size) + '</div>' +
-          '<div class="tag-row">' + tagsHtml(KIND_LABEL[m.kind] || m.kind, fmtOfEngine(m)) + capsHtml(m.caps) + '</div></div>' + trail + '</div>';
+          '<div class="tag-row">' + tagsHtml(KIND_LABEL[m.kind] || m.kind, fmtOfEngine(m)) + capsHtml(m.caps) + '</div></div>' + trail + '</div>' +
+          (m.kind === 'diffusion' ? ModelSamples.html(m) : '') + '</div>';
       }).join('') + '</div>' : emptyHint('当前分类/过滤条件下没有推荐模型');
       }
 
@@ -292,6 +293,7 @@
         '<div class="li-sub" style="margin-top:4px">' + esc(m.author) + ' · ' + esc(m.source) + '</div>' +
         '<div class="muted" style="font-size:13px;margin-top:6px">' + esc(m.summary) + '</div>' +
         '<div class="stat-grid"><span>下载 ' + m.downloads + '</span><span>喜欢 ' + m.likes + '</span><span>更新 ' + m.updated + '</span><span>' + m.size + '</span><span class="achip">GGUF</span></div>' +
+        (m.task === '图像生成' ? ModelSamples.html(m) : '') +
         '<div style="margin-top:8px">' + textBtn('查看文件', 'ms-files', m.name) + '</div>');
       }).join('');
       h += '<div class="muted small center" style="padding:14px">已加载全部结果</div>';

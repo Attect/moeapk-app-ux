@@ -1,0 +1,11 @@
+{
+  "model": "Anything V5",
+  "prompt": "anime illustration, sunny flower meadow, cumulus clouds, rolling green hills, peaceful summer atmosphere",
+  "negative_prompt": "lowres, blurry, bad anatomy, watermark, text",
+  "steps": 28,
+  "sampler": "DPM++ 2M Karras",
+  "cfg_scale": 7,
+  "seed": 7313,
+  "width": 512,
+  "height": 512
+}

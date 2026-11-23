@@ -1,0 +1,11 @@
+{
+  "model": "animagine v4",
+  "prompt": "detailed anime key visual, floating islands above clouds, waterfalls, birds, luminous blue sky, adventurous mood",
+  "negative_prompt": "lowres, blurry, bad anatomy, watermark, text",
+  "steps": 32,
+  "sampler": "DPM++ 2M Karras",
+  "cfg_scale": 6.5,
+  "seed": 8402,
+  "width": 1024,
+  "height": 1024
+}

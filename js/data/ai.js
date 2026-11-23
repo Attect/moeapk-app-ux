@@ -25,6 +25,12 @@ window.DB.AI = [
   { "type": "model", "id": "anything-v5-mnn", "name": "Anything V5（SD1.5 MNN）", "kind": "diffusion", "version": "1.0.0",
     "summary": "Anything V5 SD1.5 演示模型，MNN 模型包提供 CPU 与 GPU 两种计算路径。", "engine": "sd-localdream",
     "diffusion": { "family": "Anything V5", "architecture": "SD1.5", "backends": ["cpu", "gpu"], "packageNote": "SD1.5 MNN 演示包；CPU / GPU，无 QNN 包" },
+    "samples": [
+      { "thumb": "assets/model-samples/anything-v5-sakura-200.webp", "image": "assets/model-samples/anything-v5-sakura-512.webp", "info": "assets/model-samples/anything-v5-sakura.json" },
+      { "thumb": "assets/model-samples/anything-v5-rain-200.webp", "image": "assets/model-samples/anything-v5-rain-512.webp", "info": "assets/model-samples/anything-v5-rain.json" },
+      { "thumb": "assets/model-samples/anything-v5-meadow-200.webp", "image": "assets/model-samples/anything-v5-meadow-512.webp", "info": "assets/model-samples/anything-v5-meadow.json" },
+      { "thumb": "assets/model-samples/anything-v5-night-200.webp", "image": "assets/model-samples/anything-v5-night-512.webp", "info": "assets/model-samples/anything-v5-night.json" }
+    ],
     "parts": [ { "name": "Anything-V5-SD15-MNN.zip", "size": 1800000000 } ] },
   { "type": "model", "id": "chillout-mix-qnn", "name": "Chillout Mix（SD1.5 QNN NPU）", "kind": "diffusion", "version": "1.0.0",
     "summary": "二次元插画模型 ChilloutMix，骁龙 8 Gen2 及以上 NPU 加速。", "engine": "sd-localdream",
@@ -33,6 +39,11 @@ window.DB.AI = [
   { "type": "model", "id": "animagine-v4-sdxl", "name": "animagine v4（SDXL QNN NPU）", "kind": "diffusion", "version": "1.0.0",
     "summary": "高质量动漫 SDXL 模型，出图 1024×1024，骁龙 8 Gen3 及以上。", "engine": "sd-localdream",
     "diffusion": { "family": "Animagine", "architecture": "SDXL", "backends": ["npu"], "npuVendor": "Qualcomm", "minGeneration": 3, "packageNote": "仅骁龙 8 Gen3+ QNN，无 CPU / MNN 包" },
+    "samples": [
+      { "thumb": "assets/model-samples/animagine-v4-starlight-200.webp", "image": "assets/model-samples/animagine-v4-starlight-1024.webp", "info": "assets/model-samples/animagine-v4-starlight.json" },
+      { "thumb": "assets/model-samples/animagine-v4-sky-islands-200.webp", "image": "assets/model-samples/animagine-v4-sky-islands-1024.webp", "info": "assets/model-samples/animagine-v4-sky-islands.json" },
+      { "thumb": "assets/model-samples/animagine-v4-lunar-garden-200.webp", "image": "assets/model-samples/animagine-v4-lunar-garden-1024.webp", "info": "assets/model-samples/animagine-v4-lunar-garden.json" }
+    ],
     "parts": [ { "name": "animagine_v4_qnn2.28_8gen3.zip", "size": 2600000000 } ] },
   { "type": "model", "id": "upscale-anime-onnx", "name": "图片放大·动漫（Real-ESRGAN x4plus_anime_6B，CPU 兜底）", "kind": "upscale", "version": "1.0.0",
     "summary": "Real-ESRGAN 动漫插画 4 倍放大，约 18MB。", "engine": "onnxruntime",

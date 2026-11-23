@@ -463,6 +463,20 @@ body.has-full .proto-bar { opacity: 0; pointer-events: none; transition: opacity
 .li-title { font-size: 14px; font-weight: 500; }
 .li-sub { font-size: 12px; color: var(--on-surface-variant); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; }
 .li-arrow { color: var(--on-surface-variant); display: inline-flex; }
+/* 图片模型条目：主信息保持原有 ListItem 密度，样例预览独立占满条目下方。 */
+.li.model-item { display: block; cursor: default; }
+.model-item-main { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.model-samples { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
+.model-sample {
+  display: block; width: 100%; aspect-ratio: 1 / 1; padding: 0; overflow: hidden;
+  border: 1px solid var(--outline-variant); border-radius: 8px;
+  background: var(--surface-container); cursor: zoom-in;
+  transition: transform .12s, border-color .15s;
+}
+.model-sample img { display: block; width: 100%; height: 100%; object-fit: cover; user-select: none; }
+.model-sample:active { transform: scale(.97); border-color: var(--primary); }
+.model-sample:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.diff-model .model-samples { margin-top: 7px; }
 .hr { height: 1px; background: var(--outline-variant); opacity: .7; margin: 0 16px; }
 
 /* ---------- Chip 行（全圆角 + 选中发光） ----------
@@ -2029,9 +2043,12 @@ textarea.diff-prompt { min-height: 156px; resize: vertical; border-radius: 0; bo
 .diff-viewer-head strong { display: block; font-size: 14px; }
 .diff-viewer-head span { display: block; color: rgba(255,255,255,.65); font-size: 10px; }
 .diff-viewer-head .diff-icon, .diff-viewer-tools .diff-icon { color: #fff; }
-.diff-viewer-stage { flex: 1; min-height: 0; overflow: auto; display: flex; align-items: center; justify-content: center; padding: 12px; }
+.diff-viewer-stage { flex: 1; min-height: 0; overflow: auto; display: flex; padding: 12px; }
+.diff-viewer-stage > * { margin: auto; }
 .diff-viewer-stage .diff-art { flex: none; width: min(100%, 72vh); height: auto; max-height: none; }
 .diff-viewer-stage.zoomed .diff-art { transform: scale(1.6); }
+.diff-viewer-image { flex: none; display: block; width: auto; height: auto; max-width: 100%; max-height: 100%; object-fit: contain; user-select: none; }
+.diff-viewer-stage.original .diff-viewer-image { max-width: none; max-height: none; }
 .diff-viewer-tools { flex: none; padding: 9px 10px calc(9px + var(--gesture-h)); background: rgba(10,14,24,.88); border-top: 1px solid rgba(255,255,255,.12); }
 .diff-viewer-copy strong { display: block; font-size: 11px; line-height: 16px; overflow-wrap: anywhere; }
 .diff-viewer-copy span { display: block; margin-top: 3px; color: rgba(255,255,255,.65); font-size: 10px; line-height: 15px; }

@@ -150,5 +150,5 @@ test('生图原型保持纯静态，无网络或模块依赖', () => {
   const html = read('index.html');
   const versions = [...html.matchAll(/\?v=(\d+)/g)].map(m => m[1]);
   assert.ok(versions.length >= 20);
-  assert.ok(versions.every(v => v === '98'));
+  assert.ok(versions.every(v => v === '99'));
 });

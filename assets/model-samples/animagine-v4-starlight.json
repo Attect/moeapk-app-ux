@@ -1,0 +1,11 @@
+{
+  "model": "animagine v4",
+  "prompt": "detailed anime key visual, stargazing hill, huge luminous moon, flowing clouds, sparkling stars, cinematic light",
+  "negative_prompt": "lowres, blurry, bad anatomy, watermark, text",
+  "steps": 32,
+  "sampler": "DPM++ 2M Karras",
+  "cfg_scale": 6.5,
+  "seed": 8401,
+  "width": 1024,
+  "height": 1024
+}

@@ -1,0 +1,11 @@
+{
+  "model": "animagine v4",
+  "prompt": "detailed anime key visual, secret garden under moonlight, glowing flowers, stone path, fireflies, dreamy atmosphere",
+  "negative_prompt": "lowres, blurry, bad anatomy, watermark, text",
+  "steps": 32,
+  "sampler": "DPM++ 2M Karras",
+  "cfg_scale": 6.5,
+  "seed": 8403,
+  "width": 1024,
+  "height": 1024
+}
