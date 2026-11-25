@@ -52,6 +52,9 @@
   --on-error: #FFFFFF;
   --error-container: #FFD9DF;
   --on-error-container: #8C1D30;
+  --warning: #A96F16;
+  --warning-container: rgba(217,147,43,.13);
+  --on-warning-container: #74500F;
   --inverse-surface: rgba(48,61,48,.92);
   --inverse-on-surface: #F7FAF7;
   --shadow: rgba(78,101,78,.16);
@@ -114,6 +117,9 @@
   --on-error: #5A1020;
   --error-container: rgba(214,69,96,.26);
   --on-error-container: #FFD9DF;
+  --warning: #F2C078;
+  --warning-container: rgba(217,147,43,.16);
+  --on-warning-container: #FFE0AC;
   --inverse-surface: rgba(240,244,240,.92);
   --inverse-on-surface: #384338;
   --shadow: rgba(0,0,0,.42);
@@ -2036,6 +2042,78 @@ textarea.diff-prompt { min-height: 156px; resize: vertical; border-radius: 0; bo
 .diff-result-info { color: var(--on-surface); font-size: 11px; line-height: 17px; }
 .diff-result-prompt, .diff-result-neg { margin-top: 5px; color: var(--on-surface-variant); font-size: 11px; line-height: 16px; overflow-wrap: anywhere; }
 .diff-result-tools { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+
+/* 生成中设备状态：小画面让位给实时信息；宽屏改为画面 / 状态双栏。 */
+.diff-generating-layout { display: grid; gap: 6px; }
+.diff-generating-main { min-width: 0; }
+.diff-generating-main .diff-result-stage { max-width: 190px; }
+.diff-generating-main .diff-preview { border-radius: 8px; }
+.diff-generating-layout.has-advice .diff-result-stage { max-width: 168px; }
+.diff-generation-progress .diff-result-tools { margin-top: 6px; }
+.diff-device {
+  min-width: 0; overflow: hidden;
+  background: var(--grad-soft), var(--surface-low);
+}
+.diff-device-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px; }
+.diff-device-title { display: flex; align-items: center; gap: 5px; min-width: 0; }
+.diff-device-title > .ic { width: 17px; height: 17px; color: var(--primary); }
+.diff-device-title > strong { font-size: 12px; line-height: 18px; }
+.diff-device-live { display: inline-flex; align-items: center; gap: 4px; margin-left: 3px; color: var(--on-surface-variant); font-size: 9px; line-height: 14px; white-space: nowrap; }
+.diff-device-live i { width: 5px; height: 5px; border-radius: 50%; background: var(--c-mint); box-shadow: 0 0 0 3px var(--secondary-container); }
+.diff-device-battery {
+  display: inline-flex; align-items: center; gap: 4px; min-height: 26px; padding: 3px 7px;
+  border: 1px solid var(--outline-variant); border-radius: 999px;
+  background: var(--surface-highest); color: var(--on-surface-variant);
+}
+.diff-device-battery .ic { width: 15px; height: 15px; }
+.diff-device-battery strong { color: var(--on-surface); font-size: 11px; line-height: 15px; }
+.diff-device-battery span { font-size: 9px; line-height: 13px; }
+.diff-device-battery.low { border-color: color-mix(in srgb, var(--warning) 38%, transparent); background: var(--warning-container); color: var(--warning); }
+.diff-device-battery.low strong { color: var(--on-warning-container); }
+.diff-device-battery.charging { color: var(--c-mint); }
+.diff-device-summary { display: grid; grid-template-columns: 82px minmax(0, 1fr); align-items: center; gap: 11px; margin-top: 9px; }
+.diff-temp-ring {
+  width: 82px; aspect-ratio: 1; padding: 4px; border-radius: 50%;
+  background: conic-gradient(var(--c-mint) var(--temp-p), var(--outline-variant) 0);
+}
+.diff-temp-ring.warming { background: conic-gradient(var(--warning) var(--temp-p), var(--outline-variant) 0); }
+.diff-temp-ring > div {
+  width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  border-radius: 50%; background: var(--surface-highest);
+}
+.diff-temp-ring strong { color: var(--on-surface); font-size: 18px; line-height: 23px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.diff-temp-ring strong small { margin-left: 1px; color: var(--on-surface-variant); font-size: 10px; font-weight: 500; }
+.diff-temp-ring span { color: var(--on-surface-variant); font-size: 9px; line-height: 13px; }
+.diff-device-summary-copy { min-width: 0; }
+.diff-device-trend { display: inline-flex; align-items: center; gap: 4px; color: var(--c-mint); font-size: 11px; line-height: 17px; font-weight: 600; }
+.diff-device-trend.warming { color: var(--warning); }
+.diff-device-trend .ic { width: 14px; height: 14px; }
+.diff-device-summary-copy > p { margin-top: 1px; color: var(--on-surface-variant); font-size: 10px; line-height: 15px; }
+.diff-device-ram {
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 2px 7px;
+  margin-top: 7px; padding-top: 6px; border-top: 1px solid var(--outline-variant);
+  color: var(--on-surface-variant); font-size: 9px; line-height: 14px;
+}
+.diff-device-ram b { color: var(--on-surface); font-size: 10px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.diff-load-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 5px; margin-top: 9px; }
+.diff-load { min-width: 0; padding: 5px 6px 6px; border: 1px solid var(--outline-variant); border-radius: 6px; background: var(--surface-container); }
+.diff-load > div:first-child { display: flex; align-items: baseline; justify-content: space-between; gap: 3px; }
+.diff-load span { color: var(--on-surface-variant); font-size: 9px; line-height: 13px; }
+.diff-load strong { color: var(--on-surface); font-size: 11px; line-height: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.diff-load-track { height: 3px; margin-top: 5px; overflow: hidden; border-radius: 999px; background: var(--outline-variant); }
+.diff-load-track i { display: block; height: 100%; border-radius: inherit; background: var(--c-sky); }
+.diff-load-1 .diff-load-track i { background: var(--c-violet); }
+.diff-load-2 .diff-load-track i { background: var(--c-mint); }
+.diff-load-3 .diff-load-track i { background: var(--primary); }
+.diff-device-advice {
+  display: flex; align-items: flex-start; gap: 7px; margin-top: 7px; padding: 7px 8px;
+  border: 1px solid color-mix(in srgb, var(--warning) 32%, transparent); border-radius: 6px;
+  background: var(--warning-container); color: var(--on-warning-container);
+}
+.diff-device-advice > .ic { flex: none; width: 16px; height: 16px; margin-top: 1px; color: var(--warning); }
+.diff-device-advice strong { display: block; font-size: 11px; line-height: 16px; font-weight: 600; }
+.diff-device-advice span { display: block; color: var(--on-warning-container); font-size: 10px; line-height: 15px; }
+
 .diff-empty { flex: 1; min-height: 280px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 24px; color: var(--on-surface-variant); text-align: center; }
 .diff-empty > .ic { width: 44px; height: 44px; opacity: .5; }
 .diff-empty strong { color: var(--on-surface); font-size: 14px; }
@@ -2072,6 +2150,9 @@ textarea.diff-prompt { min-height: 156px; resize: vertical; border-radius: 0; bo
   .diff-models { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .diff-computes { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .diff-workstage { height: min(42vh, 330px); }
+  .diff-generating-layout { grid-template-columns: minmax(240px, .9fr) minmax(320px, 1.1fr); align-items: start; gap: 10px; }
+  .diff-generating-layout .diff-result-stage, .diff-generating-layout.has-advice .diff-result-stage { max-width: 280px; }
+  .diff-generating-layout .diff-device { margin-top: 0; }
 }
 @container (max-width: 380px) {
   .diff-head { padding-left: 3px; padding-right: 3px; }
@@ -2081,6 +2162,12 @@ textarea.diff-prompt { min-height: 156px; resize: vertical; border-radius: 0; bo
   .diff-foot { justify-content: space-between; }
   .diff-model-meta { flex-direction: column; gap: 1px; }
   .diff-model-meta span:last-child { text-align: left; }
+  .diff-generating-main .diff-result-stage { max-width: 160px; }
+  .diff-generating-layout.has-advice .diff-result-stage { max-width: 144px; }
+  .diff-device-summary { grid-template-columns: 72px minmax(0, 1fr); gap: 9px; }
+  .diff-temp-ring { width: 72px; }
+  .diff-load { padding-left: 4px; padding-right: 4px; }
+  .diff-load strong { font-size: 10px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .diff-pager { scroll-behavior: auto; scroll-snap-type: none; }

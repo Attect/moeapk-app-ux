@@ -178,6 +178,8 @@ async function swipe(direction) {
     assert(await evaluate(`document.querySelector('.dlg-title').textContent.includes('提示词词表') && document.querySelector('.dlg').textContent.includes('尚未下载完整标签词表') && !!document.querySelector('.dlg [data-a="vocab-download"]')`));
     await click('.dlg [data-a="vocab-download"]');
     assert(await evaluate(`document.querySelectorAll('.dlg [data-a="vocab-use"]').length>=40 && document.querySelector('.dlg').textContent.includes('共 50 条标签')`));
+    // 等此前端提示 Toast 到期重绘完成，再操作仅做 DOM 局部更新的词表筛选。
+    await sleep(2750);
     await setValue('.dlg [data-live="vocab-query"]', '蓝眼');
     await waitFor(() => evaluate(`document.querySelectorAll('.dlg [data-a="vocab-use"]').length===1`), 2000, 'vocabulary filter');
     assert.equal(await evaluate(`document.querySelectorAll('.dlg [data-a="vocab-use"]').length`), 1);

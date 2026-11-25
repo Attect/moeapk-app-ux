@@ -2,6 +2,7 @@
 // 对应 ui/ai/DiffusionScreen.kt、DiffConfigScreen.kt（Compose 同步见 docs/design-notes.md）。
 // 保留能力：局部重绘 / 高清修复 / 宽高比 / 过程预览 / 9 种采样器 / 参数扫描 /
 // 结果模板与重跑 / 收藏与删除撤销 / 提示词库·tag 工具·补全·反推 / seed 锁 / 分阶段耗时。
+// 生成中设备卡：温度趋势 / CPU·GPU·NPU·内存负载 / 电量与充电状态 / 散热和低电量建议。
 (function () {
   const { A } = window._aiShared;
   const DIFF_MODELS = DB.AI.filter(m => m.type === 'model' && m.kind === 'diffusion');
@@ -26,6 +27,14 @@
     { id: 'mtk-9300', button: '联发科', vendor: 'MediaTek', name: '天玑 9300', model: 'MT6985', abi: 'arm64-v8a', generation: 0, caps: { cpu: true, gpu: true, npu: false } },
     { id: 'other-arm', button: '其它 SoC', vendor: 'Unknown', name: '通用 ARM 设备', model: 'Generic SoC', abi: 'arm64-v8a', generation: 0, caps: { cpu: true, gpu: false, npu: false } }
   ];
+  // 生成中的设备数据均为原型演示。auto 从平稳过渡到升温与低电量，便于走查条件提醒。
+  const DEVICE_PROFILES = {
+    stable: { temperature: 37.2, tempTrend: 0, battery: 78, charging: false, ram: 56 },
+    warming: { temperature: 42.6, tempTrend: 1.8, battery: 64, charging: false, ram: 68 },
+    low: { temperature: 38.1, tempTrend: 0, battery: 42, charging: false, ram: 62 },
+    combined: { temperature: 43.4, tempTrend: 2.1, battery: 38, charging: false, ram: 74 },
+    charging: { temperature: 41.5, tempTrend: 0.8, battery: 46, charging: true, ram: 67 }
+  };
 
   registerScreen('diffusion', { title: '图片生成', full: true, render: diffPage });
   registerScreen('diff-image', { title: '查看图片', full: true, render: diffImagePage });
@@ -91,7 +100,7 @@
     return { ok: true, reason: '可计算 · ' + c.engine + ' · ' + soc.name };
   }
   // 供零依赖契约测试与浏览器走查读取真实判定，不另写一套测试规则。
-  window._diffusion = { state: D, models: DIFF_MODELS, computeModes: COMPUTE, socs: SOCS, compatibility, backendsOf, validatePromptSyntax, promptTerms, unknownPromptTerms };
+  window._diffusion = { state: D, models: DIFF_MODELS, computeModes: COMPUTE, socs: SOCS, compatibility, backendsOf, deviceMetrics, validatePromptSyntax, promptTerms, unknownPromptTerms };
 
   const isSdxl = m => !!(m && (m.diffusion && m.diffusion.architecture ? m.diffusion.architecture === 'SDXL' : /sdxl/i.test(m.id + ' ' + m.name)));
   function dimsOf(size, ar) {
@@ -124,6 +133,10 @@
   function diffPage() {
     const d = D();
     d.step = clamp(d.step || 0, 0, STEPS.length - 1);
+    // 生成进度会频繁重绘；保留各步滚动位置，查看设备面板时不会被刷新拉回顶部。
+    const activeJob = mock.job('diff-gen');
+    const stepScroll = activeJob && !activeJob.done
+      ? Array.from(document.querySelectorAll('#diff-pager .diff-step'), el => el.scrollTop) : null;
     const h = '<div class="diff-wizard" id="diff-wizard">' +
       '<div id="diff-head">' + diffHeadHtml(d) + '</div>' +
       '<div class="diff-stepper" aria-label="生图步骤">' + STEPS.map((s, i) =>
@@ -135,7 +148,10 @@
       '<div id="diff-foot">' + diffFootHtml(d) + '</div></div>' +
       (S.x.diffDrawer ? diffDrawerHtml() : '');
     // 普通状态重绘保持当前页；goStep 的自动横滑直接操作常驻 pager，不重建 canvas / 输入框。
-    requestAnimationFrame(() => syncWizardPager(false));
+    requestAnimationFrame(() => {
+      syncWizardPager(false);
+      if (stepScroll) document.querySelectorAll('#diff-pager .diff-step').forEach((el, i) => { el.scrollTop = stepScroll[i] || 0; });
+    });
     return h;
   }
   function diffHeadHtml(d) {
@@ -189,6 +205,12 @@
     updateWizardChrome();
     syncWizardPager(animate !== false);
   }
+  // 旋转 / 窗口变宽时，旧 scrollLeft 不能直接按新宽度解释，否则结果步会被误判为其它步骤。
+  window.addEventListener('resize', () => {
+    if (!document.getElementById('diff-pager')) return;
+    clearTimeout(pagerScrollTimer);
+    syncWizardPager(false);
+  });
   // 单页跟手手势：禁用浏览器横向惯性，避免一次快滑跳过多个依赖步骤。
   // 输入控件、按钮与遮罩画布不启动分页；垂直滚动仍交给每一步自身。
   let pagerDrag = null;
@@ -563,7 +585,7 @@
       '<div class="diff-field-label">高清修复分块（UltraFix tile）</div>' + (isSdxl(m)
         ? '<div class="diff-caption">固定 1024（SDXL 管线限定）</div>'
         : '<div class="chip-row wrap compact-chips">' + [384, 512, 768].map(z => chip(z + 'px', cfg.hiresTile === z, 'dc-tile', z)).join('') + '</div>') +
-      '<div class="diff-note">生成时会演示卸载已加载 LLM 以释放内存，并显示 RAM 余量与分阶段耗时。</div>' +
+      '<div class="diff-note">生成时会演示卸载已加载 LLM 以释放内存，并显示设备状态与分阶段耗时。</div>' +
       '<button class="tbtn" data-a="dc-reset">恢复此模型默认参数</button> <button class="tbtn" data-a="dc-debug-fail">调试：模拟下次 bad_alloc</button></section>';
     return h;
   }
@@ -595,6 +617,52 @@
   action('diff-mask-clear', () => { maskState().strokes = []; render(); });
   action('diff-neg-toggle', () => { S.x.diffNegOpen = !S.x.diffNegOpen; render(); });
 
+  // ---------- 生成中的设备状态：温度趋势 / 三项计算负载 / 内存 / 电量 ----------
+  function deviceMetrics(d, j) {
+    const p = clamp(j && Number.isFinite(j.p) ? j.p : 0, 0, 1);
+    const mode = d.deviceDemo || 'auto';
+    const auto = {
+      temperature: +(36.8 + p * 6.6).toFixed(1),
+      tempTrend: p >= 0.25 ? +(0.8 + p * 1.6).toFixed(1) : 0,
+      battery: Math.round(68 - p * 26), charging: false, ram: Math.round(56 + p * 18)
+    };
+    const base = Object.assign({}, DEVICE_PROFILES[mode] || auto);
+    const pulse = mode === 'auto' ? Math.round(p * 6) : 0;
+    const compute = d.compute || 'gpu';
+    const loads = compute === 'cpu' ? { cpu: 92, gpu: 8, npu: 0 } :
+      compute === 'npu' ? { cpu: 38, gpu: 7, npu: 91 } : { cpu: 46, gpu: 89, npu: 0 };
+    Object.keys(loads).forEach(k => { loads[k] = clamp(loads[k] + (loads[k] > 20 ? pulse : 0), 0, 100); });
+    return Object.assign(base, loads, {
+      warming: base.tempTrend > 0,
+      lowBattery: base.battery < 50 && !base.charging,
+      ramUsed: (11.7 * base.ram / 100).toFixed(1), ramTotal: '11.7'
+    });
+  }
+  function deviceStatusHtml(m) {
+    const batteryLow = m.battery < 50;
+    const tempPct = clamp((m.temperature - 25) * 4, 0, 100);
+    const loads = [['CPU', m.cpu], ['GPU', m.gpu], ['NPU', m.npu], ['内存', m.ram]];
+    let h = '<section class="diff-block diff-device' + (m.warming || m.lowBattery ? ' has-warnings' : '') + '" aria-label="设备运行状态">' +
+      '<div class="diff-device-head"><div class="diff-device-title">' + icon('device_thermostat') + '<strong>设备状态</strong>' +
+      '<span class="diff-device-live"><i></i>实时演示</span></div>' +
+      '<div class="diff-device-battery' + (batteryLow ? ' low' : '') + (m.charging ? ' charging' : '') + '" aria-label="电量 ' + m.battery + '%，' + (m.charging ? '充电中' : '未充电') + '">' +
+      icon(m.charging ? 'battery_charging_full' : 'battery_full') + '<strong>' + m.battery + '%</strong><span>' + (m.charging ? '充电中' : '未充电') + '</span></div></div>' +
+      '<div class="diff-device-summary"><div class="diff-temp-ring' + (m.warming ? ' warming' : '') + '" style="--temp-p:' + tempPct + '%">' +
+      '<div><strong>' + m.temperature.toFixed(1) + '<small>°C</small></strong><span>设备温度</span></div></div>' +
+      '<div class="diff-device-summary-copy"><span class="diff-device-trend' + (m.warming ? ' warming' : '') + '">' +
+      icon(m.warming ? 'trending_up' : 'check_circle') + (m.warming ? '温度上升中' : '温度平稳') + '</span>' +
+      '<p>' + (m.warming ? '近 1 分钟 +' + m.tempTrend.toFixed(1) + '°C' : '最近 1 分钟无明显变化') + '</p>' +
+      '<div class="diff-device-ram"><span>运行内存</span><b>' + m.ramUsed + ' / ' + m.ramTotal + ' GB</b></div></div></div>' +
+      '<div class="diff-load-grid">' + loads.map((x, i) =>
+        '<div class="diff-load diff-load-' + i + '"><div><span>' + x[0] + '</span><strong>' + x[1] + '%</strong></div>' +
+        '<div class="diff-load-track" aria-hidden="true"><i style="width:' + x[1] + '%"></i></div></div>').join('') + '</div>';
+    if (m.warming) h += '<div class="diff-device-advice thermal">' + icon('device_thermostat') +
+      '<div><strong>温度正在升高</strong><span>建议摘下手机保护壳，或安装散热器。</span></div></div>';
+    if (m.lowBattery) h += '<div class="diff-device-advice battery">' + icon('bolt') +
+      '<div><strong>电量低于 50%</strong><span>建议连接充电器电源，避免生成中断。</span></div></div>';
+    return h + '</section>';
+  }
+
   // ---------- 5：生成进度 / 错误 / 当前结果（保存与分享在标题栏） ----------
   function resultStep(d) {
     const j = mock.job('diff-gen');
@@ -607,13 +675,16 @@
     if (j && !j.done) {
       const pct = Math.round(j.p * 100), blur = Math.max(0, 14 * (1 - j.p));
       const cfg = activeCfg(), showPreview = cfg.preview && !d.hires;
+      const device = deviceMetrics(d, j), hasAdvice = device.warming || device.lowBattery;
       return stepTitle('正在生成', esc(j.label || '本地生图任务')) +
+        '<div class="diff-generating-layout' + (hasAdvice ? ' has-advice' : '') + '"><div class="diff-generating-main">' +
         '<div class="diff-result-stage"><div class="diff-preview"><div class="diff-img" style="filter:blur(' + blur.toFixed(1) + 'px) saturate(' + (0.7 + j.p * 0.3).toFixed(2) + ');transform:scale(' + (1.06 - j.p * 0.06).toFixed(3) + ')"></div>' +
-        '<div class="diff-pct">' + pct + '%</div></div></div><section class="diff-block">' +
+        '<div class="diff-pct">' + pct + '%</div></div></div><section class="diff-block diff-generation-progress" aria-label="生成进度">' +
         (d.evictNote ? '<div class="cost-note">' + esc(d.evictNote) + '</div>' : '') +
         '<div class="dl-status">' + (showPreview ? '过程预览 · 每 2 步更新 · ' : (d.hires ? '分块修复中，无过程预览 · ' : '')) + esc(j.phase || '') + '</div>' + progress(j.p) +
         '<div class="diff-result-tools"><button class="diff-btn small danger" data-a="diff-cancel">取消</button>' +
-        (d.sweep && d.sweep.enabled ? '<button class="diff-btn small ghost" data-a="diff-stop-after">跑完本张后停止</button>' : '') + '</div></section>';
+        (d.sweep && d.sweep.enabled ? '<button class="diff-btn small ghost" data-a="diff-stop-after">跑完本张后停止</button>' : '') + '</div></section></div>' +
+        deviceStatusHtml(device) + '</div>';
     }
     const r = currentResult();
     if (!r) return '<div class="diff-empty">' + icon('image') + '<strong>还没有生成结果</strong><span>返回参数步开始生成，或从标题栏打开生成历史。</span>' +
@@ -740,8 +811,8 @@
     const llmLoaded = ((S.x.ai && S.x.ai.llm && S.x.ai.llm.sessions) || []).filter(s => s.loaded);
     if (llmLoaded.length) {
       llmLoaded.forEach(s => { s.loaded = false; });
-      d.evictNote = '已卸载 LLM 释放内存（约 1.8 GB） · RAM 4.9/11.7 GB 空闲';
-    } else d.evictNote = 'RAM 4.9/11.7 GB 空闲 · ' + check.reason;
+      d.evictNote = '已卸载 LLM 释放内存（约 1.8 GB）';
+    } else d.evictNote = check.reason;
     const label = plan.sweep ? '参数扫描（' + plan.total + ' 张）' : (d.mode === 'img' ? '图生图' : d.mode === 'inpaint' ? '局部重绘' : '文生图');
     const phases = d.hires ? ['编码提示词', '去噪 ' + d.steps + ' 步', '解码', '放大 ×2', 'UltraFix 分块修复'] :
       (d.mode === 'txt' ? ['编码提示词', '去噪 ' + d.steps + ' 步', '解码'] : ['编码提示词', 'VAE 编码底图', '去噪 ' + d.steps + ' 步', '解码']);
