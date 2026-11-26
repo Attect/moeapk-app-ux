@@ -48,7 +48,8 @@ test('温度环、负载条与提醒使用设计令牌，明暗和宽窄屏均�
 });
 
 test('进度刷新保留步骤滚动位置，尺寸切换先对齐当前步骤', () => {
-  assert.match(screen, /const stepScroll = activeJob && !activeJob\.done/);
+  assert.match(screen, /const downloadingModel = DIFF_MODELS\.some/);
+  assert.match(screen, /const stepScroll = \(activeJob && !activeJob\.done\) \|\| downloadingModel/);
   assert.match(screen, /el\.scrollTop = stepScroll\[i\] \|\| 0/);
   assert.match(screen, /window\.addEventListener\('resize', \(\) => \{\s*if \(!document\.getElementById\('diff-pager'\)\) return;\s*clearTimeout\(pagerScrollTimer\);\s*syncWizardPager\(false\);/);
   const icons = read('js/icons.js');

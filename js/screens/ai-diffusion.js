@@ -45,7 +45,8 @@
       prompt: (S.x.keep && S.x.keep['diff-prompt']) || '1girl, anime style, masterpiece, best quality',
       neg: (S.x.keep && S.x.keep['diff-neg']) || 'lowres, bad anatomy, blurry',
       steps: 20, denoise: 0.6, baseId: null, curId: null, batch: 1, history: [],
-      hires: false, mask: null, sweep: null, debugFail: false
+      hires: false, mask: null, sweep: null, debugFail: false,
+      modelView: null, modelViewTouched: false, modelPreviewId: null, modelSelectionVersion: 0
     };
     const d = A().diff;
     if (d.step == null) d.step = 0;
@@ -73,7 +74,59 @@
     return m && /qnn/i.test((m.parts || []).map(p => p.name).join(' ')) ? ['npu'] : ['cpu'];
   }
   function familyOf(m) { return m && m.diffusion && m.diffusion.family || (isSdxl(m) ? 'SDXL' : 'SD1.5'); }
-  function modelReady(m) { const j = m && mock.job('diff-mdl-' + m.id); return !!(j && j.done); }
+  // 生图页与模型中心共用同一本机就绪语义；下载中不等于已下载。
+  function modelDownloadJob(m) {
+    if (!m) return null;
+    const direct = mock.job('diff-mdl-' + m.id), hub = mock.job('rec-dl-' + m.id);
+    if (direct && !direct.done) return direct;
+    if (hub && !hub.done) return hub;
+    return direct || hub || null;
+  }
+  function modelReady(m) {
+    if (!m) return false;
+    return (S.x.localModels || []).some(local => local.id === m.id) ||
+      ['diff-mdl-', 'rec-dl-'].some(prefix => mock.isJobDone(prefix + m.id));
+  }
+  function ensureLocalModel(m) {
+    const local = S.x.localModels = S.x.localModels || [];
+    if (local.some(item => item.id === m.id)) return;
+    local.push({ id: m.id, name: (m.parts[0] && m.parts[0].name) || m.name, kind: '生图',
+      fmt: backendsOf(m).includes('npu') ? 'QNN' : 'MNN',
+      size: m.parts.reduce((sum, part) => sum + part.size, 0), src: '推荐下载', samples: m.samples || [] });
+  }
+  function useDownloadedModel(m) {
+    const d = D();
+    d.modelId = m.id; d.modelPreviewId = m.id;
+    d.modelSelectionVersion = (d.modelSelectionVersion || 0) + 1;
+    if (!d.modelViewTouched) d.modelView = 'downloaded';
+    d.curId = null; d.compute = null; d.computeError = null; d.lastError = null;
+    render();
+    const cur = nav.current();
+    if (cur && cur.page === 'diffusion' && d.step === 0) afterRenderGo(1);
+  }
+  function startModelDownload(m) {
+    const d = D();
+    d.modelPreviewId = m.id;
+    const selectionVersion = d.modelSelectionVersion || 0;
+    if (modelReady(m)) { useDownloadedModel(m); return; }
+    const existing = modelDownloadJob(m);
+    if (existing && !existing.done) { toast('模型正在下载'); return; }
+    mock.startJob('diff-mdl-' + m.id, '下载 ' + m.name, 3400, ['源 1', '源 2', '校验']);
+    const t = setInterval(() => {
+      const job = mock.job('diff-mdl-' + m.id);
+      if (!job) { clearInterval(t); return; }
+      if (job.done) {
+        clearInterval(t);
+        ensureLocalModel(m);
+        const current = D(), cur = nav.current();
+        const canUse = cur && cur.page === 'diffusion' && current.step === 0 &&
+          (current.modelSelectionVersion || 0) === selectionVersion && current.modelPreviewId === m.id;
+        // 后台完成只登记；不得覆盖后续选择、清空后续配置或把用户从其它页面抢回。
+        if (canUse) useDownloadedModel(m); else render();
+      }
+    }, 300);
+    render();
+  }
   function compatibility(m, mode, socId) {
     const c = computeOf(mode);
     const soc = socOf(socId);
@@ -100,7 +153,7 @@
     return { ok: true, reason: '可计算 · ' + c.engine + ' · ' + soc.name };
   }
   // 供零依赖契约测试与浏览器走查读取真实判定，不另写一套测试规则。
-  window._diffusion = { state: D, models: DIFF_MODELS, computeModes: COMPUTE, socs: SOCS, compatibility, backendsOf, deviceMetrics, validatePromptSyntax, promptTerms, unknownPromptTerms };
+  window._diffusion = { state: D, models: DIFF_MODELS, computeModes: COMPUTE, socs: SOCS, compatibility, backendsOf, modelReady, deviceMetrics, validatePromptSyntax, promptTerms, unknownPromptTerms };
 
   const isSdxl = m => !!(m && (m.diffusion && m.diffusion.architecture ? m.diffusion.architecture === 'SDXL' : /sdxl/i.test(m.id + ' ' + m.name)));
   function dimsOf(size, ar) {
@@ -133,9 +186,10 @@
   function diffPage() {
     const d = D();
     d.step = clamp(d.step || 0, 0, STEPS.length - 1);
-    // 生成进度会频繁重绘；保留各步滚动位置，查看设备面板时不会被刷新拉回顶部。
+    // 生成与模型下载都会频繁重绘；保留各步滚动位置，阅读设备面板或模型目录时不回顶。
     const activeJob = mock.job('diff-gen');
-    const stepScroll = activeJob && !activeJob.done
+    const downloadingModel = DIFF_MODELS.some(m => { const j = modelDownloadJob(m); return j && !j.done; });
+    const stepScroll = (activeJob && !activeJob.done) || downloadingModel
       ? Array.from(document.querySelectorAll('#diff-pager .diff-step'), el => el.scrollTop) : null;
     const h = '<div class="diff-wizard" id="diff-wizard">' +
       '<div id="diff-head">' + diffHeadHtml(d) + '</div>' +
@@ -198,12 +252,22 @@
     if (animate) p.scrollTo({ left, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
     else p.scrollLeft = left;
   }
+  function revealSelectedModel() {
+    const step = document.querySelector('.diff-step[data-step="0"]');
+    const card = step && step.querySelector('.diff-model.on');
+    if (!step || !card) return;
+    const s = step.getBoundingClientRect(), c = card.getBoundingClientRect();
+    const topGuard = s.top + 52, bottomGuard = s.bottom - 8;
+    if (c.top < topGuard) step.scrollTop -= topGuard - c.top;
+    else if (c.bottom > bottomGuard) step.scrollTop += c.bottom - bottomGuard;
+  }
   function goStep(step, animate) {
     const d = D();
     const next = clamp(step, 0, STEPS.length - 1);
     d.step = next;
     updateWizardChrome();
     syncWizardPager(animate !== false);
+    if (next === 0) requestAnimationFrame(revealSelectedModel);
   }
   // 旋转 / 窗口变宽时，旧 scrollLeft 不能直接按新宽度解释，否则结果步会被误判为其它步骤。
   window.addEventListener('resize', () => {
@@ -268,7 +332,7 @@
   action('diff-next', () => {
     const d = D();
     if (d.step === 0) {
-      if (!d.modelId) { toast('请先下载并选择生图模型'); return; }
+      if (!modelReady(modelOf(d.modelId))) { toast('请先下载并选择生图模型'); return; }
       goStep(1, true); return;
     }
     if (d.step === 1) {
@@ -302,109 +366,122 @@
 
   // ---------- 1：模型 + 生成方式 ----------
   function modelStep(d) {
-    let h = stepTitle('先确定创作方式与模型', '选择已下载模型后自动进入计算模式；模型家族不等于计算后端。');
+    let h = stepTitle('先确定创作方式与模型', '选择已下载模型后自动进入计算模式。');
     h += '<div class="diff-segment" role="group" aria-label="生成方式">' +
       [['txt', '文生图'], ['img', '图生图'], ['inpaint', '局部重绘']].map(x =>
         '<button class="' + (d.mode === x[0] ? 'on' : '') + '" data-a="diff-mode" data-arg="' + x[0] + '">' + x[1] + '</button>').join('') + '</div>' +
       '<div class="diff-caption">图生图 / 局部重绘会在创作输入步选择底图；切换方式不保留旧遮罩。</div>';
-    // 同一模型的多个权重包合并为一行，行内再选具体版本；家族组头吸顶并显示模型个数
+
+    // 先合并同基础模型，再按权重包筛选，避免“首包未下载”遮住同组已下载包。
     const groups = window.ModelGroups.group(DIFF_MODELS);
-    const byFamily = [];
-    groups.forEach(g => {
-      let slot = byFamily.find(entry => entry.family === g.family);
-      if (!slot) { slot = { family: g.family, models: [] }; byFamily.push(slot); }
-      slot.models.push(g);
-    });
-    h += '<div class="diff-models">' + byFamily.map(slot =>
-      '<div class="section-title diff-family" role="heading" aria-level="2">' + esc(slot.family) +
-      ' · ' + slot.models.length + ' 个模型</div>' + slot.models.map(g => modelGroupHtml(g, d)).join('')
-    ).join('') + '</div>';
-    return h;
+    const readyGroups = groups.map(g => {
+      const variants = g.variants.filter(v => modelReady(v.model));
+      return variants.length ? Object.assign({}, g, { variants }) : null;
+    }).filter(Boolean);
+    if (d.modelView !== 'downloaded' && d.modelView !== 'all') d.modelView = readyGroups.length ? 'downloaded' : 'all';
+    const downloaded = d.modelView === 'downloaded';
+    const visibleGroups = (downloaded ? readyGroups : groups).slice();
+    // 当前模型优先；同档仍保持模型目录的画风与原始顺序。
+    if (downloaded) visibleGroups.sort((a, b) =>
+      Number(b.variants.some(v => v.model.id === d.modelId)) - Number(a.variants.some(v => v.model.id === d.modelId)));
+
+    h += '<div class="diff-model-browser"><div class="diff-model-scope" role="group" aria-label="模型范围">' +
+      '<button class="' + (downloaded ? 'on' : '') + '" data-a="diff-model-view" data-arg="downloaded" aria-pressed="' + downloaded + '">' +
+      icon('check_circle') + '<span>已下载</span><b>' + readyGroups.length + '</b></button>' +
+      '<button class="' + (!downloaded ? 'on' : '') + '" data-a="diff-model-view" data-arg="all" aria-pressed="' + (!downloaded) + '">' +
+      icon('apps') + '<span>全部模型</span><b>' + groups.length + '</b></button></div>';
+    if (downloaded && !visibleGroups.length) {
+      h += '<div class="diff-model-empty">' + icon('cloud_download') + '<strong>还没有已下载的生图模型</strong>' +
+        '<p>从全部模型中下载，完成后即可在这里直接选用。</p>' +
+        '<button class="diff-btn small" data-a="diff-model-view" data-arg="all">浏览全部模型</button></div>';
+    } else if (downloaded) {
+      h += '<div class="diff-models downloaded" aria-label="已下载模型">' +
+        visibleGroups.map(g => modelGroupHtml(g, d, true)).join('') + '</div>';
+    } else {
+      const byFamily = [];
+      visibleGroups.forEach(g => {
+        let slot = byFamily.find(entry => entry.family === g.family);
+        if (!slot) { slot = { family: g.family, models: [] }; byFamily.push(slot); }
+        slot.models.push(g);
+      });
+      h += '<div class="diff-models">' + byFamily.map(slot =>
+        '<div class="section-title diff-family" role="heading" aria-level="2">' + esc(slot.family) +
+        ' · ' + slot.models.length + ' 个模型</div>' + slot.models.map(g => modelGroupHtml(g, d, false)).join('')
+      ).join('') + '</div>';
+    }
+    return h + '</div>';
   }
-  function modelGroupHtml(g, d) {
-    const activeId = d.modelId && g.variants.some(v => v.model.id === d.modelId)
-      ? d.modelId
-      : (g.variants[0] && g.variants[0].model.id);
-    return g.variants.map(v => modelRow(v, g, d, v.model.id === activeId)).find(Boolean) || '';
+  function modelGroupHtml(g, d, compact) {
+    // 正在下载的预览包优先留在原位；其余为已选包 > 浏览包 > 首个已下载包 > 目录首包。
+    const preview = g.variants.find(v => v.model.id === d.modelPreviewId);
+    const previewJob = preview && modelDownloadJob(preview.model);
+    const preferred = previewJob && !previewJob.done ? preview.model.id
+      : [d.modelId, d.modelPreviewId].find(id => id && g.variants.some(v => v.model.id === id));
+    const activeVariant = g.variants.find(v => v.model.id === preferred) ||
+      g.variants.find(v => modelReady(v.model)) || g.variants[0];
+    return activeVariant ? (compact ? localModelRow(activeVariant, g, d) : modelRow(activeVariant, g, d)) : '';
   }
-  function modelRow(variant, g, d, active) {
+  function variantChipsHtml(g, activeId, compact) {
+    if (g.variants.length <= 1) return '';
+    return '<div class="diff-variants' + (compact ? ' local' : '') + '" role="group" aria-label="' + (compact ? '已下载权重包' : '权重包') + '"><span>权重包</span>' +
+      g.variants.map(v => {
+        const ready = modelReady(v.model), j = modelDownloadJob(v.model);
+        const status = ready ? '已下载' : (j && !j.done ? '下载中' : '未下载');
+        return '<button class="diff-variant' + (v.model.id === activeId ? ' on' : '') + (ready ? ' ready' : '') +
+          '" data-a="diff-pick-variant" data-arg="' + v.model.id + '" aria-pressed="' + (v.model.id === activeId) +
+          '" aria-label="' + esc(v.label + '，' + status) + '">' + (ready ? icon('check') : '') + esc(v.label) + '</button>';
+      }).join('') + '</div>';
+  }
+  function localModelRow(variant, g, d) {
+    const m = variant.model, selected = d.modelId === m.id;
+    const size = m.parts.reduce((sum, part) => sum + part.size, 0);
+    const sample = g.samples[0];
+    const backendNames = { cpu: 'CPU', gpu: 'MNN', npu: 'QNN' };
+    const cover = sample ? '<img src="' + esc(sample.thumb) + '" alt="" loading="lazy">' : icon('image');
+    return '<article class="diff-model diff-local-model' + (selected ? ' on' : '') + '" data-model-id="' + esc(m.id) + '" data-ready="true">' +
+      '<div class="diff-local-main"><div class="diff-local-cover">' + cover + '</div><div class="diff-local-copy">' +
+      '<div class="diff-local-heading"><strong>' + esc(g.title) + '</strong>' +
+      (selected ? '<span class="diff-local-current">' + icon('check') + '当前</span>' : '') + '</div>' +
+      '<div class="diff-local-package">' + esc(variant.label || '标准权重包') + '</div>' +
+      '<div class="diff-tags"><span>' + esc(g.family) + '</span>' + (g.styleLabel ? '<span>' + esc(g.styleLabel) + '</span>' : '') + '</div></div>' +
+      '<button class="diff-btn small ' + (selected ? 'ghost' : '') + '" data-a="diff-pick-use" data-arg="' + m.id + '">' + (selected ? '继续' : '使用') + '</button></div>' +
+      '<div class="diff-model-meta"><span>' + fmtSize(size) + '</span><span>' + backendsOf(m).map(b => backendNames[b]).join(' / ') + '</span></div>' +
+      variantChipsHtml(g, m.id, true) + '</article>';
+  }
+  function modelRow(variant, g, d) {
     const m = variant.model;
     const size = m.parts.reduce((s, p) => s + p.size, 0);
-    const j = mock.job('diff-mdl-' + m.id);
+    const j = modelDownloadJob(m), ready = modelReady(m);
     const selected = d.modelId === m.id;
     const backendNames = { cpu: 'CPU', gpu: 'MNN', npu: 'QNN' };
     let trail;
-    if (j && !j.done) trail = '<span class="diff-model-progress">' + Math.round(j.p * 100) + '%</span>';
-    else if (j && j.done) trail = '<button class="diff-btn small ' + (selected ? 'ghost' : '') + '" data-a="diff-pick-use" data-arg="' + m.id + '">' + (selected ? '当前' : '选择') + '</button>';
+    if (ready) trail = '<button class="diff-btn small ' + (selected ? 'ghost' : '') + '" data-a="diff-pick-use" data-arg="' + m.id + '">' + (selected ? '当前' : '选择') + '</button>';
+    else if (j && !j.done) trail = '<span class="diff-model-progress">' + Math.round(j.p * 100) + '%</span>';
     else trail = '<button class="diff-btn small ghost" data-a="diff-pick-dl" data-arg="' + m.id + '">下载</button>';
-    if (!active) return '';
-    // 行内权重包chip：当前包高亮；点已下载的包直接选用，未下载的点一下即开始下载
-    const chips = g.variants.length > 1
-      ? '<div class="diff-variants" role="group" aria-label="权重包"><span>权重包</span>' + g.variants.map(v =>
-        '<button class="diff-variant' + (v.model.id === m.id ? ' on' : '') + '" data-a="diff-pick-variant" data-arg="' + v.model.id + '"' +
-        ' aria-pressed="' + (v.model.id === m.id ? 'true' : 'false') + '">' + esc(v.label) + '</button>').join('') + '</div>'
-      : '';
-    return '<article class="diff-model' + (selected ? ' on' : '') + '" data-model-id="' + esc(m.id) + '">' +
+    const chips = variantChipsHtml(g, m.id, false);
+    return '<article class="diff-model' + (selected ? ' on' : '') + '" data-model-id="' + esc(m.id) + '" data-ready="' + ready + '">' +
       '<div class="diff-model-top"><div><strong>' + esc(g.title) + '</strong><div class="diff-tags"><span>' + esc(familyOf(m)) + '</span>' +
       backendsOf(m).map(b => '<span>' + backendNames[b] + '</span>').join('') + (isSdxl(m) ? '<span>宽高比</span>' : '') +
-      (g.styleLabel ? '<span>' + esc(g.styleLabel) + '</span>' : '') + '</div></div>' + trail + '</div>' +
+      (g.styleLabel ? '<span>' + esc(g.styleLabel) + '</span>' : '') +
+      (ready ? '<span class="diff-ready-tag">' + icon('check') + '已下载</span>' : '') + '</div></div>' + trail + '</div>' +
       '<p>' + esc(m.summary) + '</p><div class="diff-model-meta"><span>' + fmtSize(size) + '</span><span>' + esc((m.diffusion && m.diffusion.packageNote) || '按模型包声明过滤后端') + '</span></div>' +
-      (j && !j.done ? progress(j.p) : '') + chips + (g.samples.length ? ModelSamples.groupHtml(g) : '') + '</article>';
+      (!ready && j && !j.done ? progress(j.p) : '') + chips + (g.samples.length ? ModelSamples.groupHtml(g) : '') + '</article>';
   }
-  // 行内权重包切换：已下载 → 选用；未下载 → 下载（与主按钮同链路）
-  action('diff-pick-variant', ds => {
-    const m = modelOf(ds.arg);
-    if (!m) return;
-    if (modelReady(m)) {
-      const d = D();
-      d.modelId = m.id; d.curId = null; d.compute = null; d.computeError = null; d.lastError = null;
-      render(); afterRenderGo(1);
-      return;
-    }
-    const existing = mock.job('diff-mdl-' + m.id);
-    if (existing && !existing.done) { toast('模型正在下载'); return; }
-    mock.startJob('diff-mdl-' + m.id, '下载 ' + m.name, 3400, ['源 1', '源 2', '校验']);
-    const t = setInterval(() => {
-      const job = mock.job('diff-mdl-' + m.id);
-      if (!job) { clearInterval(t); return; }
-      if (job.done) {
-        clearInterval(t);
-        const d = D();
-        d.modelId = m.id; d.curId = null; d.compute = null; d.computeError = null;
-        render();
-        const cur = nav.current();
-        if (cur && cur.page === 'diffusion' && d.step === 0) afterRenderGo(1);
-      }
-    }, 300);
+  action('diff-model-view', ds => {
+    if (ds.arg !== 'downloaded' && ds.arg !== 'all') return;
+    const d = D();
+    d.modelView = ds.arg; d.modelViewTouched = true;
     render();
+    requestAnimationFrame(() => { const step = document.querySelector('.diff-step[data-step="0"]'); if (step) step.scrollTop = 0; });
   });
+  // 行内权重包与主按钮共用下载链路；筛选本身不改选、不前进。
+  action('diff-pick-variant', ds => { const m = modelOf(ds.arg); if (m) startModelDownload(m); });
   action('diff-pick', () => goStep(0, true));
-  action('diff-pick-dl', ds => {
-    const m = modelOf(ds.arg);
-    if (!m) return;
-    const existing = mock.job('diff-mdl-' + m.id);
-    if (existing && !existing.done) { toast('模型正在下载'); return; }
-    mock.startJob('diff-mdl-' + m.id, '下载 ' + m.name, 3400, ['源 1', '源 2', '校验']);
-    const t = setInterval(() => {
-      const job = mock.job('diff-mdl-' + m.id);
-      if (!job) { clearInterval(t); return; }
-      if (job.done) {
-        clearInterval(t);
-        const d = D();
-        d.modelId = m.id; d.curId = null; d.compute = null; d.computeError = null;
-        render();
-        const cur = nav.current();
-        if (cur && cur.page === 'diffusion' && d.step === 0) afterRenderGo(1);
-      }
-    }, 300);
-    render();
-  });
+  action('diff-pick-dl', ds => { const m = modelOf(ds.arg); if (m) startModelDownload(m); });
   action('diff-pick-use', ds => {
     const m = modelOf(ds.arg);
     if (!m || !modelReady(m)) { toast('请先下载模型'); return; }
-    const d = D();
-    d.modelId = m.id; d.curId = null; d.compute = null; d.computeError = null; d.lastError = null;
-    render(); afterRenderGo(1);
+    useDownloadedModel(m);
   });
   action('diff-mode', ds => {
     const d = D();
@@ -412,7 +489,7 @@
     d.mode = ds.arg;
     d.mask = null;
     render();
-    if (d.modelId) afterRenderGo(1);
+    if (modelReady(modelOf(d.modelId))) afterRenderGo(1);
   });
 
   // ---------- 2：SoC 识别 + 模型真实后端过滤 ----------
@@ -896,7 +973,9 @@
   });
   function loadParams(r) {
     const d = D(), p = r.params;
-    d.modelId = p.modelId; d.mode = p.mode; d.compute = p.compute || null; d.soc = p.soc || d.soc;
+    d.modelId = p.modelId; d.modelPreviewId = p.modelId;
+    d.modelSelectionVersion = (d.modelSelectionVersion || 0) + 1;
+    d.mode = p.mode; d.compute = p.compute || null; d.soc = p.soc || d.soc;
     d.prompt = p.prompt; d.neg = p.neg; d.steps = p.steps; d.denoise = p.denoise; d.baseId = p.baseId; d.hires = !!p.hires;
     d.curId = null; d.lastError = null; d.computeError = null;
     keepSet('diff-prompt', p.prompt); keepSet('diff-neg', p.neg);

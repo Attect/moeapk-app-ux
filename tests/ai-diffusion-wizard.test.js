@@ -151,7 +151,7 @@ test('生图原型保持纯静态，无网络或模块依赖', () => {
   const html = read('index.html');
   const versions = [...html.matchAll(/\?v=(\d+)/g)].map(m => m[1]);
   assert.ok(versions.length >= 20);
-  assert.ok(versions.every(v => v === '102'));
+  assert.ok(versions.every(v => v === '103'));
 });
 
 test('模型列表把同一模型的权重包合并为一行，组头吸顶且行内可切换', () => {

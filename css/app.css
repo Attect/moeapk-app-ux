@@ -1880,19 +1880,73 @@ textarea.field-input { min-height: 84px; resize: vertical; font-family: inherit;
 .diff-segment button.on { background: var(--grad-primary); color: var(--on-primary); font-weight: 600; box-shadow: var(--glow-soft); }
 .diff-segment.compact { margin-top: 8px; }
 .diff-segment.compact button { min-height: 28px; font-size: 11px; }
+/* 模型范围固定在手边：已下载用于快速选用，全部模型用于发现、预览与下载。 */
+.diff-model-browser { min-width: 0; margin-top: 7px; }
+.diff-model-scope {
+  position: sticky; top: -8px; z-index: 5; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 3px; padding: 3px; border: 1px solid var(--outline-variant); border-radius: 8px;
+  background: var(--glass-chrome); backdrop-filter: var(--blur-chrome); -webkit-backdrop-filter: var(--blur-chrome);
+  box-shadow: var(--shadow-card);
+}
+.diff-model-scope button {
+  min-width: 0; min-height: 32px; display: flex; align-items: center; justify-content: center; gap: 5px;
+  border: 0; border-radius: 5px; background: transparent; color: var(--on-surface-variant);
+  font-size: 11px; cursor: pointer;
+}
+.diff-model-scope button > .ic { width: 15px; height: 15px; flex: none; }
+.diff-model-scope button > span { white-space: nowrap; }
+.diff-model-scope button > b {
+  min-width: 19px; padding: 1px 5px; border-radius: 4px; background: var(--surface-highest);
+  color: var(--on-surface-variant); font-size: 9px; line-height: 14px; font-weight: 600;
+}
+.diff-model-scope button.on { background: var(--grad-primary); color: var(--on-primary); box-shadow: var(--glow-soft); font-weight: 600; }
+.diff-model-scope button.on > b { background: var(--secondary-container); color: var(--on-secondary-container); }
 .diff-models { display: grid; gap: 6px; margin-top: 7px; }
-/* 生图模型家族组头：复用 .section-title 玻璃胶囊，吸顶位置按向导 chrome 另算 */
-.diff-family { position: sticky; top: 0; z-index: 3; margin: 10px 0 0 0; }
-.diff-model { padding: 8px; border: 1px solid var(--outline-variant); border-radius: 8px; background: var(--surface-low); }
+/* 双列时家族组头独占整行；吸顶位置给模型范围栏留出空间。 */
+.diff-family {
+  position: sticky; top: 44px; z-index: 3; grid-column: 1 / -1; margin: 10px 0 0 0;
+  background: var(--bg); box-shadow: var(--shadow-card);
+}
+.diff-model { min-width: 0; padding: 8px; border: 1px solid var(--outline-variant); border-radius: 8px; background: var(--surface-low); }
 .diff-model.on { border-color: var(--primary); background: var(--secondary-container); }
-/* 行内权重包chip：当前包高亮，已下载/未下载用底色区分 */
+.diff-model-empty {
+  margin-top: 8px; padding: 25px 16px; display: flex; flex-direction: column; align-items: center; text-align: center;
+  border: 1px dashed var(--outline-variant); border-radius: 8px; background: var(--surface-low);
+}
+.diff-model-empty > .ic { width: 32px; height: 32px; margin-bottom: 8px; color: var(--primary); }
+.diff-model-empty strong { font-size: 13px; line-height: 19px; }
+.diff-model-empty p { margin: 4px 0 12px; color: var(--on-surface-variant); font-size: 11px; line-height: 17px; }
+/* 已下载卡片以扫描效率为先：单张缩略图、当前包与使用动作，不重复展示完整样例。 */
+.diff-local-main { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.diff-local-cover {
+  width: 54px; height: 54px; flex: none; display: flex; align-items: center; justify-content: center;
+  overflow: hidden; border: 1px solid var(--outline-variant); border-radius: 7px;
+  background: var(--surface-highest); color: var(--on-surface-variant);
+}
+.diff-local-cover img { width: 100%; height: 100%; object-fit: cover; }
+.diff-local-cover > .ic { width: 23px; height: 23px; }
+.diff-local-copy { flex: 1; min-width: 0; }
+.diff-local-heading { display: flex; align-items: center; flex-wrap: wrap; gap: 3px 6px; }
+.diff-local-heading strong { font-size: 12px; line-height: 17px; }
+.diff-local-current {
+  display: inline-flex; align-items: center; gap: 2px; padding: 1px 5px; border-radius: 4px;
+  background: var(--surface-highest); color: var(--primary); font-size: 9px; line-height: 13px; font-weight: 600;
+}
+.diff-local-current .ic { width: 11px; height: 11px; }
+.diff-local-package { margin-top: 2px; color: var(--on-surface-variant); font-size: 10px; line-height: 15px; overflow-wrap: anywhere; }
+.diff-local-model .diff-model-meta { margin-left: 62px; }
+.diff-variants.local { margin-top: 7px; padding-top: 6px; border-top: 1px solid var(--outline-variant); }
+/* 行内权重包 chip：当前包高亮；已下载包另带勾，不只靠底色传达状态。 */
 .diff-variants { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 6px; }
 .diff-variants > span { color: var(--on-surface-variant); font-size: 9px; line-height: 14px; }
 .diff-variant {
-  min-height: 22px; padding: 2px 7px; border: 1px solid var(--outline-variant); border-radius: 4px;
+  min-height: 22px; display: inline-flex; align-items: center; gap: 2px; padding: 2px 7px;
+  border: 1px solid var(--outline-variant); border-radius: 4px;
   background: var(--surface-highest); color: var(--on-surface-variant);
   font-size: 9px; line-height: 13px; cursor: pointer;
 }
+.diff-variant .ic { width: 11px; height: 11px; flex: none; }
+.diff-variant.ready { color: var(--primary); }
 .diff-variant.on { border-color: var(--primary); background: var(--secondary-container); color: var(--on-secondary-container); font-weight: 600; }
 .diff-model-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
 .diff-model-top > div { min-width: 0; }
@@ -1900,6 +1954,8 @@ textarea.field-input { min-height: 84px; resize: vertical; font-family: inherit;
 .diff-model p { margin-top: 5px; color: var(--on-surface-variant); font-size: 11px; line-height: 16px; }
 .diff-tags { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 4px; }
 .diff-tags span { padding: 1px 5px; border-radius: 4px; background: var(--surface-highest); color: var(--on-surface-variant); font-size: 9px; line-height: 13px; }
+.diff-tags .diff-ready-tag { display: inline-flex; align-items: center; gap: 2px; color: var(--primary); font-weight: 600; }
+.diff-ready-tag .ic { width: 11px; height: 11px; }
 .diff-model-meta { display: flex; justify-content: space-between; gap: 8px; margin-top: 5px; color: var(--on-surface-variant); font-size: 9px; line-height: 14px; }
 .diff-model-meta span:last-child { text-align: right; }
 .diff-model-progress { color: var(--primary); font-size: 12px; }
@@ -2162,6 +2218,10 @@ textarea.diff-prompt { min-height: 156px; resize: vertical; border-radius: 0; bo
   .diff-foot { justify-content: space-between; }
   .diff-model-meta { flex-direction: column; gap: 1px; }
   .diff-model-meta span:last-child { text-align: left; }
+  .diff-local-main { gap: 6px; }
+  .diff-local-cover { width: 48px; height: 48px; }
+  .diff-local-model .diff-model-meta { margin-left: 0; }
+  .diff-local-model .diff-btn.small { padding-left: 8px; padding-right: 8px; }
   .diff-generating-main .diff-result-stage { max-width: 160px; }
   .diff-generating-layout.has-advice .diff-result-stage { max-width: 144px; }
   .diff-device-summary { grid-template-columns: 72px minmax(0, 1fr); gap: 9px; }

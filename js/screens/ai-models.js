@@ -52,6 +52,14 @@
   function capsHtml(caps) {
     return (caps || []).map(c => '<span class="achip cap">' + esc(c) + '</span>').join('');
   }
+  // 删除文件时同步撤销原型下载完成态，避免历史任务继续把模型冒充为本机就绪。
+  function clearModelDownloadState(models) {
+    (models || []).forEach(m => {
+      if (!m || !m.id) return;
+      mock.resetJob('diff-mdl-' + m.id);
+      mock.resetJob('rec-dl-' + m.id);
+    });
+  }
 
   // ---------- 模型中心（子页；F11 存储占用视角） ----------
   registerScreen('models', {
@@ -237,6 +245,7 @@
         { label: '取消' },
         {
           label: '清理', style: 'filled', run: () => {
+            clearModelDownloadState(unused);
             S.x.localModels = local.filter(m => unused.indexOf(m) < 0);
             toast('已清理 ' + unused.length + ' 个模型', { act: 'models-undo-clean', arg: JSON.stringify(unused), label: '撤销' });
             render();
@@ -252,7 +261,9 @@
   });
   // I2 分级：模型删除是重删（占空间大、不可秒重建），保留二次确认弹窗
   action('models-del', ds => confirmDialog('删除模型', '将从本机删除该模型文件。', '删除', () => {
-    S.x.localModels.splice(+ds.arg, 1); render();
+    const local = S.x.localModels, removed = local[+ds.arg];
+    clearModelDownloadState([removed]);
+    local.splice(+ds.arg, 1); render();
   }, true));
   action('rec-dl', ds => {
     mock.startJob('rec-dl-' + ds.arg, '下载', 2600, ['源 1', '源 2']);

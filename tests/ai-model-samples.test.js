@@ -159,5 +159,5 @@ test('模型样例直接复用素材 asset 查看器，不再进入 diff-image',
   assert(html.indexOf('js/model-samples.js') < html.indexOf('js/screens/assets.js'));
   assert(html.indexOf('js/model-display.js') < html.indexOf('js/screens/ai-diffusion.js'), '分组模块先于页面加载');
   const versions = [...html.matchAll(/\?v=(\d+)/g)].map(m => m[1]);
-  assert(versions.length >= 20 && versions.every(v => v === '102'));
+  assert(versions.length >= 20 && versions.every(v => v === '103'));
 });
